@@ -96,12 +96,14 @@ flowchart TB
 |---|---|---|
 | Bootstrap | Khởi tạo FastAPI, lifespan và CORS | `main.py` |
 | Configuration | Đọc và kiểm tra biến môi trường | `app/config.py` |
-| API schemas | Request/response contract và validation | `app/api/schemas.py` |
-| API routes | Điều phối ingestion, retrieval và chat | `app/api/routes.py` |
+| API DTO | Request/response contract và validation | `app/dto/` |
+| API routers | HTTP endpoints grouped by feature | `app/api/routers/` |
+| Application services | Ingestion, retrieval, chat and health use cases | `app/services/*_service.py` |
+| Repositories | Document and pgvector persistence | `app/repositories/` |
 | Parser | Trích xuất nội dung từ các loại tài liệu | `app/services/parser.py` |
 | Chunker | Chia văn bản theo cửa sổ ký tự | `app/services/chunker.py` |
 | Embedding | Adapter OpenAI, Gemini và mock | `app/services/embedding.py` |
-| Vector store | Lưu chunk, vector search và hybrid search | `app/services/vector_store.py` |
+| Vector store | Lưu chunk, vector search và hybrid search | `app/repositories/vector_store_repository.py` |
 | Prompt builder | Tạo prompt có context và citation | `app/services/prompt_builder.py` |
 | LLM | Adapter OpenAI, Gemini và mock | `app/services/llm.py` |
 | Persistence | Session, schema, pgvector và index | `app/database.py`, `app/models.py` |
@@ -497,7 +499,7 @@ Bộ kiểm thử hiện có 21 trường hợp, bao phủ:
 - Mock LLM khi không có context.
 - Pydantic request validation.
 - Rollback khi embedding thất bại.
-- `VectorStoreService.add_chunks()` không tự commit.
+- `VectorStoreRepository.add_chunks()` không tự commit.
 - Loại bỏ NUL/control characters trước khi lưu.
 - Phát hiện PDF có text layer lỗi.
 

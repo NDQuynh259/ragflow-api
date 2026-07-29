@@ -6,7 +6,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import check_database_ready
-from app.api.routes import router as api_router
+from app.api.router import router as api_router
+from app.core.api_response import ApiResponse, register_exception_handlers, success_response
 
 logger = logging.getLogger(__name__)
 
@@ -42,16 +43,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+register_exception_handlers(app)
+
 # Include Routers
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
-@app.get("/")
+@app.get("/", response_model=ApiResponse[dict[str, str]])
 def root():
-    return {
-        "message": f"Welcome to {settings.PROJECT_NAME}",
-        "docs": "/docs",
-        "health": f"{settings.API_V1_STR}/health"
-    }
+    return success_response(
+        {
+            "docs": "/docs",
+            "health": f"{settings.API_V1_STR}/health",
+        },
+        message=f"Welcome to {settings.PROJECT_NAME}",
+    )
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

@@ -3,15 +3,16 @@ import math
 import pytest
 from pydantic import ValidationError
 
-from app.api.routes import _persist_document, health_check
-from app.api.schemas import ChatQueryRequest, IngestTextRequest, SearchQueryRequest
+from app.dto import ChatQueryRequest, IngestTextRequest, SearchQueryRequest
 from app.config import settings
 from app.services.chunker import TextChunker
 from app.services.embedding import EmbeddingService
 from app.services.llm import LLMService
 from app.services.parser import DocumentParseError, DocumentParser
 from app.services.prompt_builder import PromptBuilder
-from app.services.vector_store import VectorStoreService
+from app.repositories.vector_store_repository import VectorStoreRepository
+from app.services.document_service import DocumentService
+from app.services.health_service import HealthService
 
 
 def test_chunker_splits_text_with_overlap():
@@ -137,7 +138,7 @@ def test_ingestion_rolls_back_when_embedding_fails(monkeypatch):
     monkeypatch.setattr(EmbeddingService, "get_embedding", fail_embedding)
 
     with pytest.raises(RuntimeError, match="provider unavailable"):
-        _persist_document(
+        DocumentService().persist(
             db,
             filename="test.txt",
             file_type="txt",
@@ -173,7 +174,7 @@ def test_vector_store_add_chunks_does_not_commit():
         "embedding": [0.0] * settings.EMBEDDING_DIMENSION,
     }]
 
-    count = VectorStoreService.add_chunks(db, chunks)
+    count = VectorStoreRepository.add_chunks(db, chunks)
 
     assert count == 1
     assert db.flushes == 1
@@ -219,7 +220,7 @@ class _FakeHealthSession:
 
 
 def test_health_requires_database_vector_and_migrated_schema():
-    response = health_check(db=_FakeHealthSession([1, "vector", True]))
+    response = HealthService.check(db=_FakeHealthSession([1, "vector", True]))
 
     assert response.status == "healthy"
     assert response.database_connected is True
@@ -228,7 +229,7 @@ def test_health_requires_database_vector_and_migrated_schema():
 
 
 def test_health_is_unhealthy_when_schema_is_not_migrated():
-    response = health_check(db=_FakeHealthSession([1, "vector", False]))
+    response = HealthService.check(db=_FakeHealthSession([1, "vector", False]))
 
     assert response.status == "unhealthy"
     assert response.schema_ready is False

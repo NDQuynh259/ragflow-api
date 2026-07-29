@@ -6,23 +6,46 @@ from pgvector.sqlalchemy import Vector
 from app.database import Base
 from app.config import settings
 
-class Document(Base):
-    __tablename__ = "documents"
+class IdentifierMixin:
+    """Common primary-key field for persisted entities."""
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+
+
+class AuditMixin:
+    """Common creation, update, and soft-delete audit fields."""
+
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+    created_by = Column(String(255), nullable=True)
+    updated_by = Column(String(255), nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
+
+
+class Document(IdentifierMixin, AuditMixin, Base):
+    __tablename__ = "documents"
+
     filename = Column(String, nullable=False)
     file_type = Column(String, nullable=False)
     file_size = Column(Integer, nullable=False, default=0, server_default=text("0"))
     chunk_count = Column(Integer, nullable=False, default=0, server_default=text("0"))
-    created_at = Column(DateTime, default=datetime.utcnow, server_default=text("CURRENT_TIMESTAMP"))
-
     chunks = relationship("DocumentChunk", back_populates="document", cascade="all, delete-orphan")
 
 
-class DocumentChunk(Base):
+class DocumentChunk(IdentifierMixin, AuditMixin, Base):
     __tablename__ = "document_chunks"
 
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     document_id = Column(String, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
     chunk_index = Column(Integer, nullable=False)
     content = Column(Text, nullable=False)
@@ -33,8 +56,6 @@ class DocumentChunk(Base):
         server_default=text("'{}'::json"),
     )
     embedding = Column(Vector(settings.EMBEDDING_DIMENSION), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, server_default=text("CURRENT_TIMESTAMP"))
-
     document = relationship("Document", back_populates="chunks")
 
     __table_args__ = (
