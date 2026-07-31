@@ -10,6 +10,8 @@ class EmbeddingService:
         if self.provider not in {"openai", "gemini", "mock"}:
             raise ValueError(f"Unsupported embedding provider: {self.provider}")
 
+
+    # region get_embedding
     def get_embedding(self, text: str) -> List[float]:
         """Generate vector embedding for text using selected provider."""
         if not text or not text.strip():
@@ -24,7 +26,9 @@ class EmbeddingService:
                 raise RuntimeError("GEMINI_API_KEY is required for the Gemini embedding provider.")
             return self._get_gemini_embedding(text)
         return self._get_mock_embedding(text)
+    
 
+    # region _get_openai_embedding
     def _get_openai_embedding(self, text: str) -> List[float]:
         from openai import OpenAI
         client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -33,7 +37,9 @@ class EmbeddingService:
             model=settings.OPENAI_EMBEDDING_MODEL,
         )
         return self._validate_dimension(list(response.data[0].embedding))
+    
 
+    # region _get_gemini_embedding
     def _get_gemini_embedding(self, text: str) -> List[float]:
         from google import genai
         from google.genai import types
@@ -48,6 +54,8 @@ class EmbeddingService:
             raise RuntimeError("Gemini returned no embedding.")
         return self._validate_dimension(list(response.embeddings[0].values))
 
+
+    # region _validate_dimension
     def _validate_dimension(self, vector: List[float]) -> List[float]:
         if len(vector) != self.dimension:
             raise RuntimeError(
@@ -55,6 +63,7 @@ class EmbeddingService:
             )
         return vector
 
+    #region _get_mock_embedding
     def _get_mock_embedding(self, text: str) -> List[float]:
         """
         Pure Python deterministic normalized vector generator (no numpy required).

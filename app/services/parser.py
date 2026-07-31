@@ -1,19 +1,27 @@
+from asyncio.log import logger
 import io
 import unicodedata
 
 from pypdf import PdfReader
 import docx
+import logging
 
+logger = logging.getLogger(__name__)
 
 class DocumentParseError(ValueError):
     """Raised when a document cannot produce safe, meaningful plain text."""
 
 
 class DocumentParser:
+
+    #region parse_file
     @staticmethod
     def parse_file(file_bytes: bytes, filename: str) -> str:
         """Parse file bytes based on file extension into plain text."""
         ext = filename.split(".")[-1].lower() if "." in filename else ""
+
+        logger.debug(f"Parsing file '{filename}' with extension '{ext}'.")
+
         
         if ext == "pdf":
             raw_text = DocumentParser._parse_pdf(file_bytes)
@@ -65,6 +73,8 @@ class DocumentParser:
                 "Run OCR on the PDF and upload the OCR-enabled file."
             )
 
+
+    #region _parse_pdf
     @staticmethod
     def _parse_pdf(file_bytes: bytes) -> str:
         pdf_file = io.BytesIO(file_bytes)
@@ -78,6 +88,8 @@ class DocumentParser:
         DocumentParser._validate_pdf_text_layer(extracted_text)
         return extracted_text
 
+
+    #region _parse_docx
     @staticmethod
     def _parse_docx(file_bytes: bytes) -> str:
         docx_file = io.BytesIO(file_bytes)

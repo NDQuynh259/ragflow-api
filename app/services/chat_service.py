@@ -18,7 +18,7 @@ class ChatService:
         self.llm_service = llm_service or LLMService()
 
     def query(self, db: Session, request: ChatQueryRequest) -> ChatQueryResponse:
-        contexts = self.retrieval_service.retrieve(
+        contexts = self.retrieval_service.retrieve_rag_contexts(
             db,
             SearchQueryRequest(
                 query=request.query,
@@ -30,7 +30,7 @@ class ChatService:
         prompt = PromptBuilder.build_rag_prompt(
             query=request.query,
             contexts=contexts,
-            system_instruction=request.system_instruction,
+            additional_instruction=request.system_instruction,
         )
         return ChatQueryResponse(
             query=request.query,

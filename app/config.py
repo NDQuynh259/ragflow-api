@@ -21,12 +21,13 @@ class Settings(BaseSettings):
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     OPENAI_LLM_MODEL: str = "gpt-4o-mini"
     GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
-    GEMINI_LLM_MODEL: str = "gemini-1.5-flash"
+    GEMINI_LLM_MODEL: str = "gemini-2.5-flash"
     
     # RAG Defaults
     DEFAULT_CHUNK_SIZE: int = Field(default=500, gt=0)
     DEFAULT_CHUNK_OVERLAP: int = Field(default=50, ge=0)
     DEFAULT_TOP_K: int = Field(default=5, ge=1, le=100)
+    RAG_NEIGHBOR_WINDOW: int = Field(default=1, ge=0, le=5)
     EMBEDDING_DIMENSION: int = Field(default=1536, gt=0)
     # API safety defaults
     MAX_UPLOAD_SIZE_MB: int = Field(default=20, ge=1, le=200)

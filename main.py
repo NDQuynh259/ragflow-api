@@ -8,7 +8,9 @@ from app.config import settings
 from app.database import check_database_ready
 from app.api.router import router as api_router
 from app.core.api_response import ApiResponse, register_exception_handlers, success_response
+from app.core.logging_config import configure_logging
 
+configure_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -59,4 +61,4 @@ def root():
     )
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, log_level="debug")

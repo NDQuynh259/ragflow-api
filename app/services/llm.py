@@ -48,8 +48,8 @@ class LLMService:
             parts = prompt.split("=== USER QUESTION ===")
             if len(parts) > 1:
                 user_question = parts[1].split("===")[0].strip()
-        if "=== RETRIEVED CONTEXT CHUNKS ===" in prompt:
-            context_parts = prompt.split("=== RETRIEVED CONTEXT CHUNKS ===")
+        if "=== CONTEXT CHUNKS ===" in prompt:
+            context_parts = prompt.split("=== CONTEXT CHUNKS ===")
             if len(context_parts) > 1:
                 context_block = context_parts[1].split("=== USER QUESTION ===")[0]
 

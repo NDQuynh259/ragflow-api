@@ -31,16 +31,20 @@ class DocumentService:
         if not filename:
             raise AppError("Document filename cannot be empty.")
         extension = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+
+        # Validate file extension and size
         if extension not in settings.ALLOWED_FILE_EXTENSIONS:
             raise AppError(
                 f"Unsupported file type: {extension or 'unknown'}.", status_code=415
             )
+        
         max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
         if len(contents) > max_bytes:
             raise AppError(
                 f"File exceeds the {settings.MAX_UPLOAD_SIZE_MB} MB upload limit.",
                 status_code=413,
             )
+        
         try:
             raw_text = DocumentParser.parse_file(contents, filename)
         except DocumentParseError as exc:
@@ -109,16 +113,26 @@ class DocumentService:
                 file_type=file_type,
                 file_size=file_size,
             )
-            chunk_records = [
-                {
-                    "document_id": document.id,
-                    "chunk_index": chunk["chunk_index"],
-                    "content": chunk["content"],
-                    "metadata": {"source": filename, "chunk_index": chunk["chunk_index"]},
-                    "embedding": self.embedder.get_embedding(chunk["content"]),
-                }
-                for chunk in chunks
-            ]
+
+            chunk_records = []
+            for chunk in chunks:
+                chunk_index = chunk["chunk_index"]
+                chunk_content = chunk["content"]
+                embedding = self.embedder.get_embedding(chunk_content)
+
+                chunk_records.append(
+                    {
+                        "document_id": document.id,
+                        "chunk_index": chunk_index,
+                        "content": chunk_content,
+                        "metadata": {
+                            "source": filename,
+                            "chunk_index": chunk_index,
+                        },
+                        "embedding": embedding,
+                    }
+                )
+                
             DocumentRepository.add(db, document)
             db.flush()
             document.chunk_count = VectorStoreRepository.add_chunks(db, chunk_records)

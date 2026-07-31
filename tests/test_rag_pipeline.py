@@ -1,4 +1,5 @@
 import math
+from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
@@ -10,6 +11,7 @@ from app.services.embedding import EmbeddingService
 from app.services.llm import LLMService
 from app.services.parser import DocumentParseError, DocumentParser
 from app.services.prompt_builder import PromptBuilder
+from app.services.retrieval_service import RetrievalService
 from app.repositories.vector_store_repository import VectorStoreRepository
 from app.services.document_service import DocumentService
 from app.services.health_service import HealthService
@@ -179,6 +181,93 @@ def test_vector_store_add_chunks_does_not_commit():
     assert count == 1
     assert db.flushes == 1
     assert len(db.added) == 1
+
+
+class _FakeNeighborQuery:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def filter(self, *_):
+        return self
+
+    def order_by(self, *_):
+        return self
+
+    def all(self):
+        return self.rows
+
+
+class _FakeNeighborSession:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def query(self, _):
+        return _FakeNeighborQuery(self.rows)
+
+
+def test_neighbor_expansion_loads_chunks_around_seed():
+    rows = [
+        SimpleNamespace(
+            id=f"chunk-{index}",
+            document_id="doc-1",
+            chunk_index=index,
+            content=f"content-{index}",
+            metadata_json={},
+        )
+        for index in (99, 100, 101)
+    ]
+    seed_chunks = [
+        {
+            "chunk_id": "chunk-100",
+            "document_id": "doc-1",
+            "chunk_index": 100,
+            "content": "content-100",
+            "metadata": {},
+            "score": 0.9,
+        }
+    ]
+
+    expanded = VectorStoreRepository.expand_neighbor_chunks(
+        _FakeNeighborSession(rows),
+        seed_chunks,
+        neighbor_window=1,
+    )
+
+    assert [chunk["chunk_index"] for chunk in expanded] == [99, 100, 101]
+    assert expanded[0]["metadata"]["is_neighbor"] is True
+    assert expanded[1]["metadata"]["is_neighbor"] is False
+
+
+def test_merge_contiguous_chunks_removes_overlap_and_tracks_sources():
+    chunks = [
+        {
+            "chunk_id": "chunk-100",
+            "document_id": "doc-1",
+            "chunk_index": 100,
+            "content": "First section. Shared text",
+            "metadata": {"source": "document.pdf"},
+            "score": 0.9,
+            "retrieval_rank": 0,
+            "document_rank": 0,
+        },
+        {
+            "chunk_id": "chunk-101",
+            "document_id": "doc-1",
+            "chunk_index": 101,
+            "content": "Shared text. Second section.",
+            "metadata": {"source": "document.pdf"},
+            "score": 0.9,
+            "retrieval_rank": 0,
+            "document_rank": 0,
+        },
+    ]
+
+    merged = RetrievalService.merge_contiguous_chunks(chunks)
+
+    assert len(merged) == 1
+    assert merged[0]["content"] == "First section. Shared text. Second section."
+    assert merged[0]["metadata"]["chunk_indexes"] == [100, 101]
+    assert merged[0]["metadata"]["expanded_context"] is True
 
 
 def test_text_sanitizer_removes_nul_and_control_characters():
