@@ -1,8 +1,8 @@
 # Thiết kế kiến trúc hệ thống RAG
 
-> **Dự án:** FastAPI RAG Backend with PostgreSQL pgvector  
-> **Phiên bản tài liệu:** 1.1  
-> **Ngày cập nhật:** 28/07/2026  
+> **Dự án:** FastAPI RAG Backend with PostgreSQL pgvector
+> **Phiên bản tài liệu:** 1.2
+> **Ngày cập nhật:** 31/07/2026
 > **Trạng thái:** Đồng bộ với mã nguồn và bộ kiểm thử hiện tại
 
 ## Tóm tắt
@@ -113,6 +113,43 @@ Routes hiện đóng vai trò application orchestrator. Khi số lượng use ca
 nên tách logic này thành `IngestionService` và `QueryService` để API chỉ đảm
 nhiệm chuyển đổi giao thức.
 
+### Pipeline tổng thể
+
+```mermaid
+flowchart TD
+    subgraph INGEST["1. Nạp tài liệu"]
+        A["Upload PDF / DOCX / TXT / Markdown"] --> B["Parser<br/>Trích xuất và làm sạch văn bản"]
+        B --> C["Text Chunker<br/>Cửa sổ ký tự + overlap"]
+        C --> D["Embedding Provider<br/>Gemini / OpenAI / Mock"]
+        D --> E["PostgreSQL"]
+        E --> E1["Nội dung và metadata"]
+        E --> E2["Vector — pgvector"]
+        E --> E3["Full-text index — GIN"]
+    end
+
+    subgraph QUERY["2. Truy vấn RAG"]
+        Q["Câu hỏi + document_id tùy chọn"] --> QE["Query Embedding"]
+        QE --> VS["Vector Search<br/>Cosine similarity"]
+        Q --> FS["Full-text Search<br/>ts_rank_cd"]
+        VS --> RRF["Reciprocal Rank Fusion<br/>k = 60"]
+        FS --> RRF
+        RRF --> TOP["Top-K seed chunks"]
+        TOP --> NB["Expand Neighbor ±N"]
+        NB --> DD["Loại chunk trùng"]
+        DD --> SORT["Sắp xếp theo document + chunk_index"]
+        SORT --> MERGE["Merge chunk liên tiếp<br/>Loại phần overlap"]
+        MERGE --> PROMPT["Prompt Builder<br/>Context + citation + câu hỏi"]
+        PROMPT --> LLM["LLM Provider<br/>Gemini / OpenAI / Mock"]
+        LLM --> RES["Câu trả lời + retrieved_contexts"]
+    end
+
+    E2 -. "Vector data" .-> VS
+    E3 -. "Keyword data" .-> FS
+```
+
+> Chunking hiện tại là sliding-window theo ký tự, chưa phải semantic chunking.
+> Full-text ranking hiện dùng `ts_rank_cd`, chưa phải BM25.
+
 ## 4. Luồng ingestion
 
 ```mermaid
@@ -176,7 +213,10 @@ flowchart TB
     VS[Vector Search<br/>Cosine + HNSW]
     FTS[Full-text Search<br/>simple + GIN]
     RRF[Reciprocal Rank Fusion<br/>k = 60]
-    Context[Top-K context chunks]
+    TopK[Top-K seed chunks]
+    Neighbor[Expand neighbor chunks]
+    Deduplicate[Deduplicate and sort]
+    Merge[Merge contiguous chunks]
     Prompt[Prompt + Source citations]
     LLM[OpenAI / Gemini / Mock]
     Answer[Answer + retrieved_contexts]
@@ -186,8 +226,11 @@ flowchart TB
     Q --> FTS
     VS --> RRF
     FTS --> RRF
-    RRF --> Context
-    Context --> Prompt
+    RRF --> TopK
+    TopK --> Neighbor
+    Neighbor --> Deduplicate
+    Deduplicate --> Merge
+    Merge --> Prompt
     Q --> Prompt
     Prompt --> LLM
     LLM --> Answer
@@ -207,6 +250,17 @@ Hybrid search kết hợp:
 1. Xếp hạng từ vector search.
 2. PostgreSQL full-text search bằng `ts_rank_cd`.
 3. Reciprocal Rank Fusion để hợp nhất hai bảng xếp hạng.
+
+Sau khi lấy Top-K seed chunks, luồng chat thực hiện thêm:
+
+4. Lấy các chunk trước và sau mỗi seed theo `RAG_NEIGHBOR_WINDOW`.
+5. Loại các chunk trùng do nhiều seed có cùng vùng lân cận.
+6. Sắp xếp theo `document_id` và `chunk_index`.
+7. Merge các chunk liên tiếp và loại phần ký tự overlap bị lặp.
+8. Đưa context đã merge vào prompt trước khi gọi LLM.
+
+`top_k` là số seed chunks, không phải số context cuối cùng. Endpoint retrieval trả
+về kết quả xếp hạng gốc; neighbor expansion và merge chỉ áp dụng trong luồng chat.
 
 Full-text search sử dụng cấu hình `simple`, phù hợp với nội dung tiếng Việt hơn
 cấu hình `english` vì không áp dụng English stemming.
@@ -397,6 +451,7 @@ Revision autogenerate phải được review thủ công trước khi chạy.
 | `DEFAULT_CHUNK_SIZE` | `500` | Kích thước chunk |
 | `DEFAULT_CHUNK_OVERLAP` | `50` | Độ chồng lấn |
 | `DEFAULT_TOP_K` | `5` | Số context mặc định |
+| `RAG_NEIGHBOR_WINDOW` | `1` | Số chunk lấy thêm ở mỗi phía của seed |
 | `MAX_UPLOAD_SIZE_MB` | `20` | Giới hạn upload |
 | `DB_INSERT_BATCH_SIZE` | `100` | Số chunk trong mỗi batch flush |
 | `CORS_ORIGINS` | Local frontend origins | Danh sách origin được phép |
@@ -464,6 +519,17 @@ soát.
 **Hệ quả:** Phải chạy `alembic upgrade head` trước khi khởi động API. Với nhiều
 API replica, production nên chạy migration bằng một deployment job riêng.
 
+### ADR-08: Neighbor expansion và context merge
+
+**Quyết định:** Sau Top-K retrieval, lấy thêm chunk liền kề, loại trùng và merge
+các chunk liên tiếp trước khi tạo prompt.
+
+**Lý do:** Danh sách, bảng hoặc đoạn văn có thể bị cắt tại ranh giới chunk; chỉ gửi
+seed chunk khiến LLM thiếu phần tiếp theo dù tài liệu gốc có đủ thông tin.
+
+**Hệ quả:** Context gửi LLM lớn hơn Top-K gốc, do đó phải theo dõi token usage và
+giới hạn `RAG_NEIGHBOR_WINDOW`.
+
 ## 10. Bảo mật và vận hành
 
 ### Hiện trạng
@@ -489,7 +555,7 @@ API replica, production nên chạy migration bằng một deployment job riêng
 
 ## 11. Kiểm thử
 
-Bộ kiểm thử hiện có 21 trường hợp, bao phủ:
+Bộ kiểm thử hiện có 23 trường hợp, bao phủ:
 
 - Chunk splitting.
 - Các cửa sổ chunk không hợp lệ.
@@ -502,11 +568,13 @@ Bộ kiểm thử hiện có 21 trường hợp, bao phủ:
 - `VectorStoreRepository.add_chunks()` không tự commit.
 - Loại bỏ NUL/control characters trước khi lưu.
 - Phát hiện PDF có text layer lỗi.
+- Mở rộng đúng các neighbor chunk quanh seed.
+- Merge chunk liên tiếp, loại overlap và giữ metadata nguồn.
 
 Các kiểm tra đã thực hiện:
 
 ```text
-21 tests passed
+23 tests passed
 Python compile check passed
 OpenAPI schema validation passed
 Docker Compose configuration passed
