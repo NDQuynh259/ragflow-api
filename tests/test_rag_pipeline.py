@@ -1,11 +1,16 @@
+import asyncio
+import json
 import math
 from types import SimpleNamespace
 
 import pytest
+from fastapi import FastAPI
 from pydantic import ValidationError
 
 from app.dto import ChatQueryRequest, IngestTextRequest, SearchQueryRequest
 from app.config import settings
+from app.core.api_response import register_exception_handlers
+from app.core.exceptions import AppError
 from app.services.chunker import TextChunker
 from app.services.embedding import EmbeddingService
 from app.services.llm import LLMService
@@ -53,6 +58,94 @@ def test_embedding_mock_is_deterministic_and_normalized():
     assert math.isclose(math.sqrt(sum(value * value for value in first)), 1.0)
 
 
+def test_embedding_batches_non_empty_documents():
+    class _FakeEmbeddings:
+        def __init__(self):
+            self.calls = []
+
+        def embed_documents(self, texts):
+            self.calls.append(texts)
+            return [
+                [float(index)] * settings.EMBEDDING_DIMENSION
+                for index, _ in enumerate(texts, start=1)
+            ]
+
+    service = EmbeddingService(provider="openai")
+    fake_client = _FakeEmbeddings()
+    service._client = fake_client
+
+    vectors = service.get_embeddings(["first", " ", "second"])
+
+    assert fake_client.calls == [["first", "second"]]
+    assert [vector[0] for vector in vectors] == [1.0, 0.0, 2.0]
+
+
+def test_embedding_retries_provider_rate_limit(monkeypatch):
+    class _RateLimitedOnce:
+        def __init__(self):
+            self.calls = 0
+
+        def embed_query(self, _):
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError(
+                    "429 RESOURCE_EXHAUSTED: quota exceeded; retry in 0.25s"
+                )
+            return [0.5] * settings.EMBEDDING_DIMENSION
+
+    monkeypatch.setattr(settings, "EMBEDDING_MAX_RETRIES", 1)
+    delays = []
+    service = EmbeddingService(provider="gemini", sleep=delays.append)
+    fake_client = _RateLimitedOnce()
+    service._client = fake_client
+
+    vector = service.get_embedding("query")
+
+    assert fake_client.calls == 2
+    assert delays == [0.25]
+    assert vector[0] == 0.5
+
+
+def test_embedding_persistent_quota_error_becomes_app_error(monkeypatch):
+    class _AlwaysRateLimited:
+        def embed_query(self, _):
+            raise RuntimeError(
+                "429 RESOURCE_EXHAUSTED: quota exceeded; retry in 1.2s"
+            )
+
+    monkeypatch.setattr(settings, "EMBEDDING_MAX_RETRIES", 0)
+    service = EmbeddingService(provider="gemini", sleep=lambda _: None)
+    service._client = _AlwaysRateLimited()
+
+    with pytest.raises(AppError) as error:
+        service.get_embedding("query")
+
+    assert error.value.status_code == 429
+    assert error.value.headers == {"Retry-After": "2"}
+    assert "Gemini embedding quota" in error.value.message
+
+
+def test_app_error_handler_forwards_retry_after_header():
+    test_app = FastAPI()
+    register_exception_handlers(test_app)
+
+    handler = test_app.exception_handlers[AppError]
+    response = asyncio.run(
+        handler(
+            None,
+            AppError(
+                "Embedding quota exceeded.",
+                status_code=429,
+                headers={"Retry-After": "14"},
+            ),
+        )
+    )
+
+    assert response.status_code == 429
+    assert response.headers["retry-after"] == "14"
+    assert json.loads(response.body)["message"] == "Embedding quota exceeded."
+
+
 def test_embedding_provider_requires_api_key(monkeypatch):
     monkeypatch.setattr(settings, "OPENAI_API_KEY", "")
 
@@ -76,9 +169,15 @@ def test_prompt_builder_includes_sources_and_query():
 
     prompt = PromptBuilder.build_rag_prompt("PostgreSQL là gì?", contexts)
 
-    assert "Source #1" in prompt
-    assert "pgvector extension" in prompt
-    assert "PostgreSQL là gì?" in prompt
+    prompt_text = prompt.to_string()
+    messages = prompt.to_messages()
+
+    assert "Source #1" in prompt_text
+    assert "pgvector extension" in prompt_text
+    assert "PostgreSQL là gì?" in prompt_text
+    assert [message.type for message in messages] == ["system", "human"]
+    assert "trustworthy RAG AI assistant" in messages[0].content
+    assert "=== CONTEXT CHUNKS ===" in messages[1].content
 
 
 def test_llm_mock_reports_missing_context():
@@ -88,6 +187,29 @@ def test_llm_mock_reports_missing_context():
 
     assert "không chứa đủ thông tin" in response
     assert "RAG" in response
+
+
+def test_llm_invokes_langchain_chat_model_with_role_aware_prompt():
+    class _FakeChatModel:
+        def __init__(self):
+            self.prompt = None
+
+        def invoke(self, prompt):
+            self.prompt = prompt
+            return SimpleNamespace(content="grounded answer")
+
+    prompt = PromptBuilder.build_rag_prompt("Question?", [])
+    service = LLMService(provider="openai")
+    fake_client = _FakeChatModel()
+    service._client = fake_client
+
+    answer = service.generate_response(prompt)
+
+    assert answer == "grounded answer"
+    assert [message.type for message in fake_client.prompt.to_messages()] == [
+        "system",
+        "human",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -137,7 +259,7 @@ def test_ingestion_rolls_back_when_embedding_fails(monkeypatch):
     def fail_embedding(_, __):
         raise RuntimeError("provider unavailable")
 
-    monkeypatch.setattr(EmbeddingService, "get_embedding", fail_embedding)
+    monkeypatch.setattr(EmbeddingService, "get_embeddings", fail_embedding)
 
     with pytest.raises(RuntimeError, match="provider unavailable"):
         DocumentService().persist(

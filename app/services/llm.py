@@ -1,44 +1,61 @@
+from typing import Any
+
 from app.config import settings
 
 
 class LLMService:
-    def __init__(self, provider: str = None):
+    def __init__(self, provider: str | None = None) -> None:
         self.provider = (provider or settings.LLM_PROVIDER).lower()
+        self._client: Any = None
         if self.provider not in {"openai", "gemini", "mock"}:
             raise ValueError(f"Unsupported LLM provider: {self.provider}")
 
-    def generate_response(self, prompt: str) -> str:
-        """Generate an LLM response using the configured provider."""
+    def generate_response(self, prompt: Any) -> str:
+        """Generate an LLM response using a LangChain chat model."""
+        if self.provider == "mock":
+            return self._generate_mock(self._prompt_to_text(prompt))
+
+        response = self._get_client().invoke(prompt)
+        if isinstance(response.content, str):
+            return response.content
+        response_text = getattr(response, "text", None)
+        if isinstance(response_text, str):
+            return response_text
+        return str(response.content)
+
+    def _get_client(self) -> Any:
+        if self._client is not None:
+            return self._client
+
         if self.provider == "openai":
             if not settings.OPENAI_API_KEY:
                 raise RuntimeError("OPENAI_API_KEY is required for the OpenAI LLM provider.")
-            return self._generate_openai(prompt)
-        if self.provider == "gemini":
+            from langchain_openai import ChatOpenAI
+
+            self._client = ChatOpenAI(
+                api_key=settings.OPENAI_API_KEY,
+                model=settings.OPENAI_LLM_MODEL,
+                temperature=0.2,
+            )
+        elif self.provider == "gemini":
             if not settings.GEMINI_API_KEY:
                 raise RuntimeError("GEMINI_API_KEY is required for the Gemini LLM provider.")
-            return self._generate_gemini(prompt)
-        return self._generate_mock(prompt)
+            from langchain_google_genai import ChatGoogleGenerativeAI
 
-    def _generate_openai(self, prompt: str) -> str:
-        from openai import OpenAI
+            self._client = ChatGoogleGenerativeAI(
+                google_api_key=settings.GEMINI_API_KEY,
+                model=settings.GEMINI_LLM_MODEL,
+                temperature=0.2,
+            )
+        else:
+            raise RuntimeError("The mock LLM provider does not use a client.")
+        return self._client
 
-        client = OpenAI(api_key=settings.OPENAI_API_KEY)
-        response = client.chat.completions.create(
-            model=settings.OPENAI_LLM_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2,
-        )
-        return response.choices[0].message.content
-
-    def _generate_gemini(self, prompt: str) -> str:
-        from google import genai
-
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        response = client.models.generate_content(
-            model=settings.GEMINI_LLM_MODEL,
-            contents=prompt,
-        )
-        return response.text
+    @staticmethod
+    def _prompt_to_text(prompt: Any) -> str:
+        if hasattr(prompt, "to_string"):
+            return prompt.to_string()
+        return str(prompt)
 
     def _generate_mock(self, prompt: str) -> str:
         """Return a transparent deterministic response for local testing."""

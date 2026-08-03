@@ -1,16 +1,16 @@
 # Thiết kế kiến trúc hệ thống RAG
 
 > **Dự án:** FastAPI RAG Backend with PostgreSQL pgvector
-> **Phiên bản tài liệu:** 1.2
-> **Ngày cập nhật:** 31/07/2026
+> **Phiên bản tài liệu:** 1.3
+> **Ngày cập nhật:** 03/08/2026
 > **Trạng thái:** Đồng bộ với mã nguồn và bộ kiểm thử hiện tại
 
 ## Tóm tắt
 
 Hệ thống được tổ chức theo kiến trúc **modular monolith**, phù hợp cho MVP và
 môi trường thử nghiệm. FastAPI cung cấp REST API; PostgreSQL và pgvector đảm
-nhiệm lưu trữ metadata, nội dung, embedding và truy hồi; OpenAI, Gemini hoặc
-mock provider cung cấp embedding và khả năng sinh câu trả lời.
+nhiệm lưu trữ metadata, nội dung, embedding và truy hồi; các adapter LangChain
+kết nối OpenAI, Gemini hoặc mock provider cho embedding và sinh câu trả lời.
 
 Các lỗi về cấu hình database, validation, transaction ingestion, hybrid search,
 index truy vấn, provider và Docker đã được xử lý. Schema được quản lý bằng
@@ -101,11 +101,11 @@ flowchart TB
 | Application services | Ingestion, retrieval, chat and health use cases | `app/services/*_service.py` |
 | Repositories | Document and pgvector persistence | `app/repositories/` |
 | Parser | Trích xuất nội dung từ các loại tài liệu | `app/services/parser.py` |
-| Chunker | Chia văn bản theo cửa sổ ký tự | `app/services/chunker.py` |
-| Embedding | Adapter OpenAI, Gemini và mock | `app/services/embedding.py` |
+| Chunker | Chia đệ quy theo đoạn, dòng, từ và ký tự bằng LangChain | `app/services/chunker.py` |
+| Embedding | LangChain adapter cho OpenAI, Gemini và mock | `app/services/embedding.py` |
 | Vector store | Lưu chunk, vector search và hybrid search | `app/repositories/vector_store_repository.py` |
-| Prompt builder | Tạo prompt có context và citation | `app/services/prompt_builder.py` |
-| LLM | Adapter OpenAI, Gemini và mock | `app/services/llm.py` |
+| Prompt builder | Tạo system/human prompt có context và citation bằng LangChain | `app/services/prompt_builder.py` |
+| LLM | LangChain chat-model adapter cho OpenAI, Gemini và mock | `app/services/llm.py` |
 | Persistence | Session, schema, pgvector và index | `app/database.py`, `app/models.py` |
 | Migration | Quản lý phiên bản và thay đổi database schema | `migrations/`, `alembic.ini` |
 
@@ -119,8 +119,8 @@ nhiệm chuyển đổi giao thức.
 flowchart TD
     subgraph INGEST["1. Nạp tài liệu"]
         A["Upload PDF / DOCX / TXT / Markdown"] --> B["Parser<br/>Trích xuất và làm sạch văn bản"]
-        B --> C["Text Chunker<br/>Cửa sổ ký tự + overlap"]
-        C --> D["Embedding Provider<br/>Gemini / OpenAI / Mock"]
+        B --> C["LangChain Text Splitter<br/>Recursive + overlap"]
+        C --> D["LangChain Embeddings<br/>Gemini / OpenAI / Mock"]
         D --> E["PostgreSQL"]
         E --> E1["Nội dung và metadata"]
         E --> E2["Vector — pgvector"]
@@ -139,7 +139,7 @@ flowchart TD
         DD --> SORT["Sắp xếp theo document + chunk_index"]
         SORT --> MERGE["Merge chunk liên tiếp<br/>Loại phần overlap"]
         MERGE --> PROMPT["Prompt Builder<br/>Context + citation + câu hỏi"]
-        PROMPT --> LLM["LLM Provider<br/>Gemini / OpenAI / Mock"]
+        PROMPT --> LLM["LangChain Chat Model<br/>Gemini / OpenAI / Mock"]
         LLM --> RES["Câu trả lời + retrieved_contexts"]
     end
 
@@ -147,7 +147,8 @@ flowchart TD
     E3 -. "Keyword data" .-> FS
 ```
 
-> Chunking hiện tại là sliding-window theo ký tự, chưa phải semantic chunking.
+> Chunking hiện dùng `RecursiveCharacterTextSplitter`, ưu tiên giữ đoạn, dòng và
+> từ trước khi phải tách theo ký tự; đây vẫn chưa phải semantic chunking.
 > Full-text ranking hiện dùng `ts_rank_cd`, chưa phải BM25.
 
 ## 4. Luồng ingestion
@@ -168,10 +169,8 @@ sequenceDiagram
     A->>CH: Split text
     CH-->>A: Chunks
 
-    loop Từng chunk
-        A->>E: Create embedding
-        E-->>A: Vector
-    end
+    A->>E: Embed documents theo batch
+    E-->>A: Vectors
 
     A->>DB: Begin transaction
     A->>DB: Insert Document
@@ -448,6 +447,9 @@ Revision autogenerate phải được review thủ công trước khi chạy.
 | `OPENAI_API_KEY` | Rỗng | OpenAI authentication |
 | `GEMINI_API_KEY` | Rỗng | Gemini authentication |
 | `EMBEDDING_DIMENSION` | `1536` | Số chiều vector |
+| `EMBEDDING_MAX_RETRIES` | `1` | Số lần thử lại khi provider trả rate limit |
+| `EMBEDDING_RETRY_BASE_SECONDS` | `1` | Thời gian chờ cơ sở khi provider không gửi retry delay |
+| `EMBEDDING_RETRY_MAX_SECONDS` | `30` | Giới hạn thời gian chờ cho mỗi lần retry |
 | `DEFAULT_CHUNK_SIZE` | `500` | Kích thước chunk |
 | `DEFAULT_CHUNK_OVERLAP` | `50` | Độ chồng lấn |
 | `DEFAULT_TOP_K` | `5` | Số context mặc định |
@@ -496,9 +498,11 @@ search.
 
 ### ADR-05: Provider adapter
 
-**Quyết định:** Embedding và LLM được truy cập qua adapter.
+**Quyết định:** Embedding và LLM được truy cập qua adapter LangChain; PostgreSQL,
+hybrid retrieval và transaction tiếp tục dùng implementation riêng.
 
-**Lý do:** Có thể đổi provider thông qua cấu hình.
+**Lý do:** Có thể đổi provider thông qua cấu hình, dùng chung message interface và
+batch embedding mà không ràng buộc schema dữ liệu vào vector store của framework.
 
 **Hệ quả:** Phải kiểm soát model, dimension và quy trình re-index.
 
@@ -555,13 +559,17 @@ giới hạn `RAG_NEIGHBOR_WINDOW`.
 
 ## 11. Kiểm thử
 
-Bộ kiểm thử hiện có 23 trường hợp, bao phủ:
+Bộ kiểm thử hiện có 28 trường hợp, bao phủ:
 
 - Chunk splitting.
 - Các cửa sổ chunk không hợp lệ.
 - Mock embedding có tính deterministic và normalized.
+- Batch embedding giữ đúng thứ tự và bỏ qua nội dung rỗng.
 - Provider thiếu API key.
-- Prompt có context và citation.
+- Retry embedding theo delay của provider khi gặp HTTP 429.
+- Chuyển quota lỗi kéo dài thành `AppError` 429 kèm `Retry-After`.
+- Prompt có context, citation và tách đúng system/human role.
+- LangChain chat model nhận role-aware prompt.
 - Mock LLM khi không có context.
 - Pydantic request validation.
 - Rollback khi embedding thất bại.
@@ -574,7 +582,7 @@ Bộ kiểm thử hiện có 23 trường hợp, bao phủ:
 Các kiểm tra đã thực hiện:
 
 ```text
-23 tests passed
+28 tests passed
 Python compile check passed
 OpenAPI schema validation passed
 Docker Compose configuration passed

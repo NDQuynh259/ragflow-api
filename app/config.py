@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     DEFAULT_TOP_K: int = Field(default=5, ge=1, le=100)
     RAG_NEIGHBOR_WINDOW: int = Field(default=1, ge=0, le=5)
     EMBEDDING_DIMENSION: int = Field(default=1536, gt=0)
+    EMBEDDING_MAX_RETRIES: int = Field(default=1, ge=0, le=5)
+    EMBEDDING_RETRY_BASE_SECONDS: float = Field(default=1.0, ge=0, le=60)
+    EMBEDDING_RETRY_MAX_SECONDS: float = Field(default=30.0, ge=0, le=300)
     # API safety defaults
     MAX_UPLOAD_SIZE_MB: int = Field(default=20, ge=1, le=200)
     DB_INSERT_BATCH_SIZE: int = Field(default=100, ge=1, le=1000)

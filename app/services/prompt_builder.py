@@ -1,4 +1,7 @@
-from typing import Any, Dict, List, Optional
+from typing import Any
+
+from langchain_core.prompt_values import ChatPromptValue
+from langchain_core.prompts import ChatPromptTemplate
 
 
 class PromptBuilder:
@@ -23,70 +26,65 @@ class PromptBuilder:
             10. Keep the answer concise, direct, and relevant.
             """.strip()
 
+    RAG_PROMPT = ChatPromptTemplate.from_messages(
+        [
+            ("system", "{system_instruction}"),
+            (
+                "human",
+                "=== CONTEXT CHUNKS ===\n"
+                "{formatted_contexts}\n\n"
+                "=== USER QUESTION ===\n"
+                "{query}\n\n"
+                "=== REQUIRED OUTPUT ===\n"
+                "Provide the answer followed by valid inline source citations.\n\n"
+                "=== ANSWER ===",
+            ),
+        ]
+    )
+
     @staticmethod
     def build_rag_prompt(
         query: str,
-        contexts: List[Dict[str, Any]],
-        additional_instruction: Optional[str] = None,
+        contexts: list[dict[str, Any]],
+        additional_instruction: str | None = None,
         max_chunk_chars: int = 6_000,
-    ) -> str:
-        """
-        Build a RAG prompt containing retrieved chunks and citation metadata.
-
-        Expected context fields:
-        - document_id
-        - content
-        - file_name (optional)
-        - page (optional)
-        - chunk_id (optional)
-        - score (optional, not sent to the LLM)
-        """
-
+    ) -> ChatPromptValue:
+        """Build a role-aware RAG prompt with source metadata and citations."""
         query = query.strip()
-
         if not query:
             raise ValueError("Query must not be empty.")
 
         system_parts = [PromptBuilder.DEFAULT_SYSTEM_INSTRUCTION]
-
         if additional_instruction:
             system_parts.append(
                 "Additional response requirements:\n"
                 f"{additional_instruction.strip()}"
             )
 
-        formatted_sources: List[str] = []
-
+        formatted_sources: list[str] = []
         for index, context in enumerate(contexts, start=1):
             content = str(context.get("content", "")).strip()
-
             if not content:
                 continue
-
-            content = content[:max_chunk_chars]
 
             document_id = context.get("document_id", "Unknown")
             file_name = context.get("file_name")
             page = context.get("page")
             chunk_id = context.get("chunk_id")
-
             metadata = [f"Document ID: {document_id}"]
-
             if file_name:
                 metadata.append(f"File: {file_name}")
-
             if page is not None:
                 metadata.append(f"Page: {page}")
-
             if chunk_id:
                 metadata.append(f"Chunk ID: {chunk_id}")
 
             formatted_sources.append(
-                f"<source id=\"{index}\">\n"
+                f'<source id="{index}">\n'
                 f"Citation: [Source #{index}]\n"
                 f"Metadata: {', '.join(metadata)}\n"
-                f"Content:\n{content}\n"
-                f"</source>"
+                f"Content:\n{content[:max_chunk_chars]}\n"
+                "</source>"
             )
 
         formatted_contexts = (
@@ -94,15 +92,10 @@ class PromptBuilder:
             if formatted_sources
             else "No relevant context was retrieved."
         )
-
-        return (
-            "=== SYSTEM INSTRUCTIONS ===\n"
-            f"{'\n\n'.join(system_parts)}\n\n"
-            "=== CONTEXT CHUNKS ===\n"
-            f"{formatted_contexts}\n\n"
-            "=== USER QUESTION ===\n"
-            f"{query}\n\n"
-            "=== REQUIRED OUTPUT ===\n"
-            "Provide the answer followed by valid inline source citations.\n\n"
-            "=== ANSWER ==="
+        return PromptBuilder.RAG_PROMPT.invoke(
+            {
+                "system_instruction": "\n\n".join(system_parts),
+                "formatted_contexts": formatted_contexts,
+                "query": query,
+            }
         )

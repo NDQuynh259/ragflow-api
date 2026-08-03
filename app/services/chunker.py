@@ -1,12 +1,15 @@
-from typing import List, Dict, Any
+from typing import Any
+
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
 
 class TextChunker:
     @staticmethod
     def split_text(
         text: str,
-        chunk_size: int = 500,
-        chunk_overlap: int = 50
-    ) -> List[Dict[str, Any]]:
+        chunk_size: int = 1200,
+        chunk_overlap: int = 200,
+    ) -> list[dict[str, Any]]:
         """
         Split a document text into overlapping chunks.
         Returns a list of dicts with chunk_index and content.
@@ -21,34 +24,21 @@ class TextChunker:
         if not text or not text.strip():
             return []
 
-        # Simple character-based splitting with sliding window
-        chunks = []
-        start = 0
-        text_length = len(text)
-        chunk_idx = 0
-
-        while start < text_length:
-            end = min(start + chunk_size, text_length)
-            
-            # Try not to break words at the boundary if possible
-            if end < text_length:
-                last_space = text.rfind(" ", start, end)
-                if last_space != -1 and last_space > start + (chunk_size // 2):
-                    end = last_space
-
-            chunk_text = text[start:end].strip()
-            if chunk_text:
-                chunks.append({
-                    "chunk_index": chunk_idx,
-                    "content": chunk_text,
-                    "length": len(chunk_text)
-                })
-                chunk_idx += 1
-
-            if end >= text_length:
-                break
-
-            # Slide window back by overlap
-            start = end - chunk_overlap if (end - chunk_overlap) > start else end
-
-        return chunks
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            length_function=len,
+            add_start_index=True,
+            strip_whitespace=True,
+            separators=["\n\n", "\n", " ", ""]
+            is_separator_regex=True,
+        )
+        return [
+            {
+                "chunk_index": index,
+                "content": content,
+                "length": len(content),
+            }
+            for index, content in enumerate(splitter.split_text(text))
+            if content
+        ]

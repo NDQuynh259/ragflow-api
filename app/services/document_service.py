@@ -114,11 +114,13 @@ class DocumentService:
                 file_size=file_size,
             )
 
+            embeddings = self.embedder.get_embeddings(
+                [chunk["content"] for chunk in chunks]
+            )
             chunk_records = []
-            for chunk in chunks:
+            for chunk, embedding in zip(chunks, embeddings, strict=True):
                 chunk_index = chunk["chunk_index"]
                 chunk_content = chunk["content"]
-                embedding = self.embedder.get_embedding(chunk_content)
 
                 chunk_records.append(
                     {
