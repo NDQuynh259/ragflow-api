@@ -7,7 +7,7 @@ class LLMService:
     def __init__(self, provider: str | None = None) -> None:
         self.provider = (provider or settings.LLM_PROVIDER).lower()
         self._client: Any = None
-        if self.provider not in {"openai", "gemini", "mock"}:
+        if self.provider not in {"openai", "gemini", "cohere", "mock"}:
             raise ValueError(f"Unsupported LLM provider: {self.provider}")
 
     def generate_response(self, prompt: Any) -> str:
@@ -45,6 +45,16 @@ class LLMService:
             self._client = ChatGoogleGenerativeAI(
                 google_api_key=settings.GEMINI_API_KEY,
                 model=settings.GEMINI_LLM_MODEL,
+                temperature=0.2,
+            )
+        elif self.provider == "cohere":
+            if not settings.COHERE_API_KEY:
+                raise RuntimeError("COHERE_API_KEY is required for the Cohere LLM provider.")
+            from langchain_cohere import ChatCohere
+
+            self._client = ChatCohere(
+                cohere_api_key=settings.COHERE_API_KEY,
+                model=settings.COHERE_LLM_MODEL,
                 temperature=0.2,
             )
         else:

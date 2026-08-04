@@ -80,6 +80,31 @@ def test_embedding_batches_non_empty_documents():
     assert [vector[0] for vector in vectors] == [1.0, 0.0, 2.0]
 
 
+def test_cohere_embedding_respects_provider_batch_limit(monkeypatch):
+    class _FakeCohereEmbeddings:
+        def __init__(self):
+            self.calls = []
+
+        def embed_documents(self, texts):
+            self.calls.append(texts)
+            return [[0.25] * settings.EMBEDDING_DIMENSION for _ in texts]
+
+    monkeypatch.setattr(settings, "COHERE_EMBEDDING_BATCH_SIZE", 2)
+    service = EmbeddingService(provider="cohere")
+    fake_client = _FakeCohereEmbeddings()
+    service._client = fake_client
+
+    vectors = service.get_embeddings(["one", "two", "three", "four", "five"])
+
+    assert fake_client.calls == [
+        ["one", "two"],
+        ["three", "four"],
+        ["five"],
+    ]
+    assert len(vectors) == 5
+    assert all(len(vector) == settings.EMBEDDING_DIMENSION for vector in vectors)
+
+
 def test_embedding_retries_provider_rate_limit(monkeypatch):
     class _RateLimitedOnce:
         def __init__(self):
@@ -151,6 +176,20 @@ def test_embedding_provider_requires_api_key(monkeypatch):
 
     with pytest.raises(RuntimeError, match="OPENAI_API_KEY"):
         EmbeddingService(provider="openai").get_embedding("test")
+
+
+def test_cohere_embedding_provider_requires_api_key(monkeypatch):
+    monkeypatch.setattr(settings, "COHERE_API_KEY", "")
+
+    with pytest.raises(RuntimeError, match="COHERE_API_KEY"):
+        EmbeddingService(provider="cohere").get_embedding("test")
+
+
+def test_cohere_llm_provider_requires_api_key(monkeypatch):
+    monkeypatch.setattr(settings, "COHERE_API_KEY", "")
+
+    with pytest.raises(RuntimeError, match="COHERE_API_KEY"):
+        LLMService(provider="cohere").generate_response("test")
 
 
 def test_prompt_builder_includes_sources_and_query():

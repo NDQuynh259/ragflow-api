@@ -30,7 +30,7 @@ async def lifespan(_: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="FastAPI Backend for RAG using PostgreSQL with pgvector extension, OpenAI/Gemini Embeddings and LLMs.",
+    description="FastAPI RAG backend using PostgreSQL/pgvector with OpenAI, Gemini, Cohere, or mock AI providers.",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,

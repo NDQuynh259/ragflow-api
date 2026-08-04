@@ -30,8 +30,8 @@ class TextChunker:
             length_function=len,
             add_start_index=True,
             strip_whitespace=True,
-            separators=["\n\n", "\n", " ", ""]
-            is_separator_regex=True,
+            separators=["\n\n", "\n", " ", ""],
+            is_separator_regex=False,
         )
         return [
             {

@@ -1,8 +1,8 @@
 # Thiết kế kiến trúc hệ thống RAG
 
 > **Dự án:** FastAPI RAG Backend with PostgreSQL pgvector
-> **Phiên bản tài liệu:** 1.3
-> **Ngày cập nhật:** 03/08/2026
+> **Phiên bản tài liệu:** 1.4
+> **Ngày cập nhật:** 04/08/2026
 > **Trạng thái:** Đồng bộ với mã nguồn và bộ kiểm thử hiện tại
 
 ## Tóm tắt
@@ -10,7 +10,7 @@
 Hệ thống được tổ chức theo kiến trúc **modular monolith**, phù hợp cho MVP và
 môi trường thử nghiệm. FastAPI cung cấp REST API; PostgreSQL và pgvector đảm
 nhiệm lưu trữ metadata, nội dung, embedding và truy hồi; các adapter LangChain
-kết nối OpenAI, Gemini hoặc mock provider cho embedding và sinh câu trả lời.
+kết nối OpenAI, Gemini, Cohere hoặc mock provider cho embedding và sinh câu trả lời.
 
 Các lỗi về cấu hình database, validation, transaction ingestion, hybrid search,
 index truy vấn, provider và Docker đã được xử lý. Schema được quản lý bằng
@@ -23,11 +23,11 @@ Hệ thống hỗ trợ:
 
 - Nạp tài liệu PDF, DOCX, TXT, Markdown, JSON và CSV.
 - Chia văn bản thành các đoạn chồng lấn.
-- Tạo embedding 1.536 chiều bằng OpenAI, Gemini hoặc mock provider.
+- Tạo embedding 1.536 chiều bằng OpenAI, Gemini, Cohere hoặc mock provider.
 - Lưu nội dung và embedding trong PostgreSQL/pgvector.
 - Truy hồi bằng vector search hoặc hybrid search.
 - Tạo prompt có context và citation `[Source #n]`.
-- Sinh phản hồi bằng OpenAI, Gemini hoặc mock LLM.
+- Sinh phản hồi bằng OpenAI, Gemini, Cohere hoặc mock LLM.
 - Cung cấp REST API và triển khai cục bộ bằng Docker Compose.
 
 ### Ngoài phạm vi hiện tại
@@ -47,7 +47,7 @@ flowchart LR
     Client[Client / Frontend]
     API[FastAPI REST API<br/>/api/v1]
     DB[(PostgreSQL 16<br/>pgvector)]
-    AI[AI Providers<br/>OpenAI / Gemini / Mock]
+    AI[AI Providers<br/>OpenAI / Gemini / Cohere / Mock]
 
     Client -->|HTTPS / JSON| API
     API -->|SQLAlchemy / psycopg| DB
@@ -102,10 +102,10 @@ flowchart TB
 | Repositories | Document and pgvector persistence | `app/repositories/` |
 | Parser | Trích xuất nội dung từ các loại tài liệu | `app/services/parser.py` |
 | Chunker | Chia đệ quy theo đoạn, dòng, từ và ký tự bằng LangChain | `app/services/chunker.py` |
-| Embedding | LangChain adapter cho OpenAI, Gemini và mock | `app/services/embedding.py` |
+| Embedding | LangChain adapter cho OpenAI, Gemini, Cohere và mock | `app/services/embedding.py` |
 | Vector store | Lưu chunk, vector search và hybrid search | `app/repositories/vector_store_repository.py` |
 | Prompt builder | Tạo system/human prompt có context và citation bằng LangChain | `app/services/prompt_builder.py` |
-| LLM | LangChain chat-model adapter cho OpenAI, Gemini và mock | `app/services/llm.py` |
+| LLM | LangChain chat-model adapter cho OpenAI, Gemini, Cohere và mock | `app/services/llm.py` |
 | Persistence | Session, schema, pgvector và index | `app/database.py`, `app/models.py` |
 | Migration | Quản lý phiên bản và thay đổi database schema | `migrations/`, `alembic.ini` |
 
@@ -120,7 +120,7 @@ flowchart TD
     subgraph INGEST["1. Nạp tài liệu"]
         A["Upload PDF / DOCX / TXT / Markdown"] --> B["Parser<br/>Trích xuất và làm sạch văn bản"]
         B --> C["LangChain Text Splitter<br/>Recursive + overlap"]
-        C --> D["LangChain Embeddings<br/>Gemini / OpenAI / Mock"]
+        C --> D["LangChain Embeddings<br/>Gemini / OpenAI / Cohere / Mock"]
         D --> E["PostgreSQL"]
         E --> E1["Nội dung và metadata"]
         E --> E2["Vector — pgvector"]
@@ -139,7 +139,7 @@ flowchart TD
         DD --> SORT["Sắp xếp theo document + chunk_index"]
         SORT --> MERGE["Merge chunk liên tiếp<br/>Loại phần overlap"]
         MERGE --> PROMPT["Prompt Builder<br/>Context + citation + câu hỏi"]
-        PROMPT --> LLM["LangChain Chat Model<br/>Gemini / OpenAI / Mock"]
+        PROMPT --> LLM["LangChain Chat Model<br/>Gemini / OpenAI / Cohere / Mock"]
         LLM --> RES["Câu trả lời + retrieved_contexts"]
     end
 
@@ -217,7 +217,7 @@ flowchart TB
     Deduplicate[Deduplicate and sort]
     Merge[Merge contiguous chunks]
     Prompt[Prompt + Source citations]
-    LLM[OpenAI / Gemini / Mock]
+    LLM[OpenAI / Gemini / Cohere / Mock]
     Answer[Answer + retrieved_contexts]
 
     Q --> QE
@@ -442,10 +442,14 @@ Revision autogenerate phải được review thủ công trước khi chạy.
 | Biến | Mặc định | Mục đích |
 |---|---|---|
 | `DATABASE_URL` | PostgreSQL trên `localhost:45432` | Kết nối database |
-| `EMBEDDING_PROVIDER` | `mock` | `openai`, `gemini` hoặc `mock` |
-| `LLM_PROVIDER` | `mock` | `openai`, `gemini` hoặc `mock` |
+| `EMBEDDING_PROVIDER` | `mock` | `openai`, `gemini`, `cohere` hoặc `mock` |
+| `LLM_PROVIDER` | `mock` | `openai`, `gemini`, `cohere` hoặc `mock` |
 | `OPENAI_API_KEY` | Rỗng | OpenAI authentication |
 | `GEMINI_API_KEY` | Rỗng | Gemini authentication |
+| `COHERE_API_KEY` | Rỗng | Cohere authentication |
+| `COHERE_EMBEDDING_MODEL` | `embed-v4.0` | Cohere embedding 1.536 chiều |
+| `COHERE_LLM_MODEL` | `command-a-03-2025` | Cohere chat model |
+| `COHERE_EMBEDDING_BATCH_SIZE` | `96` | Số text tối đa mỗi Cohere embedding call |
 | `EMBEDDING_DIMENSION` | `1536` | Số chiều vector |
 | `EMBEDDING_MAX_RETRIES` | `1` | Số lần thử lại khi provider trả rate limit |
 | `EMBEDDING_RETRY_BASE_SECONDS` | `1` | Thời gian chờ cơ sở khi provider không gửi retry delay |
@@ -559,13 +563,14 @@ giới hạn `RAG_NEIGHBOR_WINDOW`.
 
 ## 11. Kiểm thử
 
-Bộ kiểm thử hiện có 28 trường hợp, bao phủ:
+Bộ kiểm thử hiện có 31 trường hợp, bao phủ:
 
 - Chunk splitting.
 - Các cửa sổ chunk không hợp lệ.
 - Mock embedding có tính deterministic và normalized.
 - Batch embedding giữ đúng thứ tự và bỏ qua nội dung rỗng.
 - Provider thiếu API key.
+- Cohere embedding chia đúng giới hạn batch của provider.
 - Retry embedding theo delay của provider khi gặp HTTP 429.
 - Chuyển quota lỗi kéo dài thành `AppError` 429 kèm `Retry-After`.
 - Prompt có context, citation và tách đúng system/human role.
@@ -582,7 +587,7 @@ Bộ kiểm thử hiện có 28 trường hợp, bao phủ:
 Các kiểm tra đã thực hiện:
 
 ```text
-28 tests passed
+31 tests passed
 Python compile check passed
 OpenAPI schema validation passed
 Docker Compose configuration passed

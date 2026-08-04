@@ -22,7 +22,7 @@ class EmbeddingService:
         self.dimension = settings.EMBEDDING_DIMENSION
         self._client: Any = None
         self._sleep = sleep or time.sleep
-        if self.provider not in {"openai", "gemini", "mock"}:
+        if self.provider not in {"openai", "gemini", "cohere", "mock"}:
             raise ValueError(f"Unsupported embedding provider: {self.provider}")
 
     def get_embedding(self, text: str) -> list[float]:
@@ -52,6 +52,19 @@ class EmbeddingService:
         non_empty_texts = [texts[index] for index in non_empty_positions]
         if self.provider == "mock":
             embedded = [self._get_mock_embedding(text) for text in non_empty_texts]
+        elif self.provider == "cohere":
+            client = self._get_client()
+            embedded = []
+            batch_size = settings.COHERE_EMBEDDING_BATCH_SIZE
+            for start in range(0, len(non_empty_texts), batch_size):
+                batch = non_empty_texts[start : start + batch_size]
+                batch_vectors = self._run_with_retry(
+                    lambda batch=batch: client.embed_documents(batch)
+                )
+                embedded.extend(
+                    self._validate_dimension(list(vector))
+                    for vector in batch_vectors
+                )
         else:
             client = self._get_client()
             embedded = [
@@ -97,6 +110,19 @@ class EmbeddingService:
                 google_api_key=settings.GEMINI_API_KEY,
                 model=settings.GEMINI_EMBEDDING_MODEL,
                 output_dimensionality=self.dimension,
+            )
+        elif self.provider == "cohere":
+            if not settings.COHERE_API_KEY:
+                raise RuntimeError(
+                    "COHERE_API_KEY is required for the Cohere embedding provider."
+                )
+            from langchain_cohere import CohereEmbeddings
+
+            self._client = CohereEmbeddings(
+                cohere_api_key=settings.COHERE_API_KEY,
+                model=settings.COHERE_EMBEDDING_MODEL,
+                embedding_types=["float"],
+                max_retries=0,
             )
         else:
             raise RuntimeError("The mock embedding provider does not use a client.")
@@ -179,7 +205,11 @@ class EmbeddingService:
 
     def _quota_error(self, retry_after: float) -> AppError:
         retry_after_header = str(max(0, math.ceil(retry_after)))
-        provider_name = "Gemini" if self.provider == "gemini" else "OpenAI"
+        provider_name = {
+            "gemini": "Gemini",
+            "openai": "OpenAI",
+            "cohere": "Cohere",
+        }.get(self.provider, self.provider.title())
         return AppError(
             f"{provider_name} embedding quota was exceeded. "
             f"Retry after {retry_after_header} seconds. If this continues, review "
