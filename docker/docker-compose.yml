@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: rag_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: rag_db
+    ports:
+      - "45432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rag_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+    container_name: rag_api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgrespassword@postgres:5432/rag_db
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-mock}
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      COHERE_API_KEY: ${COHERE_API_KEY:-}
+      COHERE_EMBEDDING_MODEL: ${COHERE_EMBEDDING_MODEL:-embed-v4.0}
+      COHERE_LLM_MODEL: ${COHERE_LLM_MODEL:-command-a-03-2025}
+      COHERE_EMBEDDING_BATCH_SIZE: ${COHERE_EMBEDDING_BATCH_SIZE:-96}
+      EMBEDDING_MAX_RETRIES: ${EMBEDDING_MAX_RETRIES:-1}
+      EMBEDDING_RETRY_BASE_SECONDS: ${EMBEDDING_RETRY_BASE_SECONDS:-1}
+      EMBEDDING_RETRY_MAX_SECONDS: ${EMBEDDING_RETRY_MAX_SECONDS:-30}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
