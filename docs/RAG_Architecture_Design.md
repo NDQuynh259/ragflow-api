@@ -1,4 +1,4 @@
-﻿# Thiết kế kiến trúc hệ thống RAG
+# Thiết kế kiến trúc hệ thống RAG
 
 > **Dự án:** FastAPI RAG Backend with PostgreSQL pgvector
 > **Phiên bản tài liệu:** 1.5
@@ -914,3 +914,343 @@ ragflow-api/
 ├── requirements.txt
 └── .env.example
 ```
+
+---
+
+## 17. Kiến trúc đích (Target Architecture — Multimodal RAG)
+
+> Phần này mô tả **trạng thái mục tiêu** của hệ thống sau khi hoàn thành Phase 2-3.
+> Những thành phần đánh dấu `[stub]` đã có skeleton trong codebase nhưng chưa implement đầy đủ.
+> Những thành phần đánh dấu `[new]` chưa tồn tại và cần xây mới.
+
+---
+
+### 17.1 So sánh Current vs. Target
+
+| Thành phần | Current (MVP) | Target (Multimodal) |
+|---|---|---|
+| **Ingestion — Parser** | Text-only (`DocumentParser`) | Layout Parser → Text / Table / Image tách biệt |
+| **Ingestion — Chunker** | `RecursiveCharacterTextSplitter` | Semantic Chunking + Parent-Child strategy |
+| **Table handling** | Plain text | Extract → Markdown + JSON → Embed |
+| **Image handling** | Bỏ qua | Classify → Vision LLM (chart / image caption) |
+| **Embedding** | Text vector 1536d | Text embedding + Vision embedding (CLIP / Gemini Vision) |
+| **Node store** | `document_chunks` (text only) | `document_nodes` (text + table + image nodes) |
+| **Object storage** | Không có | MinIO (file gốc + image artifacts) |
+| **Retrieval — Reranker** | Không có (stub) | Cross-Encoder hoặc Cohere Rerank |
+| **Retrieval — RRF** | Có (pgvector + FTS) | Có + BM25 chuyên dụng |
+| **Context Expansion** | Neighbor window | Parent-Child + Neighbor window |
+| **Generation** | Text LLM | Multimodal LLM (text + image context) |
+| **Async Worker** | Stub | Arq/Celery + Redis queue |
+| **Auth/RBAC** | Không có | JWT + multi-tenant RBAC |
+
+---
+
+### 17.2 Luồng Ingestion đa phương thức (Multimodal Ingestion Pipeline)
+
+```mermaid
+flowchart TD
+    PDF["PDF / DOCX / ..."]
+
+    subgraph ASYNC["Async Worker Layer [stub]"]
+        REDIS["Redis Queue"]
+        CELERY["Arq / Celery Worker"]
+    end
+
+    subgraph LAYOUT["Layout Parser [new]"]
+        LP["DocLayNet / PDFPlumber\nPhân vùng block layout"]
+        T["Text blocks"]
+        TB["Table blocks"]
+        IM["Image blocks"]
+    end
+
+    subgraph TEXT_PIPE["Text Pipeline"]
+        SC["Semantic Chunker [stub]\nsentence-transformers"]
+        PC["Parent-Child Chunker [stub]\nSmall chunk → embed\nParent chunk → context"]
+        TE["Text Embedding\nOpenAI / Gemini"]
+    end
+
+    subgraph TABLE_PIPE["Table Pipeline [new]"]
+        TE2["Table Extractor\nCamelot / pdfplumber"]
+        TM["Markdown (hiển thị)"]
+        TJ["JSON (structured)"]
+        TEMB["Table Embedding\nserialize → text embed"]
+    end
+
+    subgraph IMAGE_PIPE["Image Pipeline [new]"]
+        IC["Image Classifier\nChart / Diagram / Photo"]
+        CV1["Chart → Vision LLM\ncaption + data extract"]
+        CV2["Image → Vision LLM\ntext description"]
+        IE["Vision Embedding\nCLIP / Gemini Vision"]
+    end
+
+    subgraph NODES["document_nodes [new]"]
+        TN["TextNode\ncontent, embedding, parent_id"]
+        TABN["TableNode\nmarkdown, json, embedding"]
+        IN["ImageNode\nminio_key, caption, embedding"]
+    end
+
+    subgraph STORE["Storage Layer"]
+        PGV["pgvector\ntext + table embeddings"]
+        PG["PostgreSQL\nmetadata, node graph"]
+        MINIO["MinIO [new]\nfile gốc + image crops"]
+    end
+
+    PDF --> REDIS --> CELERY --> LP
+    LP --> T & TB & IM
+    T --> SC --> PC --> TE --> TN
+    TB --> TE2
+    TE2 --> TM & TJ
+    TM --> TEMB --> TABN
+    TJ --> TABN
+    IM --> IC
+    IC -->|Chart| CV1
+    IC -->|Image| CV2
+    CV1 --> IE --> IN
+    CV2 --> IE
+    CV1 --> MINIO
+    CV2 --> MINIO
+    PDF --> MINIO
+    TN --> PGV & PG
+    TABN --> PGV & PG
+    IN --> PGV & PG
+
+    style ASYNC fill:#f59e0b,color:#000
+    style NODES fill:#6366f1,color:#fff
+    style MINIO fill:#10b981,color:#fff
+```
+
+---
+
+### 17.3 Luồng Retrieval đa phương thức đầy đủ
+
+```mermaid
+flowchart TD
+    Q["Câu hỏi người dùng"]
+
+    subgraph AUTH["Auth / Rate-Limit Layer [new]"]
+        JWT["JWT Middleware\nverify token → user_id"]
+        TENANT["Tenant Filter\nauto-inject tenant_id WHERE"]
+        RL["Rate Limiter (slowapi)\n→ HTTP 429 khi vượt ngưỡng"]
+    end
+
+    subgraph EMBED_Q["Query Embedding"]
+        QTE["Text Embedding\nquery_vector 1536d"]
+        QVE["Vision Embedding (nếu query có ảnh)\nCLIP / Gemini Vision"]
+    end
+
+    subgraph DUAL_SEARCH["Dual Search"]
+        VS["Vector Search\nCosine HNSW (pgvector)"]
+        FTS["Full-text Search\nts_rank_cd + GIN"]
+        BM25["BM25 [stub]\nElasticsearch / Tantivy"]
+    end
+
+    subgraph RRF_BLOCK["Reciprocal Rank Fusion  k=60"]
+        RRF_SCORE["rrf = 1/(60+rank_v) + 1/(60+rank_f) + 1/(60+rank_bm25)\nFULL OUTER JOIN on node_id"]
+        TOPK["Top-K seed nodes"]
+    end
+
+    subgraph RERANK["Cross-Encoder Reranker [stub]"]
+        CR["Cohere Rerank API\nhoặc HuggingFace cross-encoder"]
+    end
+
+    subgraph EXPAND["Context Expansion"]
+        NB["Neighbor Window\nseed ± N chunks"]
+        PCE["Parent-Child Expansion [stub]\nLấy Parent node của Small seed"]
+    end
+
+    subgraph CONTEXT["Context Assembly"]
+        MERGE["Merge contiguous chunks\nLoại overlap text"]
+        TEXT_CTX["Text contexts"]
+        TABLE_CTX["Table contexts (Markdown)"]
+        IMG_CTX["Image contexts\ncaption + MinIO URL"]
+    end
+
+    MLLM["Multimodal LLM [new]\nGemini 2.5 Flash / GPT-4o\ntext + image input"]
+    ANS["answer + retrieved_contexts[] + citations [Source #n]"]
+
+    Q --> RL --> JWT --> TENANT --> EMBED_Q
+    EMBED_Q --> QTE --> VS
+    EMBED_Q --> QVE --> VS
+    Q --> FTS & BM25
+    VS --> RRF_SCORE
+    FTS --> RRF_SCORE
+    BM25 --> RRF_SCORE
+    RRF_SCORE --> TOPK --> CR
+    CR --> NB & PCE
+    NB --> MERGE
+    PCE --> MERGE
+    MERGE --> TEXT_CTX & TABLE_CTX & IMG_CTX
+    TEXT_CTX --> MLLM
+    TABLE_CTX --> MLLM
+    IMG_CTX --> MLLM
+    MLLM --> ANS
+
+    style AUTH fill:#ef4444,color:#fff
+    style RERANK fill:#8b5cf6,color:#fff
+    style MLLM fill:#0ea5e9,color:#fff
+```
+
+---
+
+### 17.4 Kiến trúc tổng thể đích (One-Page Overview)
+
+```mermaid
+flowchart TB
+    PDF["PDF / DOCX / ..."]
+
+    AUTH_LAYER["Auth / RBAC / Rate-Limit [new]\nJWT · tenant_id filter · slowapi 429"]
+
+    subgraph INGESTION["Ingestion Layer"]
+        LP3["Layout Parser [new]"]
+        LP3 --> TXT3["Text → Semantic Chunk"] & TAB3["Table → Markdown+JSON"] & IMG3["Image → Vision LLM"]
+        TXT3 & TAB3 & IMG3 --> EMB3["Embedding\n(text + vision)"]
+    end
+
+    ASYNC3["Async Worker [stub]\nRedis + Arq/Celery"]
+
+    DN3["document_nodes\n(TextNode · TableNode · ImageNode)"]
+
+    subgraph STORAGE3["Storage Layer"]
+        PGV3["pgvector\n(embeddings)"]
+        PG3["PostgreSQL\n(metadata · nodes)"]
+        MINIO3["MinIO [new]\n(files · images)"]
+    end
+
+    subgraph RETRIEVAL3["Retrieval Layer"]
+        HYBRID3["Hybrid Search\nVector + FTS + BM25"]
+        RRF3["RRF Fusion k=60"]
+        RERANK3["Cross-Encoder Reranker [stub]"]
+        EXP3["Parent/Neighbor Expansion"]
+    end
+
+    MLLM3["Multimodal LLM [new]\nText + Table + Image → Answer"]
+
+    PDF --> ASYNC3 --> INGESTION
+    PDF --> MINIO3
+    EMB3 --> DN3
+    DN3 --> PGV3 & PG3
+    IMG3 --> MINIO3
+
+    AUTH_LAYER --> RETRIEVAL3
+    PGV3 --> HYBRID3
+    PG3 --> HYBRID3
+    HYBRID3 --> RRF3 --> RERANK3 --> EXP3
+    EXP3 --> MLLM3
+    MINIO3 --> MLLM3
+
+    style AUTH_LAYER fill:#ef4444,color:#fff
+    style ASYNC3 fill:#f59e0b,color:#000
+    style MLLM3 fill:#0ea5e9,color:#fff
+    style MINIO3 fill:#10b981,color:#fff
+    style DN3 fill:#6366f1,color:#fff
+```
+
+---
+
+### 17.5 Bảng ownership các thành phần còn thiếu
+
+| Thành phần | Task ID | Module | Trạng thái | Phase |
+|---|---|---|---|---|
+| JWT Authentication Middleware | `AUTH-01` | `app/core/auth/` | **Pending** | Phase 1 |
+| Multi-Tenant RBAC | `AUTH-02` | `app/domain/` + `app/api/` | **Pending** | Phase 1 |
+| Rate Limiter (slowapi) | `AUTH-03` | `app/api/` | **Pending** | Phase 1 |
+| Async Ingestion Worker (Arq) | `WORK-01` | `app/workers/ingestion_worker.py` | **Stub** | Phase 2 |
+| Task Status API | `WORK-02` | `app/api/routes/` | **Pending** | Phase 2 |
+| MinIO Object Storage Driver | `STOR-02` | `app/storage/object/` | **Stub** | Phase 2 |
+| Layout Parser (DocLayNet/pdfplumber) | `[new]` | `app/ingestion/parsers/layout.py` | **Not exist** | Phase 3 |
+| Table Extractor (Camelot) | `[new]` | `app/ingestion/extractors/table.py` | **Not exist** | Phase 3 |
+| Image Classifier + Vision LLM | `[new]` | `app/ingestion/extractors/image.py` | **Not exist** | Phase 3 |
+| Vision Embedding (CLIP) | `[new]` | `app/embeddings/vision.py` | **Not exist** | Phase 3 |
+| `document_nodes` Alembic migration | `[new]` | `migrations/versions/` | **Partial (domain/node.py)** | Phase 3 |
+| Cross-Encoder Reranker | `RETR-01` | `app/retrieval/rerankers/cross_encoder.py` | **Stub** | Phase 3 |
+| Parent-Child Expansion | `RETR-03` | `app/retrieval/expansion/parent_child.py` | **Stub** | Phase 3 |
+| BM25 Retriever | `[new]` | `app/retrieval/retrievers/bm25.py` | **Stub** | Phase 3 |
+| Multimodal LLM adapter | `[new]` | `app/generation/llm/multimodal.py` | **Not exist** | Phase 3 |
+| OpenTelemetry Tracing | `OBS-01` | `app/core/logging.py` | **Pending** | Phase 4 |
+| Prometheus Metrics | `OBS-02` | `app/api/` | **Pending** | Phase 4 |
+
+---
+
+### 17.6 Schema mở rộng cho `document_nodes`
+
+```mermaid
+erDiagram
+    DOCUMENT ||--o{ DOCUMENT_NODE : contains
+    DOCUMENT_NODE ||--o{ DOCUMENT_NODE : "parent_id (Parent-Child)"
+
+    DOCUMENT {
+        uuid id PK
+        string filename
+        string file_type
+        integer file_size
+        datetime created_at
+        datetime deleted_at
+    }
+
+    DOCUMENT_NODE {
+        uuid id PK
+        uuid document_id FK
+        uuid parent_id FK "nullable — Parent-Child"
+        string node_type "text | table | image | chart"
+        integer node_index "Thứ tự trong document"
+        text content "Text hoặc Markdown (table)"
+        json structured_data "JSON cho table, null cho text/image"
+        string object_key "MinIO key cho image/chart, null cho text"
+        string caption "Vision LLM caption cho image/chart"
+        vector embedding "1536d text embed"
+        vector vision_embedding "768d CLIP embed — nullable"
+        json metadata_json
+        datetime created_at
+        datetime deleted_at
+    }
+```
+
+---
+
+### 17.7 Sơ đồ tổng quan end-to-end (Quick Reference)
+
+```text
+                         PDF
+                          │
+                   Layout Parser
+                          │
+          ┌───────────────┼────────────────┐
+          ▼               ▼                ▼
+        Text            Table            Image
+          │               │                │
+   Semantic Chunking   Extract          Classify
+          │               │                │
+          │          ┌────┴────┐      ┌────┴─────┐
+          │          ▼         ▼      ▼          ▼
+          │       Markdown    JSON   Chart      Image
+          │          │         │      │           │
+          │       Embedding    │    Vision      Vision
+          │          │         │      │           │
+          └──────────┴─────────┴──────┴───────────┘
+                             │
+                             ▼
+                       document_nodes
+                             │
+               ┌─────────────┼─────────────┐
+               ▼             ▼             ▼
+            pgvector      PostgreSQL      MinIO
+               │             │             │
+               └─────────────┼─────────────┘
+                             ▼
+                         Retrieval
+                      (Vector + FTS + BM25
+                         RRF  k = 60)
+                             ▼
+                          Reranker
+                      (Cross-Encoder)
+                             ▼
+                   Parent/Neighbor Expansion
+                             ▼
+                     Text + Table + Image
+                             ▼
+                      Multimodal LLM
+                             │
+                             ▼
+                    Answer + Citations
+```
+
