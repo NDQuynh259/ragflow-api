@@ -68,6 +68,8 @@ class LayoutParser:
 
     LINE_TOLERANCE = 3.0  # points: max vertical drift for words on the same line
     PARAGRAPH_GAP_FACTOR = 1.5  # gap (in line-heights) that starts a new text block
+    COLUMN_GUTTER_MIN = 24.0  # points: min horizontal gap treated as a column gutter
+    COLUMN_GUTTER_FACTOR = 3.0  # gutter must exceed this multiple of the median word gap
 
     def parse(self, file_bytes: bytes, filename: str) -> list[LayoutBlock]:
         """Parse a file into layout blocks, dispatching on its extension."""
@@ -115,26 +117,34 @@ class LayoutParser:
         if not words:
             return []
 
-        lines = self._words_to_lines(words)
-        blocks = self._lines_to_blocks(lines)
+        boundaries = self._detect_column_boundaries(self._words_to_lines(words))
+        columns = self._split_words_into_columns(words, boundaries)
+        multi_column = len(columns) > 1
 
         result: list[LayoutBlock] = []
-        for block in blocks:
-            text_lines = [
-                " ".join(
-                    word["text"]
-                    for word in sorted(line["words"], key=lambda w: w["x0"])
+        for column_index, column_words in enumerate(columns):
+            for block in self._lines_to_blocks(self._words_to_lines(column_words)):
+                text_lines = [
+                    " ".join(
+                        word["text"]
+                        for word in sorted(line["words"], key=lambda w: w["x0"])
+                    )
+                    for line in block["lines"]
+                ]
+                metadata = (
+                    {"column_index": column_index, "column_count": len(columns)}
+                    if multi_column
+                    else {}
                 )
-                for line in block["lines"]
-            ]
-            result.append(
-                LayoutBlock(
-                    block_type=BLOCK_TYPE_TEXT,
-                    page_number=page_number,
-                    bbox=(block["x0"], block["top"], block["x1"], block["bottom"]),
-                    text="\n".join(text_lines),
+                result.append(
+                    LayoutBlock(
+                        block_type=BLOCK_TYPE_TEXT,
+                        page_number=page_number,
+                        bbox=(block["x0"], block["top"], block["x1"], block["bottom"]),
+                        text="\n".join(text_lines),
+                        metadata=metadata,
+                    )
                 )
-            )
         return result
 
     @classmethod
@@ -190,6 +200,46 @@ class LayoutParser:
                     }
                 )
         return blocks
+
+    @classmethod
+    def _detect_column_boundaries(cls, lines: list[dict[str, Any]]) -> list[float]:
+        """Return x-positions that separate columns, from within-line horizontal gaps."""
+        within_line_gaps: list[float] = []
+        for line in lines:
+            words = sorted(line["words"], key=lambda w: w["x0"])
+            for left, right in zip(words, words[1:]):
+                gap = right["x0"] - left["x1"]
+                if gap > 0:
+                    within_line_gaps.append(gap)
+        if not within_line_gaps:
+            return []
+
+        ordered = sorted(within_line_gaps)
+        median_gap = ordered[len(ordered) // 2]
+        threshold = max(cls.COLUMN_GUTTER_MIN, median_gap * cls.COLUMN_GUTTER_FACTOR)
+
+        boundaries: set[float] = set()
+        for line in lines:
+            words = sorted(line["words"], key=lambda w: w["x0"])
+            for left, right in zip(words, words[1:]):
+                gap = right["x0"] - left["x1"]
+                if gap >= threshold:
+                    boundaries.add(round((left["x1"] + right["x0"]) / 2.0, 1))
+        return sorted(boundaries)
+
+    @classmethod
+    def _split_words_into_columns(
+        cls, words: list[dict[str, Any]], boundaries: list[float]
+    ) -> list[list[dict[str, Any]]]:
+        """Bucket words into columns according to the detected gutter positions."""
+        if not boundaries:
+            return [words]
+        columns: list[list[dict[str, Any]]] = [[] for _ in range(len(boundaries) + 1)]
+        for word in words:
+            center = (word["x0"] + word["x1"]) / 2.0
+            index = sum(1 for boundary in boundaries if boundary < center)
+            columns[index].append(word)
+        return [column for column in columns if column]
 
     # ----------------------------------------------------------------- table ----
     def _extract_table_blocks(self, page: Any, page_number: int) -> list[LayoutBlock]:
@@ -256,5 +306,13 @@ class LayoutParser:
     # ---------------------------------------------------------------- ordering ----
     @staticmethod
     def _sort_blocks(blocks: list[LayoutBlock]) -> list[LayoutBlock]:
-        """Order blocks by reading order: page, then top, then left."""
-        return sorted(blocks, key=lambda b: (b.page_number, b.bbox[1], b.bbox[0]))
+        """Order blocks by reading order: page, column, then top, then left."""
+        return sorted(
+            blocks,
+            key=lambda b: (
+                b.page_number,
+                b.metadata.get("column_index", 0),
+                b.bbox[1],
+                b.bbox[0],
+            ),
+        )

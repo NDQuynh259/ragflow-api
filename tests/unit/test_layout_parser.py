@@ -25,7 +25,7 @@ def _build_minimal_pdf(lines):
     """
     content_parts = ["BT /F1 12 Tf"]
     for x, y, text in lines:
-        content_parts.append(f"{x} {y} Td ({text}) Tj")
+        content_parts.append(f"1 0 0 1 {x} {y} Tm ({text}) Tj")
     content_parts.append("ET")
     content_stream = " ".join(content_parts)
 
@@ -203,3 +203,81 @@ def test_layout_block_to_dict_drops_image_bytes():
     assert payload["image_size"] == 4
     assert payload["bbox"] == [1.0, 2.0, 3.0, 4.0]
     assert payload["page_number"] == 2
+
+
+def test_detect_column_boundaries_detects_wide_gutter():
+    lines = [
+        {
+            "words": [
+                {"x0": 10.0, "x1": 30.0},
+                {"x0": 33.0, "x1": 53.0},
+                {"x0": 300.0, "x1": 320.0},
+                {"x0": 323.0, "x1": 343.0},
+            ]
+        }
+    ]
+
+    boundaries = LayoutParser._detect_column_boundaries(lines)
+
+    assert len(boundaries) == 1
+    assert 53.0 < boundaries[0] < 300.0
+
+
+def test_detect_column_boundaries_ignores_single_column():
+    lines = [
+        {
+            "words": [
+                {"x0": 10.0, "x1": 30.0},
+                {"x0": 33.0, "x1": 53.0},
+                {"x0": 56.0, "x1": 76.0},
+            ]
+        }
+    ]
+
+    boundaries = LayoutParser._detect_column_boundaries(lines)
+
+    assert boundaries == []
+
+
+def test_split_words_into_columns_buckets_by_gutter():
+    words = [
+        {"x0": 10.0, "x1": 30.0, "text": "A"},
+        {"x0": 33.0, "x1": 53.0, "text": "B"},
+        {"x0": 300.0, "x1": 320.0, "text": "C"},
+    ]
+
+    columns = LayoutParser._split_words_into_columns(words, [176.5])
+
+    assert len(columns) == 2
+    assert [word["text"] for word in columns[0]] == ["A", "B"]
+    assert [word["text"] for word in columns[1]] == ["C"]
+
+
+def test_split_words_into_columns_without_boundaries_returns_single_column():
+    words = [{"x0": 10.0, "x1": 30.0, "text": "A"}]
+
+    columns = LayoutParser._split_words_into_columns(words, [])
+
+    assert columns == [words]
+
+
+def test_parse_pdf_two_columns_produces_two_text_blocks():
+    parser = LayoutParser()
+    pdf = _build_minimal_pdf(
+        [
+            (72, 720, "Alpha"),
+            (120, 720, "Beta"),
+            (380, 720, "Gamma"),
+            (428, 720, "Delta"),
+        ]
+    )
+
+    blocks = parser.parse_pdf(pdf)
+    text_blocks = [b for b in blocks if b.block_type == BLOCK_TYPE_TEXT]
+
+    assert len(text_blocks) == 2
+    assert text_blocks[0].metadata["column_index"] == 0
+    assert text_blocks[1].metadata["column_index"] == 1
+    assert "Alpha" in text_blocks[0].text
+    assert "Gamma" in text_blocks[1].text
+    assert text_blocks[0].bbox[0] < text_blocks[1].bbox[0]
