@@ -843,7 +843,7 @@ ragflow-api/
 │   │       └── query.py
 │   ├── ingestion/
 │   │   ├── pipeline.py                  # IngestionPipeline
-│   │   ├── parsers/                     # DocumentParser (PDF/DOCX/TXT/...)
+│   │   ├── parsers/                     # DocumentParser + LayoutParser (pdfplumber)
 │   │   ├── chunkers/
 │   │   │   ├── recursive.py             # RecursiveChunker ← default
 │   │   │   ├── semantic.py              # stub
@@ -1157,7 +1157,7 @@ flowchart TB
 | Async Ingestion Worker (Arq) | `WORK-01` | `app/workers/ingestion_worker.py` | **Stub** | Phase 2 |
 | Task Status API | `WORK-02` | `app/api/routes/` | **Pending** | Phase 2 |
 | MinIO Object Storage Driver | `STOR-02` | `app/storage/object/` | **Stub** | Phase 2 |
-| Layout Parser (DocLayNet/pdfplumber) | `[new]` | `app/ingestion/parsers/layout.py` | **Not exist** | Phase 3 |
+| Layout Parser (pdfplumber geometry) | `[new]` | `app/ingestion/parsers/layout.py` | **Implemented** | Phase 3 |
 | Table Extractor (Camelot) | `[new]` | `app/ingestion/extractors/table.py` | **Not exist** | Phase 3 |
 | Image Classifier + Vision LLM | `[new]` | `app/ingestion/extractors/image.py` | **Not exist** | Phase 3 |
 | Vision Embedding (CLIP) | `[new]` | `app/embeddings/vision.py` | **Not exist** | Phase 3 |

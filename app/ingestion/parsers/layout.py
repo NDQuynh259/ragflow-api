@@ -1,0 +1,260 @@
+"""Layout-aware PDF parser: partition a page into text, table, and image blocks.
+
+This module implements the target "Layout Parser" component from the multimodal
+RAG architecture (``docs/RAG_Architecture_Design.md`` §17). It uses pdfplumber for
+geometry-based segmentation:
+
+- **Text blocks** — words are clustered into lines (by ``top`` coordinate), then
+  lines are clustered into paragraphs by vertical gap.
+- **Table blocks** — detected with ``page.find_tables()`` and serialized to both a
+  row matrix and a Markdown string.
+- **Image blocks** — detected from the page image catalog (bounding box + name).
+
+The parser is side-effect free and returns plain data objects so it can be tested
+independently and wired into the async ingestion worker later. Raw image byte
+extraction is intentionally left to a dedicated ``ImageExtractor`` (downstream of
+the "Image → Classify → Vision" stage); this parser only *locates and labels*
+image regions.
+"""
+
+from __future__ import annotations
+
+import io
+from dataclasses import asdict, dataclass, field
+from typing import Any
+
+from app.ingestion.parsers.pdf_parser import DocumentParser
+
+try:
+    import pdfplumber
+except ImportError:  # pragma: no cover - exercised only when the dependency is absent
+    pdfplumber = None
+
+BLOCK_TYPE_TEXT = "text"
+BLOCK_TYPE_TABLE = "table"
+BLOCK_TYPE_IMAGE = "image"
+BLOCK_TYPES = frozenset({BLOCK_TYPE_TEXT, BLOCK_TYPE_TABLE, BLOCK_TYPE_IMAGE})
+
+
+@dataclass
+class LayoutBlock:
+    """A single layout region extracted from a page."""
+
+    block_type: str
+    page_number: int
+    bbox: tuple[float, float, float, float]  # (x0, top, x1, bottom) in PDF points
+    text: str = ""  # text content (text blocks) or Markdown (table blocks)
+    rows: list[list[str]] | None = None  # table cells, only when block_type == "table"
+    image_bytes: bytes | None = None  # reserved for downstream image extraction
+    image_name: str | None = None  # object name / index, only for image blocks
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-safe representation (raw image bytes are dropped)."""
+        payload = asdict(self)
+        if self.image_bytes is not None:
+            payload["image_size"] = len(self.image_bytes)
+        payload.pop("image_bytes", None)
+        payload["bbox"] = list(self.bbox)
+        return payload
+
+
+class LayoutParseError(ValueError):
+    """Raised when a document cannot be segmented into layout blocks."""
+
+
+class LayoutParser:
+    """Segment PDF pages into text, table, and image blocks."""
+
+    LINE_TOLERANCE = 3.0  # points: max vertical drift for words on the same line
+    PARAGRAPH_GAP_FACTOR = 1.5  # gap (in line-heights) that starts a new text block
+
+    def parse(self, file_bytes: bytes, filename: str) -> list[LayoutBlock]:
+        """Parse a file into layout blocks, dispatching on its extension."""
+        extension = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+        if extension == "pdf":
+            return self.parse_pdf(file_bytes)
+
+        # Non-PDF inputs degrade to a single text block using the plain-text parser.
+        text = DocumentParser.parse_file(file_bytes, filename)
+        if not text.strip():
+            return []
+        return [
+            LayoutBlock(
+                block_type=BLOCK_TYPE_TEXT,
+                page_number=1,
+                bbox=(0.0, 0.0, 0.0, 0.0),
+                text=text,
+            )
+        ]
+
+    def parse_pdf(self, file_bytes: bytes) -> list[LayoutBlock]:
+        """Segment every page of a PDF into ordered layout blocks."""
+        if pdfplumber is None:
+            raise LayoutParseError(
+                "pdfplumber is required for layout parsing. "
+                "Install it with `pip install pdfplumber`."
+            )
+
+        blocks: list[LayoutBlock] = []
+        with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+            for page_number, page in enumerate(pdf.pages, start=1):
+                blocks.extend(self._parse_page(page, page_number))
+        return self._sort_blocks(blocks)
+
+    def _parse_page(self, page: Any, page_number: int) -> list[LayoutBlock]:
+        blocks: list[LayoutBlock] = []
+        blocks.extend(self._extract_text_blocks(page, page_number))
+        blocks.extend(self._extract_table_blocks(page, page_number))
+        blocks.extend(self._extract_image_blocks(page, page_number))
+        return blocks
+
+    # ------------------------------------------------------------------ text ----
+    def _extract_text_blocks(self, page: Any, page_number: int) -> list[LayoutBlock]:
+        words = page.extract_words(keep_blank_chars=False, use_text_flow=False)
+        if not words:
+            return []
+
+        lines = self._words_to_lines(words)
+        blocks = self._lines_to_blocks(lines)
+
+        result: list[LayoutBlock] = []
+        for block in blocks:
+            text_lines = [
+                " ".join(
+                    word["text"]
+                    for word in sorted(line["words"], key=lambda w: w["x0"])
+                )
+                for line in block["lines"]
+            ]
+            result.append(
+                LayoutBlock(
+                    block_type=BLOCK_TYPE_TEXT,
+                    page_number=page_number,
+                    bbox=(block["x0"], block["top"], block["x1"], block["bottom"]),
+                    text="\n".join(text_lines),
+                )
+            )
+        return result
+
+    @classmethod
+    def _words_to_lines(cls, words: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Cluster words that share a baseline into lines."""
+        lines: list[dict[str, Any]] = []
+        for word in sorted(words, key=lambda w: (w["top"], w["x0"])):
+            if lines and abs(word["top"] - lines[-1]["top"]) <= cls.LINE_TOLERANCE:
+                line = lines[-1]
+                line["words"].append(word)
+                line["top"] = min(line["top"], word["top"])
+                line["bottom"] = max(line["bottom"], word["bottom"])
+                line["x0"] = min(line["x0"], word["x0"])
+                line["x1"] = max(line["x1"], word["x1"])
+            else:
+                lines.append(
+                    {
+                        "top": word["top"],
+                        "bottom": word["bottom"],
+                        "x0": word["x0"],
+                        "x1": word["x1"],
+                        "words": [word],
+                    }
+                )
+        return lines
+
+    @classmethod
+    def _lines_to_blocks(cls, lines: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Cluster lines into paragraphs by vertical gap relative to line height."""
+        if not lines:
+            return []
+
+        heights = sorted(line["bottom"] - line["top"] for line in lines)
+        line_height = heights[len(heights) // 2] or 1.0
+        gap_threshold = line_height * cls.PARAGRAPH_GAP_FACTOR
+
+        blocks: list[dict[str, Any]] = []
+        for line in lines:
+            if blocks and (line["top"] - blocks[-1]["bottom"]) <= gap_threshold:
+                block = blocks[-1]
+                block["lines"].append(line)
+                block["bottom"] = max(block["bottom"], line["bottom"])
+                block["x0"] = min(block["x0"], line["x0"])
+                block["x1"] = max(block["x1"], line["x1"])
+            else:
+                blocks.append(
+                    {
+                        "top": line["top"],
+                        "bottom": line["bottom"],
+                        "x0": line["x0"],
+                        "x1": line["x1"],
+                        "lines": [line],
+                    }
+                )
+        return blocks
+
+    # ----------------------------------------------------------------- table ----
+    def _extract_table_blocks(self, page: Any, page_number: int) -> list[LayoutBlock]:
+        result: list[LayoutBlock] = []
+        for table in page.find_tables():
+            rows = table.extract() or []
+            result.append(
+                LayoutBlock(
+                    block_type=BLOCK_TYPE_TABLE,
+                    page_number=page_number,
+                    bbox=tuple(table.bbox),
+                    text=self._rows_to_markdown(rows),
+                    rows=rows,
+                )
+            )
+        return result
+
+    @staticmethod
+    def _rows_to_markdown(rows: list[list[Any]]) -> str:
+        """Serialize a row matrix to a Markdown table string."""
+        if not rows:
+            return ""
+
+        cleaned = [
+            ["" if cell is None else str(cell) for cell in row] for row in rows
+        ]
+        width = max(len(row) for row in cleaned)
+        cleaned = [row + [""] * (width - len(row)) for row in cleaned]
+
+        header = cleaned[0]
+        lines = [
+            "| " + " | ".join(header) + " |",
+            "| " + " | ".join("---" for _ in header) + " |",
+        ]
+        for row in cleaned[1:]:
+            lines.append("| " + " | ".join(row) + " |")
+        return "\n".join(lines)
+
+    # ----------------------------------------------------------------- image ----
+    def _extract_image_blocks(self, page: Any, page_number: int) -> list[LayoutBlock]:
+        result: list[LayoutBlock] = []
+        images = getattr(page, "images", None) or []
+        for index, image in enumerate(images):
+            bbox = (
+                image.get("x0", 0.0),
+                image.get("top", 0.0),
+                image.get("x1", 0.0),
+                image.get("bottom", 0.0),
+            )
+            result.append(
+                LayoutBlock(
+                    block_type=BLOCK_TYPE_IMAGE,
+                    page_number=page_number,
+                    bbox=bbox,
+                    image_name=image.get("name") or f"image-{page_number}-{index}",
+                    metadata={
+                        "width": image.get("width"),
+                        "height": image.get("height"),
+                    },
+                )
+            )
+        return result
+
+    # ---------------------------------------------------------------- ordering ----
+    @staticmethod
+    def _sort_blocks(blocks: list[LayoutBlock]) -> list[LayoutBlock]:
+        """Order blocks by reading order: page, then top, then left."""
+        return sorted(blocks, key=lambda b: (b.page_number, b.bbox[1], b.bbox[0]))
