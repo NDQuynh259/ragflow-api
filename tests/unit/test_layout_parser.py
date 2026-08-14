@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.ingestion.parsers.layout import (
+from app.ingestion.parsers.layout_parser import (
     BLOCK_TYPE_IMAGE,
     BLOCK_TYPE_TABLE,
     BLOCK_TYPE_TEXT,
@@ -106,7 +106,7 @@ def test_parse_non_pdf_falls_back_to_single_text_block():
 
 
 def test_parse_pdf_raises_when_pdfplumber_missing(monkeypatch):
-    import app.ingestion.parsers.layout as layout_module
+    import app.ingestion.parsers.layout_parser as layout_module
 
     monkeypatch.setattr(layout_module, "pdfplumber", None)
 
