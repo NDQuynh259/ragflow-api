@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE_MB: int = Field(default=20, ge=1, le=200)
     DB_INSERT_BATCH_SIZE: int = Field(default=100, ge=1, le=1000)
     ALLOWED_FILE_EXTENSIONS: list[str] = [
-        "pdf", "docx", "txt", "md", "markdown", "json", "csv"
+        "pdf"
     ]
     CORS_ORIGINS: list[str] = [
         "http://localhost:3000",

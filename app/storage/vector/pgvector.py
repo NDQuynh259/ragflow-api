@@ -6,21 +6,28 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.domain.chunk import DocumentChunk
+from app.domain.document_node import DocumentNode
 
 
 class VectorStoreRepository:
     @staticmethod
-    def add_chunks(db: Session, chunks_data: list[dict[str, Any]]) -> int:
+    def add_nodes(db: Session, nodes_data: list[dict[str, Any]]) -> int:
+        """Persist multimodal nodes without committing the caller transaction."""
         inserted_count = 0
-        for chunk in chunks_data:
+        for node in nodes_data:
             db.add(
-                DocumentChunk(
-                    document_id=chunk["document_id"],
-                    chunk_index=chunk["chunk_index"],
-                    content=chunk["content"],
-                    metadata_json=chunk.get("metadata", {}),
-                    embedding=chunk["embedding"],
+                DocumentNode(
+                    document_id=node["document_id"],
+                    parent_id=node.get("parent_id"),
+                    node_type=node["node_type"],
+                    node_index=node["node_index"],
+                    content=node.get("content", ""),
+                    structured_data=node.get("structured_data"),
+                    object_key=node.get("object_key"),
+                    caption=node.get("caption"),
+                    embedding=node.get("embedding"),
+                    vision_embedding=node.get("vision_embedding"),
+                    metadata_json=node.get("metadata", {}),
                 )
             )
             inserted_count += 1
@@ -43,9 +50,9 @@ class VectorStoreRepository:
             conditions.append("document_id = :doc_id")
         sql = text(
             f"""
-            SELECT id, document_id, chunk_index, content, metadata_json,
+            SELECT id, document_id, node_index, node_type, content, metadata_json,
                    1 - (embedding <=> CAST(:query_vec AS vector)) AS similarity_score
-            FROM document_chunks
+            FROM document_nodes
             WHERE {' AND '.join(conditions)}
             ORDER BY embedding <=> CAST(:query_vec AS vector)
             LIMIT :top_k
@@ -72,9 +79,9 @@ class VectorStoreRepository:
         filter_clause = "AND document_id = :doc_id" if document_id else ""
         sql = text(
             f"""
-            SELECT id, document_id, chunk_index, content, metadata_json,
+            SELECT id, document_id, node_index, node_type, content, metadata_json,
                    ts_rank_cd(to_tsvector('simple', content), plainto_tsquery('simple', :query)) AS fts_rank
-            FROM document_chunks
+            FROM document_nodes
             WHERE to_tsvector('simple', content) @@ plainto_tsquery('simple', :query)
             {filter_clause}
             ORDER BY fts_rank DESC
@@ -90,40 +97,40 @@ class VectorStoreRepository:
         return VectorStoreRepository._fuse_results(vector_results, fts_results, top_k)
 
     @staticmethod
-    def expand_neighbor_chunks(
+    def expand_neighbor_nodes(
         db: Session,
-        seed_chunks: list[dict[str, Any]],
+        seed_nodes: list[dict[str, Any]],
         neighbor_window: int = 1,
     ) -> list[dict[str, Any]]:
-        """Load chunks surrounding each retrieved seed chunk."""
-        if not seed_chunks:
+        """Load nodes surrounding each retrieved seed node."""
+        if not seed_nodes:
             return []
 
         indexes_by_document: dict[str, set[int]] = {}
         document_order: list[str] = []
         seed_details: dict[tuple[str, int], tuple[int, float]] = {}
 
-        for rank, chunk in enumerate(seed_chunks):
-            document_id = chunk["document_id"]
-            chunk_index = chunk["chunk_index"]
+        for rank, node in enumerate(seed_nodes):
+            document_id = node["document_id"]
+            node_index = node["chunk_index"]
             if document_id not in indexes_by_document:
                 indexes_by_document[document_id] = set()
                 document_order.append(document_id)
 
-            start_index = max(0, chunk_index - neighbor_window)
-            end_index = chunk_index + neighbor_window
+            start_index = max(0, node_index - neighbor_window)
+            end_index = node_index + neighbor_window
             indexes_by_document[document_id].update(range(start_index, end_index + 1))
-            seed_details[(document_id, chunk_index)] = (rank, chunk["score"])
+            seed_details[(document_id, node_index)] = (rank, node["score"])
 
         expanded: list[dict[str, Any]] = []
         for document_position, document_id in enumerate(document_order):
             rows = (
-                db.query(DocumentChunk)
+                db.query(DocumentNode)
                 .filter(
-                    DocumentChunk.document_id == document_id,
-                    DocumentChunk.chunk_index.in_(indexes_by_document[document_id]),
+                    DocumentNode.document_id == document_id,
+                    DocumentNode.node_index.in_(indexes_by_document[document_id]),
                 )
-                .order_by(DocumentChunk.chunk_index)
+                .order_by(DocumentNode.node_index)
                 .all()
             )
 
@@ -135,9 +142,9 @@ class VectorStoreRepository:
             for row in rows:
                 nearest_index, nearest_rank, nearest_score = min(
                     document_seeds,
-                    key=lambda seed: (abs(seed[0] - row.chunk_index), seed[1]),
+                    key=lambda seed: (abs(seed[0] - row.node_index), seed[1]),
                 )
-                is_seed = (document_id, row.chunk_index) in seed_details
+                is_seed = (document_id, row.node_index) in seed_details
                 metadata = dict(row.metadata_json or {})
                 metadata.update(
                     {
@@ -149,7 +156,7 @@ class VectorStoreRepository:
                     {
                         "chunk_id": row.id,
                         "document_id": row.document_id,
-                        "chunk_index": row.chunk_index,
+                        "chunk_index": row.node_index,
                         "content": row.content,
                         "metadata": metadata,
                         "score": nearest_score,
@@ -166,9 +173,12 @@ class VectorStoreRepository:
             {
                 "chunk_id": row.id,
                 "document_id": row.document_id,
-                "chunk_index": row.chunk_index,
+                "chunk_index": row.node_index,
                 "content": row.content,
-                "metadata": row.metadata_json,
+                "metadata": {
+                    **(row.metadata_json or {}),
+                    "node_type": row.node_type,
+                },
                 "score": float(getattr(row, score_field) or 0.0),
             }
             for row in rows

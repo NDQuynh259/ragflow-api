@@ -8,14 +8,19 @@ from fastapi import FastAPI
 from pydantic import ValidationError
 
 from app.api.schemas.query import ChatQueryRequest, SearchQueryRequest
-from app.api.schemas.document import IngestTextRequest
 from app.core.config import settings
 from app.core.api_response import register_exception_handlers
 from app.core.exceptions import AppError
 from app.ingestion.chunkers.recursive import RecursiveChunker
 from app.embeddings.base import EmbeddingService
 from app.generation.llm.base import LLMService
-from app.ingestion.parsers.pdf_parser import DocumentParseError, DocumentParser
+from app.ingestion.parsers.layout_parser import (
+    BLOCK_TYPE_IMAGE,
+    BLOCK_TYPE_TABLE,
+    BLOCK_TYPE_TEXT,
+    LayoutBlock,
+    LayoutParser,
+)
 from app.generation.prompts.rag import PromptBuilder
 from app.retrieval.pipeline import RetrievalPipeline
 from app.storage.vector.pgvector import VectorStoreRepository
@@ -255,12 +260,6 @@ def test_llm_invokes_langchain_chat_model_with_role_aware_prompt():
 @pytest.mark.parametrize(
     "payload",
     [
-        lambda: IngestTextRequest(
-            title="test",
-            content="content",
-            chunk_size=50,
-            chunk_overlap=50,
-        ),
         lambda: SearchQueryRequest(query=" ", top_k=5),
         lambda: SearchQueryRequest(query="test", top_k=0),
         lambda: ChatQueryRequest(query="test", search_type="unknown"),
@@ -293,29 +292,6 @@ class _FakeTransactionSession:
         pass
 
 
-def test_ingestion_rolls_back_when_embedding_fails(monkeypatch):
-    db = _FakeTransactionSession()
-
-    def fail_embedding(_, __):
-        raise RuntimeError("provider unavailable")
-
-    monkeypatch.setattr(EmbeddingService, "get_embeddings", fail_embedding)
-
-    with pytest.raises(RuntimeError, match="provider unavailable"):
-        IngestionPipeline().persist(
-            db,
-            filename="test.txt",
-            file_type="txt",
-            file_size=4,
-            raw_text="test",
-            chunk_size=100,
-            chunk_overlap=10,
-        )
-
-    assert db.commits == 0
-    assert db.rollbacks == 1
-
-
 class _FakeAddSession:
     def __init__(self):
         self.added = []
@@ -328,21 +304,43 @@ class _FakeAddSession:
         self.flushes += 1
 
 
-def test_vector_store_add_chunks_does_not_commit():
+def test_vector_store_add_nodes_does_not_commit():
     db = _FakeAddSession()
-    chunks = [{
+    nodes = [{
         "document_id": "doc-1",
-        "chunk_index": 0,
-        "content": "content",
-        "metadata": {},
+        "node_type": "table",
+        "node_index": 0,
+        "content": "| Name |\n| --- |",
+        "structured_data": {"rows": [["Name"]]},
         "embedding": [0.0] * settings.EMBEDDING_DIMENSION,
+        "metadata": {},
     }]
 
-    count = VectorStoreRepository.add_chunks(db, chunks)
+    count = VectorStoreRepository.add_nodes(db, nodes)
 
     assert count == 1
     assert db.flushes == 1
     assert len(db.added) == 1
+
+
+def test_layout_record_builder_routes_text_table_and_image():
+    blocks = [
+        LayoutBlock(BLOCK_TYPE_TEXT, 1, (1, 2, 3, 4), text="Paragraph one."),
+        LayoutBlock(BLOCK_TYPE_TABLE, 1, (5, 6, 7, 8), text="| Name |", rows=[["Name"]]),
+        LayoutBlock(BLOCK_TYPE_IMAGE, 1, (9, 10, 11, 12), image_name="Im0"),
+    ]
+
+    nodes = IngestionPipeline._build_layout_records(
+        document_id="doc-1",
+        filename="report.pdf",
+        blocks=blocks,
+        chunk_size=100,
+        chunk_overlap=10,
+    )
+
+    assert [node["node_type"] for node in nodes] == ["text", "table", "image"]
+    assert nodes[1]["structured_data"] == {"rows": [["Name"]]}
+    assert nodes[2]["metadata"]["image_name"] == "Im0"
 
 
 class _FakeNeighborQuery:
@@ -367,18 +365,18 @@ class _FakeNeighborSession:
         return _FakeNeighborQuery(self.rows)
 
 
-def test_neighbor_expansion_loads_chunks_around_seed():
+def test_neighbor_expansion_loads_nodes_around_seed():
     rows = [
         SimpleNamespace(
             id=f"chunk-{index}",
             document_id="doc-1",
-            chunk_index=index,
+            node_index=index,
             content=f"content-{index}",
             metadata_json={},
         )
         for index in (99, 100, 101)
     ]
-    seed_chunks = [
+    seed_nodes = [
         {
             "chunk_id": "chunk-100",
             "document_id": "doc-1",
@@ -389,9 +387,9 @@ def test_neighbor_expansion_loads_chunks_around_seed():
         }
     ]
 
-    expanded = VectorStoreRepository.expand_neighbor_chunks(
+    expanded = VectorStoreRepository.expand_neighbor_nodes(
         _FakeNeighborSession(rows),
-        seed_chunks,
+        seed_nodes,
         neighbor_window=1,
     )
 
@@ -400,7 +398,7 @@ def test_neighbor_expansion_loads_chunks_around_seed():
     assert expanded[1]["metadata"]["is_neighbor"] is False
 
 
-def test_merge_contiguous_chunks_removes_overlap_and_tracks_sources():
+def test_merge_contiguous_nodes_removes_overlap_and_tracks_sources():
     chunks = [
         {
             "chunk_id": "chunk-100",
@@ -432,26 +430,13 @@ def test_merge_contiguous_chunks_removes_overlap_and_tracks_sources():
     assert merged[0]["metadata"]["expanded_context"] is True
 
 
-def test_text_sanitizer_removes_nul_and_control_characters():
-    sanitized = DocumentParser.sanitize_text(
+def test_layout_text_sanitizer_removes_nul_and_control_characters():
+    sanitized = LayoutParser.sanitize_text(
         "Computer\x00 Vision\x01\nSecond\tline\u200b"
     )
 
     assert sanitized == "Computer Vision\nSecond\tline"
     assert "\x00" not in sanitized
-
-
-def test_pdf_quality_check_rejects_corrupted_text_layer():
-    corrupted_text = ("\x00\x01\x02broken-font-data" * 20) + " readable"
-
-    with pytest.raises(DocumentParseError, match="OCR"):
-        DocumentParser._validate_pdf_text_layer(corrupted_text)
-
-
-def test_pdf_quality_check_allows_isolated_control_character():
-    DocumentParser._validate_pdf_text_layer(
-        "A mostly valid extracted document with a single control \x00 character."
-    )
 
 
 class _ScalarResult:

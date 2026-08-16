@@ -29,14 +29,14 @@ class RetrievalPipeline:
         db: Session,
         request: SearchQueryRequest,
     ) -> list[dict[str, Any]]:
-        """Retrieve top chunks, expand their neighbors, and merge contiguous context."""
-        seed_chunks = self.retrieve(db, request)
-        expanded_chunks = VectorStoreRepository.expand_neighbor_chunks(
+        """Retrieve top nodes, expand their neighbors, and merge contiguous context."""
+        seed_nodes = self.retrieve(db, request)
+        expanded_nodes = VectorStoreRepository.expand_neighbor_nodes(
             db,
-            seed_chunks,
+            seed_nodes,
             neighbor_window=settings.RAG_NEIGHBOR_WINDOW,
         )
-        return self.merge_contiguous_chunks(expanded_chunks)
+        return self.merge_contiguous_chunks(expanded_nodes)
 
     @staticmethod
     def merge_contiguous_chunks(

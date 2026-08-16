@@ -9,16 +9,23 @@ from app.core.exceptions import AppError
 from app.domain.document import Document
 from app.storage.database.repositories.document import DocumentRepository
 from app.storage.vector.pgvector import VectorStoreRepository
-from app.ingestion.chunkers.recursive import RecursiveChunker
+from app.ingestion.chunkers.semantic import SemanticChunker
 from app.embeddings.base import EmbeddingService
-from app.ingestion.parsers.pdf_parser import DocumentParseError, DocumentParser
+from app.ingestion.parsers.layout_parser import (
+    BLOCK_TYPE_IMAGE,
+    BLOCK_TYPE_TABLE,
+    BLOCK_TYPE_TEXT,
+    LayoutBlock,
+    LayoutParseError,
+    LayoutParser,
+)
 
 
 class IngestionPipeline:
     def __init__(self, embedder: EmbeddingService | None = None) -> None:
         self.embedder = embedder or EmbeddingService()
 
-    def ingest_file(
+    def ingest_pdf(
         self,
         db: Session,
         *,
@@ -27,7 +34,7 @@ class IngestionPipeline:
         chunk_size: int,
         chunk_overlap: int,
     ) -> Document:
-        filename = DocumentParser.sanitize_text(filename or "upload.txt").strip()
+        filename = self._sanitize_text(filename or "upload.pdf").strip()
         if not filename:
             raise AppError("Document filename cannot be empty.")
         extension = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
@@ -45,105 +52,159 @@ class IngestionPipeline:
                 status_code=413,
             )
         
-        try:
-            raw_text = DocumentParser.parse_file(contents, filename)
-        except DocumentParseError as exc:
-            raise AppError(str(exc), status_code=422) from exc
-        except Exception as exc:
-            raise AppError("Unable to parse the uploaded document.") from exc
-        if not raw_text.strip():
-            raise AppError("Unable to extract text content from file.")
-        return self.persist(
-            db,
-            filename=filename,
-            file_type=extension,
-            file_size=len(contents),
-            raw_text=raw_text,
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-        )
+        """Ingest a PDF as layout-aware text, table, and image nodes.
 
-    def ingest_text(
-        self,
-        db: Session,
-        *,
-        title: str,
-        content: str,
-        chunk_size: int,
-        chunk_overlap: int,
-    ) -> Document:
-        return self.persist(
-            db,
-            filename=title,
-            file_type="text",
-            file_size=len(content.encode("utf-8")),
-            raw_text=content,
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-        )
-
-    def persist(
-        self,
-        db: Session,
-        *,
-        filename: str,
-        file_type: str,
-        file_size: int,
-        raw_text: str,
-        chunk_size: int,
-        chunk_overlap: int,
-    ) -> Document:
-        filename = DocumentParser.sanitize_text(filename).strip()
-        raw_text = DocumentParser.sanitize_text(raw_text)
-        if not filename:
-            raise AppError("Document filename cannot be empty.")
-        if not raw_text.strip():
-            raise AppError("Document content cannot be empty.")
+        Each block becomes a document node; vector retrieval reads these nodes
+        directly rather than a separate legacy chunk table.
+        """
         if chunk_overlap >= chunk_size:
             raise AppError("chunk_overlap must be smaller than chunk_size.", status_code=422)
 
-        chunks = RecursiveChunker.split_text(raw_text, chunk_size, chunk_overlap)
-        if not chunks:
-            raise AppError("Content produced no indexable chunks.")
-
         try:
-            document = Document(
-                id=str(uuid.uuid4()),
+            blocks = LayoutParser().parse_pdf(contents)
+        except LayoutParseError as exc:
+            raise AppError(str(exc), status_code=422) from exc
+        except Exception as exc:
+            raise AppError("Unable to parse the uploaded PDF.") from exc
+        if not blocks:
+            raise AppError("Unable to extract text, table, or image content from PDF.")
+
+        document = Document(
+            id=str(uuid.uuid4()),
+            filename=filename,
+            file_type="pdf",
+            file_size=len(contents),
+        )
+        try:
+            node_records = self._build_layout_records(
+                document_id=document.id,
                 filename=filename,
-                file_type=file_type,
-                file_size=file_size,
+                blocks=blocks,
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap,
             )
+            if not node_records:
+                raise AppError("PDF produced no indexable layout nodes.")
 
+            embeddable_nodes = [record for record in node_records if record["content"].strip()]
             embeddings = self.embedder.get_embeddings(
-                [chunk["content"] for chunk in chunks]
+                [record["content"] for record in embeddable_nodes]
             )
-            chunk_records = []
-            for chunk, embedding in zip(chunks, embeddings, strict=True):
-                chunk_index = chunk["chunk_index"]
-                chunk_content = chunk["content"]
+            for record, embedding in zip(embeddable_nodes, embeddings, strict=True):
+                record["embedding"] = embedding
 
-                chunk_records.append(
-                    {
-                        "document_id": document.id,
-                        "chunk_index": chunk_index,
-                        "content": chunk_content,
-                        "metadata": {
-                            "source": filename,
-                            "chunk_index": chunk_index,
-                        },
-                        "embedding": embedding,
-                    }
-                )
-                
             DocumentRepository.add(db, document)
             db.flush()
-            document.chunk_count = VectorStoreRepository.add_chunks(db, chunk_records)
+            VectorStoreRepository.add_nodes(db, node_records)
+            document.chunk_count = len(node_records)
             db.commit()
             db.refresh(document)
             return document
         except Exception:
             db.rollback()
             raise
+
+    @classmethod
+    def _build_layout_records(
+        cls,
+        *,
+        document_id: str,
+        filename: str,
+        blocks: list[LayoutBlock],
+        chunk_size: int,
+        chunk_overlap: int,
+    ) -> list[dict]:
+        """Route layout blocks into retrievable multimodal nodes."""
+        node_records: list[dict] = []
+        node_index = 0
+        semantic_chunker = SemanticChunker()
+
+        for block in blocks:
+            metadata = {
+                "source": filename,
+                "page_number": block.page_number,
+                "bbox": list(block.bbox),
+                **block.metadata,
+            }
+            if block.block_type == BLOCK_TYPE_TEXT:
+                for chunk in semantic_chunker.split(block.text, chunk_size, chunk_overlap):
+                    record = cls._build_text_node(
+                        document_id=document_id,
+                        node_index=node_index,
+                        chunk=chunk,
+                        metadata=metadata,
+                    )
+                    if record:
+                        node_records.append(record)
+                        node_index += 1
+            elif block.block_type == BLOCK_TYPE_TABLE:
+                record = cls._build_table_node(
+                    document_id=document_id,
+                    node_index=node_index,
+                    block=block,
+                    metadata=metadata,
+                )
+                if record:
+                    node_records.append(record)
+                    node_index += 1
+            elif block.block_type == BLOCK_TYPE_IMAGE:
+                node_records.append(
+                    cls._build_image_node(
+                        document_id=document_id,
+                        node_index=node_index,
+                        block=block,
+                        metadata=metadata,
+                    )
+                )
+                node_index += 1
+
+        return node_records
+
+    @staticmethod
+    def _build_text_node(
+        *, document_id: str, node_index: int, chunk: dict, metadata: dict
+    ) -> dict | None:
+        """Create a text node from one semantic text chunk."""
+        content = IngestionPipeline._sanitize_text(chunk["content"]).strip()
+        if not content:
+            return None
+        return {
+            "document_id": document_id,
+            "node_type": BLOCK_TYPE_TEXT,
+            "node_index": node_index,
+            "content": content,
+            "metadata": {**metadata, "semantic_chunk_index": chunk["chunk_index"]},
+        }
+
+    @staticmethod
+    def _build_table_node(
+        *, document_id: str, node_index: int, block: LayoutBlock, metadata: dict
+    ) -> dict | None:
+        """Create a table node with Markdown content and structured row data."""
+        content = IngestionPipeline._sanitize_text(block.text).strip()
+        if not content:
+            return None
+        return {
+            "document_id": document_id,
+            "node_type": BLOCK_TYPE_TABLE,
+            "node_index": node_index,
+            "content": content,
+            "structured_data": {"rows": block.rows or []},
+            "metadata": metadata,
+        }
+
+    @staticmethod
+    def _build_image_node(
+        *, document_id: str, node_index: int, block: LayoutBlock, metadata: dict
+    ) -> dict:
+        """Create an image node for the later classify/vision pipeline stage."""
+        return {
+            "document_id": document_id,
+            "node_type": BLOCK_TYPE_IMAGE,
+            "node_index": node_index,
+            "content": "",
+            "metadata": {**metadata, "image_name": block.image_name},
+        }
 
     @staticmethod
     def list_documents(db: Session) -> list[Document]:
@@ -156,3 +217,8 @@ class IngestionPipeline:
             raise AppError("Document not found.", status_code=404)
         DocumentRepository.delete(db, document)
         db.commit()
+
+    @staticmethod
+    def _sanitize_text(text: str | None) -> str:
+        """Normalize text through the PDF layout parser's safe text contract."""
+        return LayoutParser.sanitize_text(text)

@@ -26,7 +26,7 @@ class HealthService:
                     text(
                         """
                         SELECT to_regclass('public.documents') IS NOT NULL
-                           AND to_regclass('public.document_chunks') IS NOT NULL
+                           AND to_regclass('public.document_nodes') IS NOT NULL
                            AND to_regclass('public.alembic_version') IS NOT NULL;
                         """
                     )

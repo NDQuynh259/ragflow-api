@@ -21,7 +21,7 @@ def include_object(object_, name, type_, reflected, compare_to):
     # This expression index is managed with explicit SQL migrations because
     # PostgreSQL reflection normalizes the regconfig expression differently,
     # which otherwise produces a false-positive drop during autogenerate.
-    if type_ == "index" and name == "ix_document_chunks_fts_simple":
+    if type_ == "index" and name == "ix_document_nodes_fts_simple":
         return False
     return True
 

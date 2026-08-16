@@ -94,15 +94,11 @@ def test_parse_pdf_sorts_blocks_by_reading_order():
     assert tops == sorted(tops)
 
 
-def test_parse_non_pdf_falls_back_to_single_text_block():
+def test_parse_non_pdf_raises_unsupported_format_error():
     parser = LayoutParser()
 
-    blocks = parser.parse(b"plain text content", "note.txt")
-
-    assert len(blocks) == 1
-    assert blocks[0].block_type == BLOCK_TYPE_TEXT
-    assert blocks[0].text == "plain text content"
-    assert blocks[0].page_number == 1
+    with pytest.raises(LayoutParseError, match="PDF files only"):
+        parser.parse(b"plain text content", "note.txt")
 
 
 def test_parse_pdf_raises_when_pdfplumber_missing(monkeypatch):
@@ -281,3 +277,31 @@ def test_parse_pdf_two_columns_produces_two_text_blocks():
     assert "Alpha" in text_blocks[0].text
     assert "Gamma" in text_blocks[1].text
     assert text_blocks[0].bbox[0] < text_blocks[1].bbox[0]
+
+
+def test_extract_text_blocks_excludes_words_inside_table_bbox():
+    class _Page:
+        @staticmethod
+        def extract_words(**_):
+            return [
+                {"top": 10.0, "bottom": 20.0, "x0": 10.0, "x1": 50.0, "text": "Outside"},
+                {"top": 40.0, "bottom": 50.0, "x0": 10.0, "x1": 50.0, "text": "Inside"},
+            ]
+
+    table = LayoutBlock(
+        block_type=BLOCK_TYPE_TABLE,
+        page_number=1,
+        bbox=(0.0, 30.0, 100.0, 60.0),
+    )
+
+    blocks = LayoutParser()._extract_text_blocks(_Page(), 1, [table])
+
+    assert len(blocks) == 1
+    assert blocks[0].text == "Outside"
+
+
+def test_rows_to_markdown_escapes_markdown_delimiters():
+    markdown = LayoutParser._rows_to_markdown([["A|B", "Line\nBreak"]])
+
+    assert r"A\|B" in markdown
+    assert "Line<br>Break" in markdown

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.api_response import ApiResponse, success_response
 from app.storage.database.postgres import get_db
-from app.api.schemas.document import DocumentResponse, IngestTextRequest
+from app.api.schemas.document import DocumentResponse
 from app.ingestion.pipeline import IngestionPipeline
 import logging
 
@@ -22,27 +22,14 @@ def upload_document(
 ):
     
     max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
-    document = IngestionPipeline().ingest_file(
+    document = IngestionPipeline().ingest_pdf(
         db,
-        filename=file.filename or "upload.txt",
+        filename=file.filename or "upload.pdf",
         contents=file.file.read(max_bytes + 1),
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
     )
     return success_response(document, message="Document uploaded successfully.")
-
-
-# region ingest_text
-@router.post("/ingest-text", response_model=ApiResponse[DocumentResponse], status_code=status.HTTP_201_CREATED)
-def ingest_text(payload: IngestTextRequest, db: Session = Depends(get_db)):
-    document = IngestionPipeline().ingest_text(
-        db,
-        title=payload.title,
-        content=payload.content,
-        chunk_size=payload.chunk_size,
-        chunk_overlap=payload.chunk_overlap,
-    )
-    return success_response(document, message="Text ingested successfully.")
 
 
 # region list_documents

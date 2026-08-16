@@ -20,10 +20,9 @@ image regions.
 from __future__ import annotations
 
 import io
+import unicodedata
 from dataclasses import asdict, dataclass, field
 from typing import Any
-
-from app.ingestion.parsers.pdf_parser import DocumentParser
 
 try:
     import pdfplumber
@@ -44,7 +43,7 @@ class LayoutBlock:
     page_number: int
     bbox: tuple[float, float, float, float]  # (x0, top, x1, bottom) in PDF points
     text: str = ""  # text content (text blocks) or Markdown (table blocks)
-    rows: list[list[str]] | None = None  # table cells, only when block_type == "table"
+    rows: list[list[str | None]] | None = None  # table cells, only when block_type == "table"
     image_bytes: bytes | None = None  # reserved for downstream image extraction
     image_name: str | None = None  # object name / index, only for image blocks
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -71,24 +70,30 @@ class LayoutParser:
     COLUMN_GUTTER_MIN = 24.0  # points: min horizontal gap treated as a column gutter
     COLUMN_GUTTER_FACTOR = 3.0  # gutter must exceed this multiple of the median word gap
 
+    @staticmethod
+    def sanitize_text(text: str | None) -> str:
+        """Normalize extracted PDF text and remove unsafe control characters."""
+        if not text:
+            return ""
+        normalized = unicodedata.normalize(
+            "NFC", text.replace("\r\n", "\n").replace("\r", "\n")
+        )
+        return "".join(
+            char
+            for char in normalized
+            if char in {"\n", "\t"}
+            or unicodedata.category(char) not in {"Cc", "Cf", "Cs"}
+        )
+
     def parse(self, file_bytes: bytes, filename: str) -> list[LayoutBlock]:
         """Parse a file into layout blocks, dispatching on its extension."""
         extension = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
         if extension == "pdf":
             return self.parse_pdf(file_bytes)
 
-        # Non-PDF inputs degrade to a single text block using the plain-text parser.
-        text = DocumentParser.parse_file(file_bytes, filename)
-        if not text.strip():
-            return []
-        return [
-            LayoutBlock(
-                block_type=BLOCK_TYPE_TEXT,
-                page_number=1,
-                bbox=(0.0, 0.0, 0.0, 0.0),
-                text=text,
-            )
-        ]
+        raise LayoutParseError(
+            f"Layout parsing currently supports PDF files only, not: {extension or 'unknown'}."
+        )
 
     def parse_pdf(self, file_bytes: bytes) -> list[LayoutBlock]:
         """Segment every page of a PDF into ordered layout blocks."""
@@ -105,15 +110,27 @@ class LayoutParser:
         return self._sort_blocks(blocks)
 
     def _parse_page(self, page: Any, page_number: int) -> list[LayoutBlock]:
+        table_blocks = self._extract_table_blocks(page, page_number)
         blocks: list[LayoutBlock] = []
-        blocks.extend(self._extract_text_blocks(page, page_number))
-        blocks.extend(self._extract_table_blocks(page, page_number))
+        blocks.extend(self._extract_text_blocks(page, page_number, table_blocks))
+        blocks.extend(table_blocks)
         blocks.extend(self._extract_image_blocks(page, page_number))
         return blocks
 
     # ------------------------------------------------------------------ text ----
-    def _extract_text_blocks(self, page: Any, page_number: int) -> list[LayoutBlock]:
+    def _extract_text_blocks(
+        self,
+        page: Any,
+        page_number: int,
+        table_blocks: list[LayoutBlock] | None = None,
+    ) -> list[LayoutBlock]:
         words = page.extract_words(keep_blank_chars=False, use_text_flow=False)
+        table_bboxes = [block.bbox for block in table_blocks or []]
+        words = [
+            word
+            for word in words
+            if not any(self._word_is_in_bbox(word, bbox) for bbox in table_bboxes)
+        ]
         if not words:
             return []
 
@@ -146,6 +163,16 @@ class LayoutParser:
                     )
                 )
         return result
+
+    @staticmethod
+    def _word_is_in_bbox(
+        word: dict[str, Any], bbox: tuple[float, float, float, float]
+    ) -> bool:
+        """Return whether the word center is inside a table bounding box."""
+        x0, top, x1, bottom = bbox
+        center_x = (word["x0"] + word["x1"]) / 2.0
+        center_y = (word["top"] + word["bottom"]) / 2.0
+        return x0 <= center_x <= x1 and top <= center_y <= bottom
 
     @classmethod
     def _words_to_lines(cls, words: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -234,7 +261,8 @@ class LayoutParser:
         """Bucket words into columns according to the detected gutter positions."""
         if not boundaries:
             return [words]
-        columns: list[list[dict[str, Any]]] = [[] for _ in range(len(boundaries) + 1)]
+        columns: list[list[dict[str, Any]]] = [[] for _
+         in range(len(boundaries) + 1)]
         for word in words:
             center = (word["x0"] + word["x1"]) / 2.0
             index = sum(1 for boundary in boundaries if boundary < center)
@@ -264,7 +292,11 @@ class LayoutParser:
             return ""
 
         cleaned = [
-            ["" if cell is None else str(cell) for cell in row] for row in rows
+            [
+                "" if cell is None else str(cell).replace("|", r"\|").replace("\n", "<br>")
+                for cell in row
+            ]
+            for row in rows
         ]
         width = max(len(row) for row in cleaned)
         cleaned = [row + [""] * (width - len(row)) for row in cleaned]

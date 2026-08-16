@@ -12,4 +12,4 @@ class Document(IdentifierMixin, AuditMixin, Base):
     file_type = Column(String, nullable=False)
     file_size = Column(Integer, nullable=False, default=0, server_default=text("0"))
     chunk_count = Column(Integer, nullable=False, default=0, server_default=text("0"))
-    chunks = relationship("DocumentChunk", back_populates="document", cascade="all, delete-orphan")
+    nodes = relationship("DocumentNode", back_populates="document", cascade="all, delete-orphan")
