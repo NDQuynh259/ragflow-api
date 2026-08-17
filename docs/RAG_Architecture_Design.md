@@ -843,7 +843,7 @@ ragflow-api/
 │   │       └── query.py
 │   ├── ingestion/
 │   │   ├── pipeline.py                  # IngestionPipeline
-│   │   ├── parsers/                     # DocumentParser + LayoutParser (pdfplumber)
+│   │   ├── parsers/                     # DocumentParser + LayoutParser (Unstructured)
 │   │   ├── chunkers/
 │   │   │   ├── recursive.py             # RecursiveChunker ← default
 │   │   │   ├── semantic.py              # stub
@@ -957,7 +957,7 @@ flowchart TD
     end
 
     subgraph LAYOUT["Layout Parser [new]"]
-        LP["DocLayNet / PDFPlumber\nPhân vùng block layout"]
+        LP["Unstructured / DocLayNet\nPhân vùng block layout"]
         T["Text blocks"]
         TB["Table blocks"]
         IM["Image blocks"]
@@ -970,7 +970,7 @@ flowchart TD
     end
 
     subgraph TABLE_PIPE["Table Pipeline [new]"]
-        TE2["Table Extractor\nCamelot / pdfplumber"]
+        TE2["Table Extractor\nUnstructured / Camelot"]
         TM["Markdown (hiển thị)"]
         TJ["JSON (structured)"]
         TEMB["Table Embedding\nserialize → text embed"]
@@ -1157,7 +1157,7 @@ flowchart TB
 | Async Ingestion Worker (Arq) | `WORK-01` | `app/workers/ingestion_worker.py` | **Stub** | Phase 2 |
 | Task Status API | `WORK-02` | `app/api/routes/` | **Pending** | Phase 2 |
 | MinIO Object Storage Driver | `STOR-02` | `app/storage/object/` | **Stub** | Phase 2 |
-| Layout Parser (pdfplumber geometry) | `[new]` | `app/ingestion/parsers/layout_parser.py` | **Implemented** | Phase 3 |
+| Layout Parser (Unstructured partition) | `[new]` | `app/ingestion/parsers/layout_parser.py` | **Implemented** | Phase 3 |
 | Table Extractor (Camelot) | `[new]` | `app/ingestion/extractors/table.py` | **Not exist** | Phase 3 |
 | Image Classifier + Vision LLM | `[new]` | `app/ingestion/extractors/image.py` | **Not exist** | Phase 3 |
 | Vision Embedding (CLIP) | `[new]` | `app/embeddings/vision.py` | **Not exist** | Phase 3 |

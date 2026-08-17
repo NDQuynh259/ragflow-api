@@ -1,8 +1,8 @@
-"""Unit tests for the LayoutParser (multimodal layout segmentation)."""
+"""Unit tests for the LayoutParser (multimodal layout segmentation with Unstructured)."""
 
 from types import SimpleNamespace
-
-import pytest
+from unittest.mock import MagicMock
+import unittest
 
 from app.ingestion.parsers.layout_parser import (
     BLOCK_TYPE_IMAGE,
@@ -14,294 +14,242 @@ from app.ingestion.parsers.layout_parser import (
 )
 
 
-# --------------------------------------------------------------------------- #
-# Minimal PDF fixture builder (valid xref, single page, Helvetica text).
-# --------------------------------------------------------------------------- #
-def _build_minimal_pdf(lines):
-    """Build a valid single-page PDF with text at explicit coordinates.
+class _MockCoordinates:
+    def __init__(self, points):
+        self.points = points
 
-    ``lines`` is a list of ``(x, y, text)`` tuples in PDF user space (bottom-left
-    origin). Text must not contain parentheses or backslashes.
-    """
-    content_parts = ["BT /F1 12 Tf"]
-    for x, y, text in lines:
-        content_parts.append(f"1 0 0 1 {x} {y} Tm ({text}) Tj")
-    content_parts.append("ET")
-    content_stream = " ".join(content_parts)
 
-    objects = [
-        b"<< /Type /Catalog /Pages 2 0 R >>",
-        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        (
-            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
-            b"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>"
-        ),
-        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-        (
-            b"<< /Length " + str(len(content_stream)).encode() + b" >>\n"
-            b"stream\n" + content_stream.encode() + b"\nendstream"
-        ),
-    ]
-
-    pdf = bytearray(b"%PDF-1.4\n")
-    offsets = []
-    for index, obj in enumerate(objects, start=1):
-        offsets.append(len(pdf))
-        pdf += f"{index} 0 obj\n".encode()
-        pdf += obj + b"\nendobj\n"
-
-    xref_offset = len(pdf)
-    count = len(objects) + 1
-    pdf += f"xref\n0 {count}\n".encode()
-    pdf += b"0000000000 65535 f \n"
-    for offset in offsets:
-        pdf += f"{offset:010d} 00000 n \n".encode()
-    pdf += (
-        f"trailer\n<< /Size {count} /Root 1 0 R >>\n"
-        f"startxref\n{xref_offset}\n%%EOF\n"
-    ).encode()
-    return bytes(pdf)
-
-
-# --------------------------------------------------------------------------- #
-# Tests
-# --------------------------------------------------------------------------- #
-def test_parse_pdf_extracts_text_block():
-    parser = LayoutParser()
-    pdf = _build_minimal_pdf([(72, 720, "Hello World")])
-
-    blocks = parser.parse_pdf(pdf)
-
-    text_blocks = [b for b in blocks if b.block_type == BLOCK_TYPE_TEXT]
-    assert text_blocks, "expected at least one text block"
-    assert "Hello World" in text_blocks[0].text
-
-
-def test_parse_pdf_sorts_blocks_by_reading_order():
-    parser = LayoutParser()
-    pdf = _build_minimal_pdf(
-        [
-            (72, 720, "Top line"),
-            (72, 700, "Bottom line"),
-        ]
-    )
-
-    blocks = parser.parse_pdf(pdf)
-
-    text_blocks = [b for b in blocks if b.block_type == BLOCK_TYPE_TEXT]
-    assert len(text_blocks) >= 1
-    tops = [b.bbox[1] for b in text_blocks]
-    assert tops == sorted(tops)
-
-
-def test_parse_non_pdf_raises_unsupported_format_error():
-    parser = LayoutParser()
-
-    with pytest.raises(LayoutParseError, match="PDF files only"):
-        parser.parse(b"plain text content", "note.txt")
-
-
-def test_parse_pdf_raises_when_pdfplumber_missing(monkeypatch):
-    import app.ingestion.parsers.layout_parser as layout_module
-
-    monkeypatch.setattr(layout_module, "pdfplumber", None)
-
-    with pytest.raises(LayoutParseError, match="pdfplumber"):
-        LayoutParser().parse_pdf(b"%PDF-1.4")
-
-
-def test_words_to_lines_groups_same_baseline():
-    words = [
-        {"top": 100.0, "bottom": 112.0, "x0": 10.0, "x1": 30.0, "text": "Hello"},
-        {"top": 101.5, "bottom": 113.5, "x0": 35.0, "x1": 55.0, "text": "World"},
-        {"top": 130.0, "bottom": 142.0, "x0": 10.0, "x1": 40.0, "text": "Next"},
-    ]
-
-    lines = LayoutParser._words_to_lines(words)
-
-    assert len(lines) == 2
-    assert [w["text"] for w in lines[0]["words"]] == ["Hello", "World"]
-    assert [w["text"] for w in lines[1]["words"]] == ["Next"]
-
-
-def test_lines_to_blocks_splits_on_large_vertical_gap():
-    lines = [
-        {"top": 100.0, "bottom": 112.0, "x0": 10.0, "x1": 50.0, "words": []},
-        {"top": 114.0, "bottom": 126.0, "x0": 10.0, "x1": 50.0, "words": []},
-        {"top": 300.0, "bottom": 312.0, "x0": 10.0, "x1": 50.0, "words": []},
-    ]
-
-    blocks = LayoutParser._lines_to_blocks(lines)
-
-    assert len(blocks) == 2
-    assert len(blocks[0]["lines"]) == 2
-    assert len(blocks[1]["lines"]) == 1
-
-
-def test_rows_to_markdown_builds_table():
-    rows = [["Name", "Age"], ["Alice", "30"], [None, "40"]]
-
-    markdown = LayoutParser._rows_to_markdown(rows)
-
-    assert "| Name | Age |" in markdown
-    assert "| --- | --- |" in markdown
-    assert "| Alice | 30 |" in markdown
-    assert "|  | 40 |" in markdown
-
-
-def test_rows_to_markdown_empty_returns_empty_string():
-    assert LayoutParser._rows_to_markdown([]) == ""
-
-
-def test_extract_image_blocks_reads_page_image_catalog():
-    page = SimpleNamespace(
-        images=[
-            {
-                "x0": 10.0,
-                "top": 20.0,
-                "x1": 110.0,
-                "bottom": 120.0,
-                "name": "Im0",
-                "width": 100,
-                "height": 100,
-            }
-        ]
-    )
-
-    blocks = LayoutParser()._extract_image_blocks(page, page_number=1)
-
-    assert len(blocks) == 1
-    assert blocks[0].block_type == BLOCK_TYPE_IMAGE
-    assert blocks[0].image_name == "Im0"
-    assert blocks[0].bbox == (10.0, 20.0, 110.0, 120.0)
-
-
-def test_extract_image_blocks_handles_missing_catalog():
-    page = SimpleNamespace()
-
-    blocks = LayoutParser()._extract_image_blocks(page, page_number=1)
-
-    assert blocks == []
-
-
-def test_layout_block_to_dict_drops_image_bytes():
-    block = LayoutBlock(
-        block_type=BLOCK_TYPE_IMAGE,
-        page_number=2,
-        bbox=(1.0, 2.0, 3.0, 4.0),
-        image_bytes=b"\x89PNG",
-        image_name="Im0",
-    )
-
-    payload = block.to_dict()
-
-    assert "image_bytes" not in payload
-    assert payload["image_size"] == 4
-    assert payload["bbox"] == [1.0, 2.0, 3.0, 4.0]
-    assert payload["page_number"] == 2
-
-
-def test_detect_column_boundaries_detects_wide_gutter():
-    lines = [
-        {
-            "words": [
-                {"x0": 10.0, "x1": 30.0},
-                {"x0": 33.0, "x1": 53.0},
-                {"x0": 300.0, "x1": 320.0},
-                {"x0": 323.0, "x1": 343.0},
-            ]
-        }
-    ]
-
-    boundaries = LayoutParser._detect_column_boundaries(lines)
-
-    assert len(boundaries) == 1
-    assert 53.0 < boundaries[0] < 300.0
-
-
-def test_detect_column_boundaries_ignores_single_column():
-    lines = [
-        {
-            "words": [
-                {"x0": 10.0, "x1": 30.0},
-                {"x0": 33.0, "x1": 53.0},
-                {"x0": 56.0, "x1": 76.0},
-            ]
-        }
-    ]
-
-    boundaries = LayoutParser._detect_column_boundaries(lines)
-
-    assert boundaries == []
-
-
-def test_split_words_into_columns_buckets_by_gutter():
-    words = [
-        {"x0": 10.0, "x1": 30.0, "text": "A"},
-        {"x0": 33.0, "x1": 53.0, "text": "B"},
-        {"x0": 300.0, "x1": 320.0, "text": "C"},
-    ]
-
-    columns = LayoutParser._split_words_into_columns(words, [176.5])
-
-    assert len(columns) == 2
-    assert [word["text"] for word in columns[0]] == ["A", "B"]
-    assert [word["text"] for word in columns[1]] == ["C"]
-
-
-def test_split_words_into_columns_without_boundaries_returns_single_column():
-    words = [{"x0": 10.0, "x1": 30.0, "text": "A"}]
-
-    columns = LayoutParser._split_words_into_columns(words, [])
-
-    assert columns == [words]
-
-
-def test_parse_pdf_two_columns_produces_two_text_blocks():
-    parser = LayoutParser()
-    pdf = _build_minimal_pdf(
-        [
-            (72, 720, "Alpha"),
-            (120, 720, "Beta"),
-            (380, 720, "Gamma"),
-            (428, 720, "Delta"),
-        ]
-    )
-
-    blocks = parser.parse_pdf(pdf)
-    text_blocks = [b for b in blocks if b.block_type == BLOCK_TYPE_TEXT]
-
-    assert len(text_blocks) == 2
-    assert text_blocks[0].metadata["column_index"] == 0
-    assert text_blocks[1].metadata["column_index"] == 1
-    assert "Alpha" in text_blocks[0].text
-    assert "Gamma" in text_blocks[1].text
-    assert text_blocks[0].bbox[0] < text_blocks[1].bbox[0]
-
-
-def test_extract_text_blocks_excludes_words_inside_table_bbox():
-    class _Page:
-        @staticmethod
-        def extract_words(**_):
-            return [
-                {"top": 10.0, "bottom": 20.0, "x0": 10.0, "x1": 50.0, "text": "Outside"},
-                {"top": 40.0, "bottom": 50.0, "x0": 10.0, "x1": 50.0, "text": "Inside"},
-            ]
-
-    table = LayoutBlock(
-        block_type=BLOCK_TYPE_TABLE,
+class _MockMetadata:
+    def __init__(
+        self,
         page_number=1,
-        bbox=(0.0, 30.0, 100.0, 60.0),
-    )
+        coordinates=None,
+        text_as_html=None,
+        image_path=None,
+        filename="test.pdf",
+    ):
+        self.page_number = page_number
+        self.coordinates = coordinates
+        self.text_as_html = text_as_html
+        self.image_path = image_path
+        self.filename = filename
 
-    blocks = LayoutParser()._extract_text_blocks(_Page(), 1, [table])
 
-    assert len(blocks) == 1
-    assert blocks[0].text == "Outside"
+class _MockElement:
+    def __init__(self, text, category="NarrativeText", metadata=None, element_id=None):
+        self.text = text
+        self.category = category
+        self.metadata = metadata or _MockMetadata()
+        self.id = element_id or "elem-123"
 
 
-def test_rows_to_markdown_escapes_markdown_delimiters():
-    markdown = LayoutParser._rows_to_markdown([["A|B", "Line\nBreak"]])
+class TestLayoutParser(unittest.TestCase):
+    def test_parse_pdf_raises_when_unstructured_missing(self):
+        import app.ingestion.parsers.layout_parser as layout_module
 
-    assert r"A\|B" in markdown
-    assert "Line<br>Break" in markdown
+        original_partition_pdf = layout_module.partition_pdf
+        try:
+            layout_module.partition_pdf = None
+            with self.assertRaises(LayoutParseError) as ctx:
+                LayoutParser().parse_pdf(b"%PDF-1.4")
+            self.assertIn("unstructured", str(ctx.exception))
+        finally:
+            layout_module.partition_pdf = original_partition_pdf
+
+    def test_elements_to_blocks_converts_text_elements(self):
+        parser = LayoutParser()
+        coords = _MockCoordinates([(10.0, 20.0), (100.0, 20.0), (100.0, 50.0), (10.0, 50.0)])
+        meta = _MockMetadata(page_number=1, coordinates=coords)
+
+        elements = [
+            _MockElement("Document Title", category="Title", metadata=meta),
+            _MockElement("This is a paragraph of narrative text.", category="NarrativeText", metadata=meta),
+            _MockElement("Bullet item 1", category="ListItem", metadata=meta),
+        ]
+
+        blocks = parser._elements_to_blocks(elements)
+
+        self.assertEqual(len(blocks), 3)
+        self.assertTrue(all(b.block_type == BLOCK_TYPE_TEXT for b in blocks))
+        self.assertEqual(blocks[0].text, "Document Title")
+        self.assertEqual(blocks[0].metadata["category"], "Title")
+        self.assertEqual(blocks[0].bbox, (10.0, 20.0, 100.0, 50.0))
+        self.assertEqual(blocks[1].text, "This is a paragraph of narrative text.")
+        self.assertEqual(blocks[2].text, "Bullet item 1")
+
+    def test_elements_to_blocks_converts_table_with_html(self):
+        parser = LayoutParser()
+        html = (
+            "<table>"
+            "<tr><th>Name</th><th>Role</th></tr>"
+            "<tr><td>Alice</td><td>Admin</td></tr>"
+            "<tr><td>Bob</td><td>User</td></tr>"
+            "</table>"
+        )
+        coords = _MockCoordinates([(0.0, 100.0), (200.0, 100.0), (200.0, 200.0), (0.0, 200.0)])
+        meta = _MockMetadata(page_number=2, coordinates=coords, text_as_html=html)
+
+        elements = [
+            _MockElement("Name Role\nAlice Admin\nBob User", category="Table", metadata=meta),
+        ]
+
+        blocks = parser._elements_to_blocks(elements)
+
+        self.assertEqual(len(blocks), 1)
+        table_block = blocks[0]
+        self.assertEqual(table_block.block_type, BLOCK_TYPE_TABLE)
+        self.assertEqual(table_block.page_number, 2)
+        self.assertEqual(table_block.bbox, (0.0, 100.0, 200.0, 200.0))
+        self.assertEqual(
+            table_block.rows,
+            [
+                ["Name", "Role"],
+                ["Alice", "Admin"],
+                ["Bob", "User"],
+            ],
+        )
+        self.assertIn("| Name | Role |", table_block.text)
+        self.assertIn("| Alice | Admin |", table_block.text)
+        self.assertIn("| Bob | User |", table_block.text)
+
+    def test_elements_to_blocks_converts_table_fallback_plain_text(self):
+        parser = LayoutParser()
+        coords = _MockCoordinates([(10.0, 10.0), (100.0, 10.0), (100.0, 60.0), (10.0, 60.0)])
+        meta = _MockMetadata(page_number=1, coordinates=coords, text_as_html=None)
+
+        plain_table_text = "Col1\tCol2\nVal1\tVal2"
+        elements = [
+            _MockElement(plain_table_text, category="Table", metadata=meta),
+        ]
+
+        blocks = parser._elements_to_blocks(elements)
+
+        self.assertEqual(len(blocks), 1)
+        self.assertEqual(blocks[0].block_type, BLOCK_TYPE_TABLE)
+        self.assertEqual(blocks[0].rows, [["Col1", "Col2"], ["Val1", "Val2"]])
+        self.assertIn("| Col1 | Col2 |", blocks[0].text)
+
+    def test_elements_to_blocks_converts_image_blocks(self):
+        parser = LayoutParser()
+        coords = _MockCoordinates([(50.0, 50.0), (150.0, 50.0), (150.0, 150.0), (50.0, 150.0)])
+        meta = _MockMetadata(page_number=3, coordinates=coords, image_path="/path/to/chart.png")
+
+        elements = [
+            _MockElement("Figure 1: Architecture Diagram", category="Image", metadata=meta),
+            _MockElement("Figure Caption Details", category="FigureCaption", metadata=meta),
+        ]
+
+        blocks = parser._elements_to_blocks(elements)
+
+        self.assertEqual(len(blocks), 2)
+        self.assertTrue(all(b.block_type == BLOCK_TYPE_IMAGE for b in blocks))
+        self.assertEqual(blocks[0].image_name, "/path/to/chart.png")
+        self.assertEqual(blocks[0].page_number, 3)
+        self.assertEqual(blocks[0].bbox, (50.0, 50.0, 150.0, 150.0))
+
+    def test_layout_block_to_dict_drops_image_bytes(self):
+        block = LayoutBlock(
+            block_type=BLOCK_TYPE_IMAGE,
+            page_number=2,
+            bbox=(1.0, 2.0, 3.0, 4.0),
+            image_bytes=b"\x89PNG",
+            image_name="Im0",
+        )
+
+        payload = block.to_dict()
+
+        self.assertNotIn("image_bytes", payload)
+        self.assertEqual(payload["image_size"], 4)
+        self.assertEqual(payload["bbox"], [1.0, 2.0, 3.0, 4.0])
+        self.assertEqual(payload["page_number"], 2)
+
+    def test_sanitize_text_cleans_control_characters(self):
+        raw = "Hello\x00\x08World\r\nLine 2\tEnd"
+        cleaned = LayoutParser.sanitize_text(raw)
+        self.assertNotIn("\x00", cleaned)
+        self.assertNotIn("\x08", cleaned)
+        self.assertIn("Hello", cleaned)
+        self.assertIn("Line 2", cleaned)
+        self.assertIn("\t", cleaned)
+        self.assertIn("\n", cleaned)
+
+    def test_rows_to_markdown_empty_returns_empty_string(self):
+        self.assertEqual(LayoutParser._rows_to_markdown([]), "")
+
+    def test_rows_to_markdown_escapes_markdown_delimiters(self):
+        markdown = LayoutParser._rows_to_markdown([["A|B", "Line\nBreak"]])
+        self.assertIn(r"A\|B", markdown)
+        self.assertIn("Line<br>Break", markdown)
+
+    def test_sort_blocks_by_page_and_top_left(self):
+        b1 = LayoutBlock(block_type=BLOCK_TYPE_TEXT, page_number=2, bbox=(10.0, 20.0, 50.0, 40.0), text="Page2")
+        b2 = LayoutBlock(block_type=BLOCK_TYPE_TEXT, page_number=1, bbox=(10.0, 100.0, 50.0, 120.0), text="Page1-Bottom")
+        b3 = LayoutBlock(block_type=BLOCK_TYPE_TEXT, page_number=1, bbox=(10.0, 20.0, 50.0, 40.0), text="Page1-Top")
+
+        sorted_blocks = LayoutParser._sort_blocks([b1, b2, b3])
+        self.assertEqual(sorted_blocks[0].text, "Page1-Top")
+        self.assertEqual(sorted_blocks[1].text, "Page1-Bottom")
+        self.assertEqual(sorted_blocks[2].text, "Page2")
+
+    def test_parse_pdf_uses_partition_pdf_mock(self):
+        import app.ingestion.parsers.layout_parser as layout_module
+
+        original_partition_pdf = layout_module.partition_pdf
+        try:
+            mock_partition_pdf = MagicMock()
+            mock_partition_pdf.return_value = [
+                _MockElement("Parsed text content", category="NarrativeText")
+            ]
+            layout_module.partition_pdf = mock_partition_pdf
+
+            parser = LayoutParser()
+            blocks = parser.parse_pdf(b"%PDF-sample", strategy="auto")
+
+            self.assertTrue(mock_partition_pdf.called)
+            self.assertEqual(len(blocks), 1)
+            self.assertEqual(blocks[0].text, "Parsed text content")
+            self.assertEqual(blocks[0].block_type, BLOCK_TYPE_TEXT)
+        finally:
+            layout_module.partition_pdf = original_partition_pdf
+
+    def test_parse_pdf_fallback_to_fast_on_error(self):
+        import app.ingestion.parsers.layout_parser as layout_module
+
+        original_partition_pdf = layout_module.partition_pdf
+        try:
+            call_strategies = []
+
+            def mock_partition_pdf(file, strategy="auto", **kwargs):
+                call_strategies.append(strategy)
+                if strategy == "auto":
+                    raise RuntimeError("OCR or detectron2 missing")
+                return [_MockElement("Fallback fast text", category="NarrativeText")]
+
+            layout_module.partition_pdf = mock_partition_pdf
+
+            parser = LayoutParser()
+            blocks = parser.parse_pdf(b"%PDF-sample", strategy="auto")
+
+            self.assertEqual(call_strategies, ["auto", "fast"])
+            self.assertEqual(len(blocks), 1)
+            self.assertEqual(blocks[0].text, "Fallback fast text")
+        finally:
+            layout_module.partition_pdf = original_partition_pdf
+
+    def test_parse_non_pdf_unsupported_format(self):
+        import app.ingestion.parsers.layout_parser as layout_module
+
+        original_partition = layout_module.partition
+        try:
+            layout_module.partition = None
+            parser = LayoutParser()
+
+            with self.assertRaises(LayoutParseError) as ctx:
+                parser.parse(b"dummy", "file.xyz")
+            self.assertIn("PDF files only", str(ctx.exception))
+        finally:
+            layout_module.partition = original_partition
+
+
+if __name__ == "__main__":
+    unittest.main()
