@@ -30,6 +30,11 @@ test = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
+pythonpath = ["."]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
 
 [build-system]
 requires = ["setuptools>=65.5"]
