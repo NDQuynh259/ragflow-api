@@ -35,10 +35,10 @@ def upload_document(
 # region list_documents
 @router.get("", response_model=ApiResponse[list[DocumentResponse]])
 def list_documents(db: Session = Depends(get_db)):
-    return success_response(DocumentService.list_documents(db))
+    return success_response(IngestionPipeline.list_documents(db))
 
 # region delete_document
 @router.delete("/{document_id}", response_model=ApiResponse[None])
 def delete_document(document_id: str, db: Session = Depends(get_db)):
-    DocumentService.delete_document(db, document_id)
+    IngestionPipeline.delete_document(db, document_id)
     return success_response(message=f"Document {document_id} deleted successfully.")

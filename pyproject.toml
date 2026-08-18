@@ -17,7 +17,6 @@ dependencies = [
     "langchain-text-splitters>=1.0.0",
     "langchain-openai>=1.0.0",
     "langchain-google-genai>=4.0.0",
-    "langchain-cohere>=0.6.0",
     "unstructured[pdf]>=0.12.0",
 ]
 

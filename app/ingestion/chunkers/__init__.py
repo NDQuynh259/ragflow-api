@@ -1,4 +1,4 @@
-"""Text chunking strategies."""
-from app.ingestion.chunkers.recursive import RecursiveChunker
+"""Text chunking used by layout-aware PDF ingestion."""
+from app.ingestion.chunkers.semantic import SemanticChunker
 
-__all__ = ["RecursiveChunker"]
+__all__ = ["SemanticChunker"]

@@ -11,7 +11,7 @@ from app.api.schemas.query import ChatQueryRequest, SearchQueryRequest
 from app.core.config import settings
 from app.core.api_response import register_exception_handlers
 from app.core.exceptions import AppError
-from app.ingestion.chunkers.recursive import RecursiveChunker
+from app.ingestion.chunkers.semantic import SemanticChunker
 from app.embeddings.base import EmbeddingService
 from app.generation.llm.base import LLMService
 from app.ingestion.parsers.layout_parser import (
@@ -33,7 +33,7 @@ def test_chunker_splits_text_with_overlap():
         "Hệ thống RAG lưu trữ dữ liệu trong PostgreSQL với pgvector. "
         "Hệ thống hỗ trợ tìm kiếm vector và tìm kiếm kết hợp."
     )
-    chunks = RecursiveChunker.split_text(sample_text, chunk_size=50, chunk_overlap=10)
+    chunks = SemanticChunker().split(sample_text, chunk_size=50, chunk_overlap=10)
 
     assert len(chunks) > 1
     assert chunks[0]["chunk_index"] == 0
@@ -46,7 +46,7 @@ def test_chunker_splits_text_with_overlap():
 )
 def test_chunker_rejects_invalid_windows(chunk_size, chunk_overlap):
     with pytest.raises(ValueError):
-        RecursiveChunker.split_text(
+        SemanticChunker().split(
             "Nội dung thử nghiệm",
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
@@ -84,31 +84,6 @@ def test_embedding_batches_non_empty_documents():
 
     assert fake_client.calls == [["first", "second"]]
     assert [vector[0] for vector in vectors] == [1.0, 0.0, 2.0]
-
-
-def test_cohere_embedding_respects_provider_batch_limit(monkeypatch):
-    class _FakeCohereEmbeddings:
-        def __init__(self):
-            self.calls = []
-
-        def embed_documents(self, texts):
-            self.calls.append(texts)
-            return [[0.25] * settings.EMBEDDING_DIMENSION for _ in texts]
-
-    monkeypatch.setattr(settings, "COHERE_EMBEDDING_BATCH_SIZE", 2)
-    service = EmbeddingService(provider="cohere")
-    fake_client = _FakeCohereEmbeddings()
-    service._client = fake_client
-
-    vectors = service.get_embeddings(["one", "two", "three", "four", "five"])
-
-    assert fake_client.calls == [
-        ["one", "two"],
-        ["three", "four"],
-        ["five"],
-    ]
-    assert len(vectors) == 5
-    assert all(len(vector) == settings.EMBEDDING_DIMENSION for vector in vectors)
 
 
 def test_embedding_retries_provider_rate_limit(monkeypatch):
@@ -182,20 +157,6 @@ def test_embedding_provider_requires_api_key(monkeypatch):
 
     with pytest.raises(RuntimeError, match="OPENAI_API_KEY"):
         EmbeddingService(provider="openai").get_embedding("test")
-
-
-def test_cohere_embedding_provider_requires_api_key(monkeypatch):
-    monkeypatch.setattr(settings, "COHERE_API_KEY", "")
-
-    with pytest.raises(RuntimeError, match="COHERE_API_KEY"):
-        EmbeddingService(provider="cohere").get_embedding("test")
-
-
-def test_cohere_llm_provider_requires_api_key(monkeypatch):
-    monkeypatch.setattr(settings, "COHERE_API_KEY", "")
-
-    with pytest.raises(RuntimeError, match="COHERE_API_KEY"):
-        LLMService(provider="cohere").generate_response("test")
 
 
 def test_prompt_builder_includes_sources_and_query():

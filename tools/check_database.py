@@ -6,7 +6,7 @@ from sqlalchemy import text
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app.database import check_database_ready, engine
+from app.storage.database.postgres import check_database_ready, engine
 
 
 def main():
@@ -23,7 +23,7 @@ def main():
             SELECT tablename, indexname
             FROM pg_indexes
             WHERE schemaname = 'public'
-              AND tablename IN ('documents', 'document_chunks')
+              AND tablename IN ('documents', 'document_nodes')
             ORDER BY tablename, indexname
         """)).fetchall()
 
@@ -35,9 +35,9 @@ def main():
 
     actual_indexes = {row.indexname for row in indexes}
     required_indexes = {
-        "ix_document_chunks_document_id",
-        "ix_document_chunks_embedding_hnsw",
-        "ix_document_chunks_fts_simple",
+        "ix_document_nodes_document_id",
+        "ix_document_nodes_embedding_hnsw",
+        "ix_document_nodes_fts_simple",
     }
     missing_indexes = required_indexes - actual_indexes
     if missing_indexes:

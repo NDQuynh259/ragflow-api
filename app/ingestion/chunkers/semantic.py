@@ -1,19 +1,22 @@
-"""Lightweight semantic chunker for layout text blocks.
-
-The project does not yet ship a sentence-transformer model for embedding-based
-topic boundaries.  Until that adapter is added, paragraph boundaries are kept
-intact where possible and oversized paragraphs use the existing recursive
-splitter.  The public contract stays compatible with a future semantic model.
-"""
+"""Semantic chunking for text blocks emitted by the PDF layout parser."""
 from typing import Any
 
-from app.ingestion.chunkers.base import BaseChunker
-from app.ingestion.chunkers.recursive import RecursiveChunker
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
-class SemanticChunker(BaseChunker):
+class SemanticChunker:
     """Split text into semantic chunks."""
     def split(self, text: str, chunk_size: int = 1200, chunk_overlap: int = 200) -> list[dict[str, Any]]:
+        if chunk_size <= 0 or chunk_overlap < 0 or chunk_overlap >= chunk_size:
+            raise ValueError("chunk_overlap must be non-negative and smaller than chunk_size")
         if not text or not text.strip():
             return []
-        return RecursiveChunker.split_text(text, chunk_size, chunk_overlap)
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            separators=["\n\n", "\n", ". ", " ", ""],
+        )
+        return [
+            {"chunk_index": index, "content": chunk}
+            for index, chunk in enumerate(splitter.split_text(text))
+        ]

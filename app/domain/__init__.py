@@ -1,10 +1,9 @@
-"""Domain entities: Document, Chunk, Node, RetrievalResult."""
+"""Persisted document and document-node entities."""
 from app.domain.document import Document
+from app.domain.document_node import DocumentNode
 from app.domain.mixins import IdentifierMixin, AuditMixin
-from app.domain.node import Node
-from app.domain.retrieval_result import RetrievalResult
 
 __all__ = [
-    "Document", "DocumentNode", "Node", "RetrievalResult",
+    "Document", "DocumentNode",
     "IdentifierMixin", "AuditMixin",
 ]

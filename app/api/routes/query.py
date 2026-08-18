@@ -18,4 +18,4 @@ def search_retrieval(payload: SearchQueryRequest, db: Session = Depends(get_db))
 
 @router.post("/query", response_model=ApiResponse[ChatQueryResponse])
 def chat_rag_query(payload: ChatQueryRequest, db: Session = Depends(get_db)):
-    return success_response(RAGGenerator().generate(db, payload))
+    return success_response(RAGGenerator().query(db, payload))
