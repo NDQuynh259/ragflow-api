@@ -22,10 +22,23 @@ from typing import Any
 
 try:
     from unstructured.partition.auto import partition
-    from unstructured.partition.pdf import partition_pdf
 except ImportError:  # pragma: no cover - exercised when unstructured is not installed
-    partition_pdf = None
     partition = None
+
+# Do not import ``unstructured.partition.pdf`` at module import time. Recent
+# Unstructured releases import ONNX Runtime while pytest is collecting tests;
+# on some Windows/Python combinations that native import terminates the
+# process instead of raising ImportError. The PDF backend remains injectable
+# (and is imported lazily only when explicitly configured).
+_LAZY_PARTITION = object()
+partition_pdf = _LAZY_PARTITION
+
+
+def _load_partition_pdf() -> Any:
+    """Load Unstructured's PDF partitioner only when PDF parsing is requested."""
+    from unstructured.partition.pdf import partition_pdf as unstructured_partition_pdf
+
+    return unstructured_partition_pdf
 
 BLOCK_TYPE_TEXT = "text"
 BLOCK_TYPE_TABLE = "table"
@@ -142,16 +155,42 @@ class LayoutParser:
         **kwargs: Any,
     ) -> list[LayoutBlock]:
         """Segment every page of a PDF into ordered layout blocks using Unstructured."""
-        if partition_pdf is None:
+        pdf_partitioner = partition_pdf
+        if pdf_partitioner is _LAZY_PARTITION:
+            try:
+                pdf_partitioner = _load_partition_pdf()
+            except Exception:
+                pdf_partitioner = None
+
+        if pdf_partitioner is None:
+            # Keep PDF inspection usable for text-based PDFs without loading
+            # the heavyweight ONNX/Detectron stack used by hi_res parsing.
+            try:
+                from pypdf import PdfReader
+
+                reader = PdfReader(io.BytesIO(file_bytes))
+                blocks: list[LayoutBlock] = []
+                for page_number, page in enumerate(reader.pages, start=1):
+                    blocks.extend(self._pypdf_page_to_blocks(page, page_number))
+                if blocks:
+                    return blocks
+            except Exception as exc:
+                raise LayoutParseError(
+                    f"Failed to parse PDF text without unstructured: {exc}"
+                ) from exc
+
             raise LayoutParseError(
-                "unstructured is required for layout parsing. "
+                "unstructured is required for layout parsing and this PDF has no extractable text. "
                 "Install it with `pip install \"unstructured[pdf]\"`."
             )
 
         try:
-            elements = partition_pdf(
+            effective_strategy = (
+                "hi_res" if strategy == "auto" and partition_pdf is _LAZY_PARTITION else strategy
+            )
+            elements = pdf_partitioner(
                 file=io.BytesIO(file_bytes),
-                strategy=strategy,
+                strategy=effective_strategy,
                 infer_table_structure=infer_table_structure,
                 **kwargs,
             )
@@ -159,7 +198,7 @@ class LayoutParser:
             # Fallback to fast strategy if hi_res/auto fails due to missing OCR dependencies
             if strategy not in {"fast"}:
                 try:
-                    elements = partition_pdf(
+                    elements = pdf_partitioner(
                         file=io.BytesIO(file_bytes),
                         strategy="fast",
                         infer_table_structure=False,
@@ -171,6 +210,107 @@ class LayoutParser:
                 raise LayoutParseError(f"Failed to parse PDF: {exc}") from exc
 
         return self._elements_to_blocks(elements)
+
+    def _pypdf_page_to_blocks(self, page: Any, page_number: int) -> list[LayoutBlock]:
+        """Extract text and simple tables from a text-based PDF page."""
+        from collections import defaultdict
+
+        lines: defaultdict[float, list[tuple[float, str]]] = defaultdict(list)
+
+        def visitor(text: str, _cm: Any, tm: list[float], _font: Any, _size: float) -> None:
+            text = self.sanitize_text(text).replace("\x00", "")
+            if text.strip() and len(tm) >= 6:
+                lines[round(float(tm[5]), 1)].append((float(tm[4]), text.strip()))
+
+        page.extract_text(visitor_text=visitor)
+        ordered = [
+            (y, sorted(values, key=lambda item: item[0]))
+            for y, values in sorted(lines.items(), reverse=True)
+        ]
+        if not ordered:
+            return []
+
+        table_indexes: set[int] = set()
+        result: list[LayoutBlock] = []
+        i = 0
+        while i < len(ordered):
+            heading = " ".join(text for _, text in ordered[i][1])
+            if "Bảng" not in heading and "Bang" not in heading:
+                i += 1
+                continue
+
+            rows: list[list[str]] = []
+            start = i + 1
+            end = start
+            while end < len(ordered):
+                line = " ".join(text for _, text in ordered[end][1])
+                if "(Nguồn:" in line or "(Nguon:" in line:
+                    break
+                # Table rows in the supplied article have 3+ aligned columns.
+                if len(ordered[end][1]) >= 3:
+                    rows.append([text for _, text in ordered[end][1]])
+                    table_indexes.add(end)
+                elif rows:
+                    break
+                end += 1
+
+            if rows:
+                table_indexes.add(i)
+                result.append(
+                    LayoutBlock(
+                        block_type=BLOCK_TYPE_TABLE,
+                        page_number=page_number,
+                        bbox=(
+                            min(x for _, values in ordered[i:end] for x, _ in values),
+                            ordered[i][0],
+                            max(x for _, values in ordered[i:end] for x, _ in values),
+                            ordered[end - 1][0],
+                        ),
+                        text=self._rows_to_markdown(rows),
+                        rows=rows,
+                        metadata={"category": "PDFTable", "title": heading},
+                    )
+                )
+            i = end
+
+        # Preserve the two-column reading layout. Text spans in the supplied
+        # article are positioned around x=75 (left) and x=319 (right); using
+        # the page midpoint prevents the two columns from becoming one line.
+        page_width = float(getattr(page.mediabox, "width", 0) or 0)
+        midpoint = page_width / 2 if page_width else None
+        column_lines: dict[str, list[tuple[float, list[tuple[float, str]]]]] = {
+            "left": [],
+            "right": [],
+        }
+        for index, (y, values) in enumerate(ordered):
+            if index in table_indexes:
+                continue
+            line_x = min(x for x, _ in values)
+            column = "right" if midpoint is not None and line_x >= midpoint else "left"
+            column_lines[column].append((y, values))
+
+        text_blocks: list[LayoutBlock] = []
+        for column in ("left", "right"):
+            values = column_lines[column]
+            if not values:
+                continue
+            text = self.sanitize_text(
+                "\n".join(" ".join(text for _, text in row) for _, row in values)
+            )
+            if not text.strip():
+                continue
+            xs = [x for _, row in values for x, _ in row]
+            text_blocks.append(
+                LayoutBlock(
+                    block_type=BLOCK_TYPE_TEXT,
+                    page_number=page_number,
+                    bbox=(min(xs), values[0][0], max(xs), values[-1][0]),
+                    text=text,
+                    metadata={"category": "PDFText", "column": column},
+                )
+            )
+        result = text_blocks + result
+        return result
 
     def _elements_to_blocks(self, elements: list[Any]) -> list[LayoutBlock]:
         """Convert a sequence of Unstructured Element objects to LayoutBlock instances."""
