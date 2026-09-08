@@ -17,3 +17,6 @@ __pycache__/
 # Build
 build/
 dist/
+
+# Generated parser outputs
+outputs/
