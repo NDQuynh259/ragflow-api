@@ -95,10 +95,47 @@ class OpenDataLoaderParser:
 
     @staticmethod
     def _text(item: dict[str, Any]) -> str:
-        value = item.get("content", item.get("text", item.get("value", "")))
-        if not value and isinstance(item.get("rows"), list):
-            value = "\n".join(" | ".join(str(cell or "") for cell in row) for row in item["rows"])
-        return value if isinstance(value, str) else str(value or "")
+        """Extract visible text from OpenDataLoader's nested JSON.
+
+        Tables and lists commonly store their real content below ``kids`` or
+        ``cells``.  Reading only the top-level ``content`` loses that text and
+        produces empty elements that cannot be indexed by RAG.
+        """
+        parts: list[str] = []
+
+        for key in ("content", "text", "value", "label", "title"):
+            value = item.get(key)
+            if isinstance(value, str) and value.strip():
+                parts.append(value.strip())
+
+        for key in ("kids", "children", "items", "list_items"):
+            children = item.get(key)
+            if isinstance(children, list):
+                for child in children:
+                    if isinstance(child, dict):
+                        child_text = OpenDataLoaderParser._text(child)
+                        if child_text:
+                            parts.append(child_text)
+
+        rows = item.get("rows")
+        if isinstance(rows, list):
+            for row in rows:
+                if isinstance(row, dict):
+                    row_text = OpenDataLoaderParser._text(row)
+                    cells = row.get("cells")
+                    if isinstance(cells, list):
+                        cell_text = [OpenDataLoaderParser._text(cell) for cell in cells if isinstance(cell, dict)]
+                        row_text = " | ".join(part for part in cell_text if part) or row_text
+                    if row_text:
+                        parts.append(row_text)
+                elif isinstance(row, list):
+                    cells = [str(cell).strip() for cell in row if cell is not None and str(cell).strip()]
+                    if cells:
+                        parts.append(" | ".join(cells))
+
+        # Preserve order while removing duplicates caused by parent/child
+        # objects repeating the same visible text.
+        return "\n".join(dict.fromkeys(parts))
 
     @staticmethod
     def _number(item: dict[str, Any], *keys: str, default: int = 1) -> int:
@@ -111,9 +148,16 @@ class OpenDataLoaderParser:
     @staticmethod
     def _bbox(item: dict[str, Any]) -> tuple[float, float, float, float] | None:
         value = item.get("bounding box", item.get("bbox", item.get("bounding_box")))
+        if isinstance(value, str):
+            try:
+                value = [float(part) for part in value.replace(",", " ").split()]
+            except ValueError:
+                value = None
         if isinstance(value, dict):
             value = [value.get(k) for k in ("left", "bottom", "right", "top")]
         if not isinstance(value, (list, tuple)) or len(value) != 4:
             return None
-        try: return tuple(float(v) for v in value)  # type: ignore[return-value]
+        try:
+            x0, y0, x1, y1 = (float(v) for v in value)
+            return (min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
         except (TypeError, ValueError): return None

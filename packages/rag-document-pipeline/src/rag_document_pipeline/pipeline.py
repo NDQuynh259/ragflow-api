@@ -1,67 +1,136 @@
-﻿from __future__ import annotations
+from __future__ import annotations
+
 import re
 import uuid
-from rag_document_pipeline.models import DocumentChunk, ProcessedDocument
+from collections import defaultdict
+
+from rag_document_pipeline.models import DocumentChunk, LayoutElement, ProcessedDocument
 from rag_document_pipeline.parsers import OpenDataLoaderParser, Parser
 
+CAPTION_RE = re.compile(r"^(?:hình|hinh|figure|fig\.?|sơ đồ|so do|diagram)\b", re.I)
+VISUAL_TYPES = {"image", "figure", "shape", "connector", "line", "arrow", "list", "caption"}
+
+
 class DocumentPipeline:
+    """Layout-aware chunking for arbitrary PDF layouts."""
+
     def __init__(self, parser: Parser | None = None, *, chunk_size: int = 1200, chunk_overlap: int = 200):
-        if chunk_size <= 0 or not 0 <= chunk_overlap < chunk_size: raise ValueError("Invalid chunk window")
-        self.parser, self.chunk_size, self.chunk_overlap = parser or OpenDataLoaderParser(), chunk_size, chunk_overlap
+        if chunk_size <= 0 or not 0 <= chunk_overlap < chunk_size:
+            raise ValueError("Invalid chunk window")
+        self.parser = parser or OpenDataLoaderParser()
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
 
     def process(self, content: bytes, *, filename: str, document_id: str) -> ProcessedDocument:
         elements = self.parser.parse(content, filename=filename)
-        chunks: list[DocumentChunk] = []
-        diagram_groups = self._find_diagram_groups(elements)
-        grouped_ids = {
-            element_id
-            for group_ids, _ in diagram_groups.values()
-            for element_id in group_ids[1:]
-        }
+        regions = self._find_figure_regions(elements)
+        grouped_ids = {element_id for region in regions for element_id in region["ids"]}
+        chunks = [self._figure_chunk(document_id, region, i) for i, region in enumerate(regions)]
+
         for element in elements:
             if element.id in grouped_ids:
                 continue
-            text = element.text.strip()
+            text = self._clean_text(element.text)
             if not text:
-                if element.type in {"image", "figure"}:
-                    group_ids, group_elements = diagram_groups.get(element.id, ([element.id], [element]))
-                    diagram_text = "\n".join(item.text.strip() for item in group_elements if item.text.strip())
-                    chunks.append(DocumentChunk(
-                        id=str(uuid.uuid4()), document_id=document_id,
-                        content=element.caption or diagram_text or f"Figure on page {element.page_number}",
-                        index=len(chunks), page_start=min(item.page_number for item in group_elements),
-                        page_end=max(item.page_number for item in group_elements), element_ids=group_ids,
-                        bboxes=[item.bbox for item in group_elements if item.bbox],
-                        kind="figure", indexable=bool(element.caption or diagram_text),
-                        metadata={"image_source": element.source, "has_caption": bool(element.caption), "diagram_group": group_ids},
-                    ))
                 continue
+            kind = "table" if element.type.lower() == "table" else "text"
             step = self.chunk_size - self.chunk_overlap
-            for index, start in enumerate(range(0, len(text), step)):
-                value = re.sub(r"\s+", " ", text[start:start+self.chunk_size]).strip()
+            for start in range(0, len(text), step):
+                value = self._clean_text(text[start:start + self.chunk_size])
                 if value:
-                    chunks.append(DocumentChunk(id=str(uuid.uuid4()), document_id=document_id, content=value, index=len(chunks), page_start=element.page_number, page_end=element.page_number, element_ids=[element.id], bboxes=[element.bbox] if element.bbox else [], kind="table" if element.type == "table" else "text", indexable=True, metadata={"element_type": element.type}))
-        return ProcessedDocument(document_id=document_id, filename=filename, page_count=max((e.page_number for e in elements), default=0), elements=elements, chunks=chunks)
+                    chunks.append(DocumentChunk(
+                        id=str(uuid.uuid4()), document_id=document_id, content=value,
+                        index=len(chunks), page_start=element.page_number, page_end=element.page_number,
+                        element_ids=[element.id], bboxes=[element.bbox] if element.bbox else [],
+                        kind=kind, metadata={"element_type": element.type},
+                    ))
+
+        chunks.sort(key=lambda chunk: (chunk.page_start, chunk.index))
+        for index, chunk in enumerate(chunks):
+            chunk.index = index
+        return ProcessedDocument(
+            document_id=document_id, filename=filename,
+            page_count=max((element.page_number for element in elements), default=0),
+            elements=elements, chunks=chunks,
+        )
+
+    @staticmethod
+    def _clean_text(value: str) -> str:
+        return re.sub(r"\s+", " ", value or "").strip()
 
     @classmethod
-    def _find_diagram_groups(cls, elements):
-        """Group an image/icon with nearby heading and text belonging to one diagram."""
-        groups = {}
-        for image in (e for e in elements if e.type in {"image", "figure"} and e.bbox):
-            ix = (image.bbox[0] + image.bbox[2]) / 2
-            candidates = [
-                e for e in elements
-                if e is not image and e.page_number == image.page_number and e.bbox
-                and e.type in {"heading", "paragraph", "list", "caption"}
-            ]
-            related = []
-            for e in candidates:
-                overlap = min(image.bbox[2], e.bbox[2]) - max(image.bbox[0], e.bbox[0])
-                center_in = e.bbox[0] <= ix <= e.bbox[2]
-                near = abs(e.bbox[1] - image.bbox[1]) <= 140 or abs(e.bbox[3] - image.bbox[1]) <= 140
-                if (overlap > 0 or center_in) and near:
-                    related.append(e)
-            related.sort(key=lambda e: e.order)
-            if related:
-                groups[image.id] = ([image.id, *[e.id for e in related]], [image, *related])
-        return groups
+    def _find_figure_regions(cls, elements: list[LayoutElement]) -> list[dict]:
+        by_page: dict[int, list[LayoutElement]] = defaultdict(list)
+        for element in elements:
+            by_page[element.page_number].append(element)
+
+        regions: list[dict] = []
+        for page, page_elements in by_page.items():
+            captions = [element for element in page_elements if cls._is_caption(element)]
+            for caption in captions:
+                candidates = [
+                    element for element in page_elements
+                    if element.id != caption.id and element.bbox and element.order < caption.order
+                    and cls._near_caption(element, caption)
+                ]
+                # A vector infographic may contain only paragraphs/headings and
+                # no element explicitly typed as image/figure.  A caption plus
+                # a dense set of nearby positioned elements is still evidence
+                # of a visual region, while a lone caption is not.
+                visual_signal = any(element.type.lower() in VISUAL_TYPES for element in candidates)
+                dense_layout = len(candidates) >= 4
+                if not visual_signal and not dense_layout:
+                    continue
+                region = {"page": page, "caption": caption, "elements": sorted([*candidates, caption], key=lambda e: e.order)}
+                region["ids"] = [element.id for element in region["elements"]]
+                cls._merge_region(regions, region)
+
+        grouped = {element_id for region in regions for element_id in region["ids"]}
+        for element in elements:
+            if element.id not in grouped and element.type.lower() in {"image", "figure"} and element.bbox:
+                regions.append({"page": element.page_number, "caption": None, "elements": [element], "ids": [element.id]})
+        return sorted(regions, key=lambda region: (region["page"], min(e.order for e in region["elements"])))
+
+    @staticmethod
+    def _is_caption(element: LayoutElement) -> bool:
+        return element.type.lower() in {"caption", "figure_caption"} or bool(CAPTION_RE.match((element.text or "").strip()))
+
+    @staticmethod
+    def _near_caption(element: LayoutElement, caption: LayoutElement) -> bool:
+        if not element.bbox or not caption.bbox:
+            return False
+        ey0, ey1, cy0, cy1 = element.bbox[1], element.bbox[3], caption.bbox[1], caption.bbox[3]
+        return max(cy0 - ey1, ey0 - cy1, 0) <= 180
+
+    @staticmethod
+    def _merge_region(regions: list[dict], region: dict) -> None:
+        ids = set(region["ids"])
+        for existing in regions:
+            if existing["page"] != region["page"] or not ids.intersection(existing["ids"]):
+                continue
+            merged = {element.id: element for element in [*existing["elements"], *region["elements"]]}
+            existing["elements"] = sorted(merged.values(), key=lambda e: e.order)
+            existing["ids"] = [element.id for element in existing["elements"]]
+            if existing.get("caption") is None:
+                existing["caption"] = region.get("caption")
+            return
+        regions.append(region)
+
+    @classmethod
+    def _figure_chunk(cls, document_id: str, region: dict, index: int) -> DocumentChunk:
+        elements = region["elements"]
+        texts = [cls._clean_text(element.text) for element in elements if cls._clean_text(element.text)]
+        content = "[FIGURE]\n" + "\n".join(dict.fromkeys(texts))
+        if not texts:
+            content += f"\nVisual figure on page {region['page']}"
+        return DocumentChunk(
+            id=str(uuid.uuid4()), document_id=document_id, content=content, index=index,
+            page_start=region["page"], page_end=region["page"], element_ids=region["ids"],
+            bboxes=[element.bbox for element in elements if element.bbox],
+            kind="diagram" if len(elements) > 1 else "figure", indexable=bool(texts),
+            metadata={
+                "caption": region["caption"].text if region.get("caption") else None,
+                "image_sources": [element.source for element in elements if element.source],
+                "element_count": len(elements), "grouping": "caption_geometry",
+            },
+        )
