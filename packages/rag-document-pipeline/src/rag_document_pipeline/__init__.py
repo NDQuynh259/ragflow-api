@@ -1,4 +1,21 @@
-from .models import DocumentChunk, LayoutElement, ProcessedDocument
+from .models import (
+    DocumentChunk,
+    ElementType,
+    ImageData,
+    LayoutElement,
+    ParsedDocument,
+    ProcessedDocument,
+    TableData,
+)
 from .pipeline import DocumentPipeline
 
-__all__ = ["DocumentChunk", "LayoutElement", "ProcessedDocument", "DocumentPipeline"]
+__all__ = [
+    "DocumentChunk",
+    "DocumentPipeline",
+    "ElementType",
+    "ImageData",
+    "LayoutElement",
+    "ParsedDocument",
+    "ProcessedDocument",
+    "TableData",
+]

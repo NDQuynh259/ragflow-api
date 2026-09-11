@@ -1,2 +1,23 @@
-# RAG Platform workspace placeholder
-# TODO: Add workspace dependencies when implementation starts.
+[project]
+name = "ragflow-api"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["python-dotenv>=1.0"]
+
+[tool.uv.workspace]
+members = [
+    "packages/rag-contracts",
+    "packages/rag-document-pipeline",
+    "packages/rag-core",
+    "apps/chat-api",
+    "workers/document-worker",
+]
+
+[tool.uv.sources]
+rag-contracts = { workspace = true }
+rag-document-pipeline = { workspace = true }
+rag-core = { workspace = true }
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

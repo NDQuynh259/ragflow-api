@@ -1,136 +1,234 @@
+"""Document processing pipeline.
+
+Orchestrates: parse → normalize → type-aware chunking → validate.
+
+The pipeline uses Docling as the default parser and HeadingAwareChunker
+as the default chunker.  Both can be replaced via constructor injection.
+"""
+
 from __future__ import annotations
 
 import re
-import uuid
-from collections import defaultdict
+import unicodedata
 
-from rag_document_pipeline.models import DocumentChunk, LayoutElement, ProcessedDocument
-from rag_document_pipeline.parsers import OpenDataLoaderParser, Parser
-
-CAPTION_RE = re.compile(r"^(?:hình|hinh|figure|fig\.?|sơ đồ|so do|diagram)\b", re.I)
-VISUAL_TYPES = {"image", "figure", "shape", "connector", "line", "arrow", "list", "caption"}
+from rag_document_pipeline.chunkers.base import Chunker
+from rag_document_pipeline.chunkers.heading_aware import HeadingAwareChunker
+from rag_document_pipeline.models import (
+    DocumentChunk,
+    LayoutElement,
+    ParsedDocument,
+    ProcessedDocument,
+)
+from rag_document_pipeline.parsers.base import Parser
 
 
 class DocumentPipeline:
-    """Layout-aware chunking for arbitrary PDF layouts."""
+    """Layout-aware, type-specific document processing pipeline.
 
-    def __init__(self, parser: Parser | None = None, *, chunk_size: int = 1200, chunk_overlap: int = 200):
+    Flow::
+
+        PDF bytes
+          → Parser (Docling or OpenDataLoader)
+          → Normalize (Unicode NFC, mojibake repair, whitespace)
+          → Type-aware chunking (text / table / image)
+          → Validate chunks
+          → ProcessedDocument
+    """
+
+    def __init__(
+        self,
+        parser: Parser | None = None,
+        chunker: Chunker | None = None,
+        *,
+        chunk_size: int = 1200,
+        chunk_overlap: int = 200,
+    ) -> None:
         if chunk_size <= 0 or not 0 <= chunk_overlap < chunk_size:
             raise ValueError("Invalid chunk window")
-        self.parser = parser or OpenDataLoaderParser()
+
+        # Default: Docling parser, fallback to OpenDataLoader if not available
+        if parser is not None:
+            self.parser = parser
+        else:
+            self.parser = self._default_parser()
+
+        self.chunker: Chunker = chunker or HeadingAwareChunker(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+        )
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
 
-    def process(self, content: bytes, *, filename: str, document_id: str) -> ProcessedDocument:
+    def process(
+        self,
+        content: bytes,
+        *,
+        filename: str,
+        document_id: str,
+    ) -> ProcessedDocument:
+        """Run the full pipeline: parse → normalize → chunk → validate."""
+
+        # 1. Parse
         elements = self.parser.parse(content, filename=filename)
-        regions = self._find_figure_regions(elements)
-        grouped_ids = {element_id for region in regions for element_id in region["ids"]}
-        chunks = [self._figure_chunk(document_id, region, i) for i, region in enumerate(regions)]
 
-        for element in elements:
-            if element.id in grouped_ids:
-                continue
-            text = self._clean_text(element.text)
-            if not text:
-                continue
-            kind = "table" if element.type.lower() == "table" else "text"
-            step = self.chunk_size - self.chunk_overlap
-            for start in range(0, len(text), step):
-                value = self._clean_text(text[start:start + self.chunk_size])
-                if value:
-                    chunks.append(DocumentChunk(
-                        id=str(uuid.uuid4()), document_id=document_id, content=value,
-                        index=len(chunks), page_start=element.page_number, page_end=element.page_number,
-                        element_ids=[element.id], bboxes=[element.bbox] if element.bbox else [],
-                        kind=kind, metadata={"element_type": element.type},
-                    ))
+        # 2. Normalize
+        elements = self._normalize(elements)
 
-        chunks.sort(key=lambda chunk: (chunk.page_start, chunk.index))
-        for index, chunk in enumerate(chunks):
-            chunk.index = index
+        # 3. Chunk (type-aware via HeadingAwareChunker)
+        chunks = self.chunker.chunk(elements, document_id=document_id)
+
+        # 4. Validate
+        chunks = self._validate(chunks, document_id=document_id)
+
         return ProcessedDocument(
-            document_id=document_id, filename=filename,
-            page_count=max((element.page_number for element in elements), default=0),
-            elements=elements, chunks=chunks,
+            document_id=document_id,
+            filename=filename,
+            page_count=max(
+                (el.page_number for el in elements), default=0
+            ),
+            elements=elements,
+            chunks=chunks,
         )
+
+    def parse_and_separate(
+        self,
+        content: bytes,
+        *,
+        filename: str,
+        document_id: str,
+    ) -> ParsedDocument:
+        """Parse and separate elements by type without chunking.
+
+        Useful for inspecting intermediate results or for custom
+        chunking strategies.
+        """
+        elements = self.parser.parse(content, filename=filename)
+        elements = self._normalize(elements)
+
+        text_elements = [
+            el
+            for el in elements
+            if el.type in {"text", "heading", "paragraph", "list", "caption", "formula"}
+        ]
+        table_elements = [
+            el for el in elements if el.type == "table"
+        ]
+        image_elements = [
+            el for el in elements if el.type in {"image", "figure"}
+        ]
+
+        return ParsedDocument(
+            document_id=document_id,
+            filename=filename,
+            page_count=max(
+                (el.page_number for el in elements), default=0
+            ),
+            text_elements=text_elements,
+            table_elements=table_elements,
+            image_elements=image_elements,
+            all_elements=elements,
+            metadata={
+                "parser": type(self.parser).__name__,
+                "text_count": len(text_elements),
+                "table_count": len(table_elements),
+                "image_count": len(image_elements),
+            },
+        )
+
+    # ------------------------------------------------------------------
+    # Normalization
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def _normalize(cls, elements: list[LayoutElement]) -> list[LayoutElement]:
+        """Unicode NFC normalization, mojibake repair, whitespace cleanup."""
+        for el in elements:
+            el.text = cls._clean_text(el.text)
+            if el.caption:
+                el.caption = cls._clean_text(el.caption)
+            if el.image_data and el.image_data.caption:
+                el.image_data.caption = cls._clean_text(
+                    el.image_data.caption
+                )
+        return elements
 
     @staticmethod
     def _clean_text(value: str) -> str:
-        return re.sub(r"\s+", " ", value or "").strip()
+        """Normalize Unicode, repair mojibake, clean whitespace."""
+        if not value:
+            return value
 
-    @classmethod
-    def _find_figure_regions(cls, elements: list[LayoutElement]) -> list[dict]:
-        by_page: dict[int, list[LayoutElement]] = defaultdict(list)
-        for element in elements:
-            by_page[element.page_number].append(element)
+        # Unicode NFC normalization
+        value = unicodedata.normalize("NFC", value)
 
-        regions: list[dict] = []
-        for page, page_elements in by_page.items():
-            captions = [element for element in page_elements if cls._is_caption(element)]
-            for caption in captions:
-                candidates = [
-                    element for element in page_elements
-                    if element.id != caption.id and element.bbox and element.order < caption.order
-                    and cls._near_caption(element, caption)
-                ]
-                # A vector infographic may contain only paragraphs/headings and
-                # no element explicitly typed as image/figure.  A caption plus
-                # a dense set of nearby positioned elements is still evidence
-                # of a visual region, while a lone caption is not.
-                visual_signal = any(element.type.lower() in VISUAL_TYPES for element in candidates)
-                dense_layout = len(candidates) >= 4
-                if not visual_signal and not dense_layout:
-                    continue
-                region = {"page": page, "caption": caption, "elements": sorted([*candidates, caption], key=lambda e: e.order)}
-                region["ids"] = [element.id for element in region["elements"]]
-                cls._merge_region(regions, region)
+        # Remove control characters (keep newlines and tabs)
+        value = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", value)
 
-        grouped = {element_id for region in regions for element_id in region["ids"]}
-        for element in elements:
-            if element.id not in grouped and element.type.lower() in {"image", "figure"} and element.bbox:
-                regions.append({"page": element.page_number, "caption": None, "elements": [element], "ids": [element.id]})
-        return sorted(regions, key=lambda region: (region["page"], min(e.order for e in region["elements"])))
+        # Collapse excessive whitespace but preserve paragraph breaks
+        value = re.sub(r"[ \t]+", " ", value)
+        value = re.sub(r"\n{3,}", "\n\n", value)
+
+        return value.strip()
+
+    # ------------------------------------------------------------------
+    # Validation
+    # ------------------------------------------------------------------
 
     @staticmethod
-    def _is_caption(element: LayoutElement) -> bool:
-        return element.type.lower() in {"caption", "figure_caption"} or bool(CAPTION_RE.match((element.text or "").strip()))
+    def _validate(
+        chunks: list[DocumentChunk],
+        *,
+        document_id: str,
+    ) -> list[DocumentChunk]:
+        """Validate chunks and filter out invalid ones."""
+        valid: list[DocumentChunk] = []
+        seen_ids: set[str] = set()
 
-    @staticmethod
-    def _near_caption(element: LayoutElement, caption: LayoutElement) -> bool:
-        if not element.bbox or not caption.bbox:
-            return False
-        ey0, ey1, cy0, cy1 = element.bbox[1], element.bbox[3], caption.bbox[1], caption.bbox[3]
-        return max(cy0 - ey1, ey0 - cy1, 0) <= 180
-
-    @staticmethod
-    def _merge_region(regions: list[dict], region: dict) -> None:
-        ids = set(region["ids"])
-        for existing in regions:
-            if existing["page"] != region["page"] or not ids.intersection(existing["ids"]):
+        for chunk in chunks:
+            # Content check
+            if chunk.indexable and not chunk.content.strip():
                 continue
-            merged = {element.id: element for element in [*existing["elements"], *region["elements"]]}
-            existing["elements"] = sorted(merged.values(), key=lambda e: e.order)
-            existing["ids"] = [element.id for element in existing["elements"]]
-            if existing.get("caption") is None:
-                existing["caption"] = region.get("caption")
-            return
-        regions.append(region)
 
-    @classmethod
-    def _figure_chunk(cls, document_id: str, region: dict, index: int) -> DocumentChunk:
-        elements = region["elements"]
-        texts = [cls._clean_text(element.text) for element in elements if cls._clean_text(element.text)]
-        content = "[FIGURE]\n" + "\n".join(dict.fromkeys(texts))
-        if not texts:
-            content += f"\nVisual figure on page {region['page']}"
-        return DocumentChunk(
-            id=str(uuid.uuid4()), document_id=document_id, content=content, index=index,
-            page_start=region["page"], page_end=region["page"], element_ids=region["ids"],
-            bboxes=[element.bbox for element in elements if element.bbox],
-            kind="diagram" if len(elements) > 1 else "figure", indexable=bool(texts),
-            metadata={
-                "caption": region["caption"].text if region.get("caption") else None,
-                "image_sources": [element.source for element in elements if element.source],
-                "element_count": len(elements), "grouping": "caption_geometry",
-            },
-        )
+            # Document ID consistency
+            if chunk.document_id != document_id:
+                chunk.document_id = document_id
+
+            # Unique ID
+            if chunk.id in seen_ids:
+                import uuid
+
+                chunk.id = str(uuid.uuid4())
+            seen_ids.add(chunk.id)
+
+            # Page bounds
+            if chunk.page_start > chunk.page_end:
+                chunk.page_start, chunk.page_end = (
+                    chunk.page_end,
+                    chunk.page_start,
+                )
+
+            valid.append(chunk)
+
+        # Re-index
+        for idx, chunk in enumerate(valid):
+            chunk.index = idx
+
+        return valid
+
+    # ------------------------------------------------------------------
+    # Default parser selection
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _default_parser() -> Parser:
+        """Try Docling first, fall back to OpenDataLoader."""
+        try:
+            from rag_document_pipeline.parsers.docling import DoclingParser
+
+            return DoclingParser()
+        except Exception:
+            from rag_document_pipeline.parsers.opendataloader import (
+                OpenDataLoaderParser,
+            )
+
+            return OpenDataLoaderParser()
