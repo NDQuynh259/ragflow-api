@@ -63,11 +63,15 @@ class GeminiEmbedder:
         # Filter empty strings — replace with placeholder to keep alignment
         processed = [t if t.strip() else " " for t in texts]
 
+        from google.genai import types
+        embed_config = types.EmbedContentConfig(output_dimensionality=self._dimension) if self._dimension else None
+
         for attempt in range(self._max_retries + 1):
             try:
                 result = self._client.models.embed_content(
                     model=self._model,
                     contents=processed,
+                    config=embed_config,
                 )
                 # result.embeddings is a list of embedding objects
                 vectors = [emb.values for emb in result.embeddings]

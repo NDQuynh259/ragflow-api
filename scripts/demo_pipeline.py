@@ -37,6 +37,19 @@ def main() -> int:
     print("  RAG Pipeline Demo")
     print("=" * 60)
 
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
+
+    # Setup output and images directories
+    document_id = pdf_path.stem
+    content = pdf_path.read_bytes()
+    output_dir = Path("output") / document_id
+    output_dir.mkdir(parents=True, exist_ok=True)
+    image_dir = output_dir / "images"
+    image_dir.mkdir(parents=True, exist_ok=True)
+
     # ------------------------------------------------------------------
     # Step 1: Parse PDF and separate by type
     # ------------------------------------------------------------------
@@ -44,12 +57,10 @@ def main() -> int:
     from rag_document_pipeline import DocumentPipeline
 
     pipeline = DocumentPipeline()
-    content = pdf_path.read_bytes()
-    document_id = pdf_path.stem
 
     # Show intermediate result — parsed and separated
     parsed = pipeline.parse_and_separate(
-        content, filename=pdf_path.name, document_id=document_id
+        content, filename=pdf_path.name, document_id=document_id, image_dir=image_dir
     )
     print(f"   ✅ Pages: {parsed.page_count}")
     print(f"   📝 Text elements:  {len(parsed.text_elements)}")
@@ -62,7 +73,7 @@ def main() -> int:
     # ------------------------------------------------------------------
     print("\n✂️  [2/5] Chunking by type (text/table/image)...")
     result = pipeline.process(
-        content, filename=pdf_path.name, document_id=document_id
+        content, filename=pdf_path.name, document_id=document_id, image_dir=image_dir
     )
 
     text_chunks = [c for c in result.chunks if c.kind == "text"]
@@ -77,9 +88,6 @@ def main() -> int:
     print(f"      🔍 Indexable: {len(indexable)}")
 
     # Save chunks to file for inspection
-    output_dir = Path("outputs") / document_id
-    output_dir.mkdir(parents=True, exist_ok=True)
-
     chunks_file = output_dir / "chunks.json"
     chunks_data = [c.model_dump(mode="json") for c in result.chunks]
     chunks_file.write_text(

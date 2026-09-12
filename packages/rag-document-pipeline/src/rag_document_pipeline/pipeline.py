@@ -8,6 +8,7 @@ as the default chunker.  Both can be replaced via constructor injection.
 
 from __future__ import annotations
 
+from pathlib import Path
 import re
 import unicodedata
 
@@ -65,11 +66,18 @@ class DocumentPipeline:
         *,
         filename: str,
         document_id: str,
+        image_dir: str | Path | None = None,
     ) -> ProcessedDocument:
         """Run the full pipeline: parse → normalize → chunk → validate."""
 
         # 1. Parse
-        elements = self.parser.parse(content, filename=filename)
+        if hasattr(self.parser, "parse") and image_dir:
+            try:
+                elements = self.parser.parse(content, filename=filename, image_dir=image_dir)
+            except TypeError:
+                elements = self.parser.parse(content, filename=filename)
+        else:
+            elements = self.parser.parse(content, filename=filename)
 
         # 2. Normalize
         elements = self._normalize(elements)
@@ -96,13 +104,20 @@ class DocumentPipeline:
         *,
         filename: str,
         document_id: str,
+        image_dir: str | Path | None = None,
     ) -> ParsedDocument:
         """Parse and separate elements by type without chunking.
 
         Useful for inspecting intermediate results or for custom
         chunking strategies.
         """
-        elements = self.parser.parse(content, filename=filename)
+        if hasattr(self.parser, "parse") and image_dir:
+            try:
+                elements = self.parser.parse(content, filename=filename, image_dir=image_dir)
+            except TypeError:
+                elements = self.parser.parse(content, filename=filename)
+        else:
+            elements = self.parser.parse(content, filename=filename)
         elements = self._normalize(elements)
 
         text_elements = [
@@ -221,7 +236,20 @@ class DocumentPipeline:
 
     @staticmethod
     def _default_parser() -> Parser:
-        """Try Docling first, fall back to OpenDataLoader."""
+        """Choose parser based on PARSER_PROVIDER env var or availability."""
+        import os
+
+        provider = os.environ.get("PARSER_PROVIDER", "opendataloader").lower()
+        if provider == "opendataloader":
+            try:
+                from rag_document_pipeline.parsers.opendataloader import (
+                    OpenDataLoaderParser,
+                )
+
+                return OpenDataLoaderParser()
+            except Exception:
+                pass
+
         try:
             from rag_document_pipeline.parsers.docling import DoclingParser
 
