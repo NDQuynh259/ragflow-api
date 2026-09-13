@@ -4,14 +4,14 @@
   "page_count": 5,
   "parser_metadata": {
     "parser": "DoclingParser",
-    "text_count": 116,
+    "text_count": 115,
     "table_count": 2,
     "image_count": 3
   },
-  "parsing_time_seconds": 76.37,
+  "parsing_time_seconds": 19.7,
   "counts": {
-    "total": 121,
-    "text": 116,
+    "total": 120,
+    "text": 115,
     "table": 2,
     "image": 3
   },
@@ -578,27 +578,7 @@
         }
       },
       {
-        "id": "#/texts/29",
-        "type": "text",
-        "text": "A",
-        "page_number": 1,
-        "bbox": [
-          78.33333333333334,
-          181.889764,
-          94.66666666666667,
-          187.22309733333327
-        ],
-        "order": 28,
-        "heading_level": null,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "text",
-          "docling_ref": "#/texts/29"
-        }
-      },
-      {
-        "id": "#/texts/32",
+        "id": "#/texts/31",
         "type": "heading",
         "text": "2. T ư v ấ n xây d ự ng quy trình chu ẩ n SOP",
         "page_number": 2,
@@ -608,17 +588,17 @@
           304.54303460849997,
           797.82288923275
         ],
-        "order": 29,
+        "order": 28,
         "heading_level": 1,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "section_header",
-          "docling_ref": "#/texts/32"
+          "docling_ref": "#/texts/31"
         }
       },
       {
-        "id": "#/texts/33",
+        "id": "#/texts/32",
         "type": "text",
         "text": "M ộ t quy trình v ậ n hành tiêu chu ẩ n hi ệ u qu ả ph ả i gi ả i thích rõ ràng các b ướ c c ầ n th ự c hi ệ n đ ể hoàn thành m ộ t nhi ệ m v ụ nào đó. Đ ồ ng th ờ i th ể hi ệ n cho nhân viên th ấ y đ ượ c nh ữ ng r ủ i ro có th ể x ả y ra khi th ự c hi ệ n quy trình. H ướ ng d ẫ n ứ ng d ụ ng SOP nên ng ắ n g ọ n và d ễ hi ể u, t ậ p trung vào nh ữ ng gì c ầ n ph ả i làm. Sau khi vi ế t xong, c ầ n phân tích và c ậ p nh ậ t đ ị nh kỳ theo 6 - 12 tháng đ ể đ ả m b ả o SOP v ẫ n phù h ợ p v ớ i các tiêu chu ẩ n và yêu c ầ u c ủ a t ổ ch ứ c.",
         "page_number": 2,
@@ -627,6 +607,26 @@
           690.080499073,
           555.5962766022185,
           769.3428422327501
+        ],
+        "order": 29,
+        "heading_level": null,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "text",
+          "docling_ref": "#/texts/32"
+        }
+      },
+      {
+        "id": "#/texts/33",
+        "type": "text",
+        "text": "Tr ướ c khi vi ế t SOP, các nhà qu ả n tr ị nên th ự c hi ệ n đánh giá r ủ i ro t ấ t c ả các b ướ c trong quy trình nh ằ m xác đ ị nh b ấ t kỳ tr ở ng ạ i nào có th ể phát sinh. Các v ấ n đ ề c ầ n đ ượ c làm rõ bao g ồ m:",
+        "page_number": 2,
+        "bbox": [
+          39.6850395,
+          650.504327323,
+          555.5010266045999,
+          680.52741248275
         ],
         "order": 30,
         "heading_level": null,
@@ -639,26 +639,6 @@
       },
       {
         "id": "#/texts/34",
-        "type": "text",
-        "text": "Tr ướ c khi vi ế t SOP, các nhà qu ả n tr ị nên th ự c hi ệ n đánh giá r ủ i ro t ấ t c ả các b ướ c trong quy trình nh ằ m xác đ ị nh b ấ t kỳ tr ở ng ạ i nào có th ể phát sinh. Các v ấ n đ ề c ầ n đ ượ c làm rõ bao g ồ m:",
-        "page_number": 2,
-        "bbox": [
-          39.6850395,
-          650.504327323,
-          555.5010266045999,
-          680.52741248275
-        ],
-        "order": 31,
-        "heading_level": null,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "text",
-          "docling_ref": "#/texts/34"
-        }
-      },
-      {
-        "id": "#/texts/35",
         "type": "list",
         "text": "Ai th ự c hi ệ n vai trò gì? Phân đ ị nh rõ ch ứ c danh ch ị u trách nhi ệ m. ·",
         "page_number": 2,
@@ -667,6 +647,26 @@
           627.3312410732501,
           353.60515176749993,
           640.95124073275
+        ],
+        "order": 31,
+        "heading_level": null,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "list_item",
+          "docling_ref": "#/texts/34"
+        }
+      },
+      {
+        "id": "#/texts/35",
+        "type": "list",
+        "text": "M ỗ i vai trò c ầ n làm nh ữ ng gì? Xác đ ị nh chi ti ế t nhi ệ m v ụ và thao tác c ụ th ể . ·",
+        "page_number": 2,
+        "bbox": [
+          48.405987,
+          607.16815557325,
+          400.9100736735,
+          620.78815523275
         ],
         "order": 32,
         "heading_level": null,
@@ -680,13 +680,13 @@
       {
         "id": "#/texts/36",
         "type": "list",
-        "text": "M ỗ i vai trò c ầ n làm nh ữ ng gì? Xác đ ị nh chi ti ế t nhi ệ m v ụ và thao tác c ụ th ể . ·",
+        "text": "M ụ c tiêu ho ặ c k ế t qu ả công vi ệ c ph ả i đ ạ t đ ượ c là gì? Ch ỉ s ố đo l ườ ng KPI / Output c ầ n đ ạ t. ·",
         "page_number": 2,
         "bbox": [
           48.405987,
-          607.16815557325,
-          400.9100736735,
-          620.78815523275
+          587.00506932325,
+          480.57115823474976,
+          600.62506898275
         ],
         "order": 33,
         "heading_level": null,
@@ -700,13 +700,13 @@
       {
         "id": "#/texts/37",
         "type": "list",
-        "text": "M ụ c tiêu ho ặ c k ế t qu ả công vi ệ c ph ả i đ ạ t đ ượ c là gì? Ch ỉ s ố đo l ườ ng KPI / Output c ầ n đ ạ t. ·",
+        "text": "Nh ữ ng gì c ầ n th ự c hi ệ n đã đ ượ c gi ả i thích rõ ràng hay ch ư a? ·",
         "page_number": 2,
         "bbox": [
           48.405987,
-          587.00506932325,
-          480.57115823474976,
-          600.62506898275
+          566.84198307325,
+          350.47503210524974,
+          580.46198273275
         ],
         "order": 34,
         "heading_level": null,
@@ -719,26 +719,6 @@
       },
       {
         "id": "#/texts/38",
-        "type": "list",
-        "text": "Nh ữ ng gì c ầ n th ự c hi ệ n đã đ ượ c gi ả i thích rõ ràng hay ch ư a? ·",
-        "page_number": 2,
-        "bbox": [
-          48.405987,
-          566.84198307325,
-          350.47503210524974,
-          580.46198273275
-        ],
-        "order": 35,
-        "heading_level": null,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "list_item",
-          "docling_ref": "#/texts/38"
-        }
-      },
-      {
-        "id": "#/texts/39",
         "type": "heading",
         "text": "LỘ TRÌNH 8 BƯỚC XÂY DỰNG & TRIỂN KHAI QUY TRÌNH CHUẨN SOP",
         "page_number": 2,
@@ -748,17 +728,17 @@
           457.47565179804826,
           542.98806383575
         ],
-        "order": 36,
+        "order": 35,
         "heading_level": 1,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "section_header",
-          "docling_ref": "#/texts/39"
+          "docling_ref": "#/texts/38"
         }
       },
       {
-        "id": "#/texts/40",
+        "id": "#/texts/39",
         "type": "caption",
         "text": "Hình 2: S ơ đ ồ 8 b ướ c tri ể n khai xây d ự ng và duy trì quy trình thao tác chu ẩ n SOP",
         "page_number": 2,
@@ -768,17 +748,17 @@
           450.55897300500067,
           274.69422548274997
         ],
-        "order": 37,
+        "order": 36,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "caption",
-          "docling_ref": "#/texts/40"
+          "docling_ref": "#/texts/39"
         }
       },
       {
-        "id": "#/texts/41",
+        "id": "#/texts/40",
         "type": "heading",
         "text": "BƯỚC 1",
         "page_number": 2,
@@ -787,6 +767,26 @@
           500.5761707657501,
           126.283152733392,
           511.5089818802501
+        ],
+        "order": 37,
+        "heading_level": 1,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "section_header",
+          "docling_ref": "#/texts/40"
+        }
+      },
+      {
+        "id": "#/texts/41",
+        "type": "heading",
+        "text": "Mục tiêu SOP",
+        "page_number": 2,
+        "bbox": [
+          84.35361686597999,
+          473.5761700157501,
+          137.30020822861047,
+          484.5089811302501
         ],
         "order": 38,
         "heading_level": 1,
@@ -799,26 +799,6 @@
       },
       {
         "id": "#/texts/42",
-        "type": "heading",
-        "text": "Mục tiêu SOP",
-        "page_number": 2,
-        "bbox": [
-          84.35361686597999,
-          473.5761700157501,
-          137.30020822861047,
-          484.5089811302501
-        ],
-        "order": 39,
-        "heading_level": 1,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "section_header",
-          "docling_ref": "#/texts/42"
-        }
-      },
-      {
-        "id": "#/texts/43",
         "type": "text",
         "text": "Xác định mục đích và lý do vì sao cần ban hành quy trình",
         "page_number": 2,
@@ -827,6 +807,26 @@
           434.7114932605001,
           138.73920026858247,
           466.5047238733751
+        ],
+        "order": 39,
+        "heading_level": null,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "text",
+          "docling_ref": "#/texts/42"
+        }
+      },
+      {
+        "id": "#/texts/43",
+        "type": "text",
+        "text": "→",
+        "page_number": 2,
+        "bbox": [
+          164.432192279574,
+          460.43592640750006,
+          175.43943582857398,
+          475.71208899400006
         ],
         "order": 40,
         "heading_level": null,
@@ -839,26 +839,6 @@
       },
       {
         "id": "#/texts/44",
-        "type": "text",
-        "text": "→",
-        "page_number": 2,
-        "bbox": [
-          164.432192279574,
-          460.43592640750006,
-          175.43943582857398,
-          475.71208899400006
-        ],
-        "order": 41,
-        "heading_level": null,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "text",
-          "docling_ref": "#/texts/44"
-        }
-      },
-      {
-        "id": "#/texts/45",
         "type": "heading",
         "text": "BƯỚC 2",
         "page_number": 2,
@@ -867,6 +847,26 @@
           500.5761707657501,
           248.14802098339197,
           511.5089818802501
+        ],
+        "order": 41,
+        "heading_level": 1,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "section_header",
+          "docling_ref": "#/texts/44"
+        }
+      },
+      {
+        "id": "#/texts/45",
+        "type": "heading",
+        "text": "Phạm vi áp dụng",
+        "page_number": 2,
+        "bbox": [
+          199.21158284026274,
+          473.5761700157501,
+          266.17220643000974,
+          484.5089811302501
         ],
         "order": 42,
         "heading_level": 1,
@@ -879,26 +879,6 @@
       },
       {
         "id": "#/texts/46",
-        "type": "heading",
-        "text": "Phạm vi áp dụng",
-        "page_number": 2,
-        "bbox": [
-          199.21158284026274,
-          473.5761700157501,
-          266.17220643000974,
-          484.5089811302501
-        ],
-        "order": 43,
-        "heading_level": 1,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "section_header",
-          "docling_ref": "#/texts/46"
-        }
-      },
-      {
-        "id": "#/texts/47",
         "type": "text",
         "text": "Xác định ranh giới, phòng ban và cá nhân chịu sự điều chỉnh",
         "page_number": 2,
@@ -907,6 +887,26 @@
           434.7114932605001,
           267.522961737801,
           466.5047238733751
+        ],
+        "order": 43,
+        "heading_level": null,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "text",
+          "docling_ref": "#/texts/46"
+        }
+      },
+      {
+        "id": "#/texts/47",
+        "type": "text",
+        "text": "→",
+        "page_number": 2,
+        "bbox": [
+          286.29706052957397,
+          460.43592640750006,
+          297.304304078574,
+          475.71208899400006
         ],
         "order": 44,
         "heading_level": null,
@@ -919,26 +919,6 @@
       },
       {
         "id": "#/texts/48",
-        "type": "text",
-        "text": "→",
-        "page_number": 2,
-        "bbox": [
-          286.29706052957397,
-          460.43592640750006,
-          297.304304078574,
-          475.71208899400006
-        ],
-        "order": 45,
-        "heading_level": null,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "text",
-          "docling_ref": "#/texts/48"
-        }
-      },
-      {
-        "id": "#/texts/49",
         "type": "heading",
         "text": "BƯỚC 3",
         "page_number": 2,
@@ -947,6 +927,26 @@
           500.5761707657501,
           370.01288923339195,
           511.5089818802501
+        ],
+        "order": 45,
+        "heading_level": 1,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "section_header",
+          "docling_ref": "#/texts/48"
+        }
+      },
+      {
+        "id": "#/texts/49",
+        "type": "heading",
+        "text": "Chọn định dạng",
+        "page_number": 2,
+        "bbox": [
+          322.9111084385227,
+          473.5761700157501,
+          386.20241660202,
+          484.5089811302501
         ],
         "order": 46,
         "heading_level": 1,
@@ -959,26 +959,6 @@
       },
       {
         "id": "#/texts/50",
-        "type": "heading",
-        "text": "Chọn định dạng",
-        "page_number": 2,
-        "bbox": [
-          322.9111084385227,
-          473.5761700157501,
-          386.20241660202,
-          484.5089811302501
-        ],
-        "order": 47,
-        "heading_level": 1,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "section_header",
-          "docling_ref": "#/texts/50"
-        }
-      },
-      {
-        "id": "#/texts/51",
         "type": "text",
         "text": "Lưu đồ (Flowchart), bước đơn giản hay các bước phân cấp",
         "page_number": 2,
@@ -987,6 +967,26 @@
           434.7114932605001,
           382.55202890602567,
           466.5047238733751
+        ],
+        "order": 47,
+        "heading_level": null,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "text",
+          "docling_ref": "#/texts/50"
+        }
+      },
+      {
+        "id": "#/texts/51",
+        "type": "text",
+        "text": "→",
+        "page_number": 2,
+        "bbox": [
+          408.16192877957394,
+          460.43592640750006,
+          419.16917232857395,
+          475.71208899400006
         ],
         "order": 48,
         "heading_level": null,
@@ -999,26 +999,6 @@
       },
       {
         "id": "#/texts/52",
-        "type": "text",
-        "text": "→",
-        "page_number": 2,
-        "bbox": [
-          408.16192877957394,
-          460.43592640750006,
-          419.16917232857395,
-          475.71208899400006
-        ],
-        "order": 49,
-        "heading_level": null,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "text",
-          "docling_ref": "#/texts/52"
-        }
-      },
-      {
-        "id": "#/texts/53",
         "type": "heading",
         "text": "BƯỚC 4",
         "page_number": 2,
@@ -1027,6 +1007,26 @@
           500.5761707657501,
           491.877757483392,
           511.5089818802501
+        ],
+        "order": 49,
+        "heading_level": 1,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "section_header",
+          "docling_ref": "#/texts/52"
+        }
+      },
+      {
+        "id": "#/texts/53",
+        "type": "heading",
+        "text": "Yếu tố phụ thuộc",
+        "page_number": 2,
+        "bbox": [
+          442.174533183828,
+          473.5761700157501,
+          510.668432816166,
+          484.5089811302501
         ],
         "order": 50,
         "heading_level": 1,
@@ -1039,26 +1039,6 @@
       },
       {
         "id": "#/texts/54",
-        "type": "heading",
-        "text": "Yếu tố phụ thuộc",
-        "page_number": 2,
-        "bbox": [
-          442.174533183828,
-          473.5761700157501,
-          510.668432816166,
-          484.5089811302501
-        ],
-        "order": 51,
-        "heading_level": 1,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "section_header",
-          "docling_ref": "#/texts/54"
-        }
-      },
-      {
-        "id": "#/texts/55",
         "type": "text",
         "text": "Mối nối các quy trình, đặc thù đối tượng tiếp nhận văn bản",
         "page_number": 2,
@@ -1068,17 +1048,17 @@
           507.71778443690624,
           466.5047238733751
         ],
-        "order": 52,
+        "order": 51,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "text",
-          "docling_ref": "#/texts/55"
+          "docling_ref": "#/texts/54"
         }
       },
       {
-        "id": "#/texts/56",
+        "id": "#/texts/55",
         "type": "heading",
         "text": "BƯỚC 5",
         "page_number": 2,
@@ -1087,6 +1067,26 @@
           380.17076201575003,
           126.283152733392,
           391.10357313025
+        ],
+        "order": 52,
+        "heading_level": 1,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "section_header",
+          "docling_ref": "#/texts/55"
+        }
+      },
+      {
+        "id": "#/texts/56",
+        "type": "heading",
+        "text": "Soạn thảo chi tiết",
+        "page_number": 2,
+        "bbox": [
+          75.64852473227998,
+          353.17076126575006,
+          146.00514492987372,
+          364.10357238025006
         ],
         "order": 53,
         "heading_level": 1,
@@ -1099,26 +1099,6 @@
       },
       {
         "id": "#/texts/57",
-        "type": "heading",
-        "text": "Soạn thảo chi tiết",
-        "page_number": 2,
-        "bbox": [
-          75.64852473227998,
-          353.17076126575006,
-          146.00514492987372,
-          364.10357238025006
-        ],
-        "order": 54,
-        "heading_level": 1,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "section_header",
-          "docling_ref": "#/texts/57"
-        }
-      },
-      {
-        "id": "#/texts/58",
         "type": "text",
         "text": "Xác định từng bước, hướng dẫn thao tác rõ ràng, cụ thể",
         "page_number": 2,
@@ -1127,6 +1107,26 @@
           314.3060845105001,
           140.10038852260948,
           346.09931512337505
+        ],
+        "order": 54,
+        "heading_level": null,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "text",
+          "docling_ref": "#/texts/57"
+        }
+      },
+      {
+        "id": "#/texts/58",
+        "type": "text",
+        "text": "→",
+        "page_number": 2,
+        "bbox": [
+          164.432192279574,
+          340.0305176575,
+          175.43943582857398,
+          355.30668024400006
         ],
         "order": 55,
         "heading_level": null,
@@ -1139,26 +1139,6 @@
       },
       {
         "id": "#/texts/59",
-        "type": "text",
-        "text": "→",
-        "page_number": 2,
-        "bbox": [
-          164.432192279574,
-          340.0305176575,
-          175.43943582857398,
-          355.30668024400006
-        ],
-        "order": 56,
-        "heading_level": null,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "text",
-          "docling_ref": "#/texts/59"
-        }
-      },
-      {
-        "id": "#/texts/60",
         "type": "heading",
         "text": "BƯỚC 6",
         "page_number": 2,
@@ -1167,6 +1147,26 @@
           380.17076201575003,
           248.14802098339197,
           391.10357313025
+        ],
+        "order": 56,
+        "heading_level": 1,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "section_header",
+          "docling_ref": "#/texts/59"
+        }
+      },
+      {
+        "id": "#/texts/60",
+        "type": "heading",
+        "text": "Thử nghiệm & Đo",
+        "page_number": 2,
+        "bbox": [
+          197.73430771814623,
+          353.17076126575006,
+          267.64969828186196,
+          364.10357238025006
         ],
         "order": 57,
         "heading_level": 1,
@@ -1179,26 +1179,6 @@
       },
       {
         "id": "#/texts/61",
-        "type": "heading",
-        "text": "Thử nghiệm & Đo",
-        "page_number": 2,
-        "bbox": [
-          197.73430771814623,
-          353.17076126575006,
-          267.64969828186196,
-          364.10357238025006
-        ],
-        "order": 58,
-        "heading_level": 1,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "section_header",
-          "docling_ref": "#/texts/61"
-        }
-      },
-      {
-        "id": "#/texts/62",
         "type": "text",
         "text": "Kiểm tra thực tế, đánh giá hiệu quả và thu thập góp ý",
         "page_number": 2,
@@ -1207,6 +1187,26 @@
           314.3060845105001,
           258.991303014324,
           346.09931512337505
+        ],
+        "order": 58,
+        "heading_level": null,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "text",
+          "docling_ref": "#/texts/61"
+        }
+      },
+      {
+        "id": "#/texts/62",
+        "type": "text",
+        "text": "→",
+        "page_number": 2,
+        "bbox": [
+          286.29706052957397,
+          340.0305176575,
+          297.304304078574,
+          355.30668024400006
         ],
         "order": 59,
         "heading_level": null,
@@ -1219,26 +1219,6 @@
       },
       {
         "id": "#/texts/63",
-        "type": "text",
-        "text": "→",
-        "page_number": 2,
-        "bbox": [
-          286.29706052957397,
-          340.0305176575,
-          297.304304078574,
-          355.30668024400006
-        ],
-        "order": 60,
-        "heading_level": null,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "text",
-          "docling_ref": "#/texts/63"
-        }
-      },
-      {
-        "id": "#/texts/64",
         "type": "heading",
         "text": "BƯỚC 7",
         "page_number": 2,
@@ -1247,6 +1227,26 @@
           380.17076201575003,
           370.01288923339195,
           391.10357313025
+        ],
+        "order": 60,
+        "heading_level": 1,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "section_header",
+          "docling_ref": "#/texts/63"
+        }
+      },
+      {
+        "id": "#/texts/64",
+        "type": "heading",
+        "text": "Ký duyệt & Công bố",
+        "page_number": 2,
+        "bbox": [
+          315.6059721815482,
+          353.17076126575006,
+          393.5077695887302,
+          364.10357238025006
         ],
         "order": 61,
         "heading_level": 1,
@@ -1259,26 +1259,6 @@
       },
       {
         "id": "#/texts/65",
-        "type": "heading",
-        "text": "Ký duyệt & Công bố",
-        "page_number": 2,
-        "bbox": [
-          315.6059721815482,
-          353.17076126575006,
-          393.5077695887302,
-          364.10357238025006
-        ],
-        "order": 62,
-        "heading_level": 1,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "section_header",
-          "docling_ref": "#/texts/65"
-        }
-      },
-      {
-        "id": "#/texts/66",
         "type": "text",
         "text": "Lãnh đạo phê duyệt, truyền thông và đào tạo toàn diện cho nhân sự",
         "page_number": 2,
@@ -1287,6 +1267,26 @@
           314.3060845105001,
           389.66386413060377,
           346.09931512337505
+        ],
+        "order": 62,
+        "heading_level": null,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "text",
+          "docling_ref": "#/texts/65"
+        }
+      },
+      {
+        "id": "#/texts/66",
+        "type": "text",
+        "text": "→",
+        "page_number": 2,
+        "bbox": [
+          408.16192877957394,
+          340.0305176575,
+          419.16917232857395,
+          355.30668024400006
         ],
         "order": 63,
         "heading_level": null,
@@ -1299,26 +1299,6 @@
       },
       {
         "id": "#/texts/67",
-        "type": "text",
-        "text": "→",
-        "page_number": 2,
-        "bbox": [
-          408.16192877957394,
-          340.0305176575,
-          419.16917232857395,
-          355.30668024400006
-        ],
-        "order": 64,
-        "heading_level": null,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "text",
-          "docling_ref": "#/texts/67"
-        }
-      },
-      {
-        "id": "#/texts/68",
         "type": "heading",
         "text": "BƯỚC 8",
         "page_number": 2,
@@ -1327,6 +1307,26 @@
           380.17076201575003,
           491.877757483392,
           391.10357313025
+        ],
+        "order": 64,
+        "heading_level": 1,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "section_header",
+          "docling_ref": "#/texts/67"
+        }
+      },
+      {
+        "id": "#/texts/68",
+        "type": "heading",
+        "text": "Cập nhật định kỳ",
+        "page_number": 2,
+        "bbox": [
+          442.4556644889345,
+          353.17076126575006,
+          510.3876722137725,
+          364.10357238025006
         ],
         "order": 65,
         "heading_level": 1,
@@ -1339,26 +1339,6 @@
       },
       {
         "id": "#/texts/69",
-        "type": "heading",
-        "text": "Cập nhật định kỳ",
-        "page_number": 2,
-        "bbox": [
-          442.4556644889345,
-          353.17076126575006,
-          510.3876722137725,
-          364.10357238025006
-        ],
-        "order": 66,
-        "heading_level": 1,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "section_header",
-          "docling_ref": "#/texts/69"
-        }
-      },
-      {
-        "id": "#/texts/70",
         "type": "text",
         "text": "Rà soát 6 - 12 tháng, cập nhật điều chỉnh phù hợp biến đổi",
         "page_number": 2,
@@ -1368,17 +1348,17 @@
           506.0954893918425,
           346.09931512337505
         ],
-        "order": 67,
+        "order": 66,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "text",
-          "docling_ref": "#/texts/70"
+          "docling_ref": "#/texts/69"
         }
       },
       {
-        "id": "#/texts/71",
+        "id": "#/texts/70",
         "type": "heading",
         "text": "Chi ti ế t 8 b ướ c tri ể n khai SOP:",
         "page_number": 2,
@@ -1387,6 +1367,26 @@
           234.204028,
           193.23703949999995,
           248.50502800000004
+        ],
+        "order": 67,
+        "heading_level": 1,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "section_header",
+          "docling_ref": "#/texts/70"
+        }
+      },
+      {
+        "id": "#/texts/71",
+        "type": "heading",
+        "text": "B ướ c 1: Xác đ ị nh m ụ c tiêu c ủ a SOP",
+        "page_number": 2,
+        "bbox": [
+          51.3100395,
+          206.46065982325,
+          223.6100351925,
+          220.08065948274998
         ],
         "order": 68,
         "heading_level": 1,
@@ -1399,26 +1399,6 @@
       },
       {
         "id": "#/texts/72",
-        "type": "heading",
-        "text": "B ướ c 1: Xác đ ị nh m ụ c tiêu c ủ a SOP",
-        "page_number": 2,
-        "bbox": [
-          51.3100395,
-          206.46065982325,
-          223.6100351925,
-          220.08065948274998
-        ],
-        "order": 69,
-        "heading_level": 1,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "section_header",
-          "docling_ref": "#/texts/72"
-        }
-      },
-      {
-        "id": "#/texts/73",
         "type": "text",
         "text": "Xác đ ị nh m ụ c tiêu c ủ a nhi ệ m v ụ và hi ể u lý do t ạ i sao ph ả i c ầ n đ ế n SOP cho ho ạ t đ ộ ng này.",
         "page_number": 2,
@@ -1428,17 +1408,17 @@
           458.2100293274999,
           201.41757398275
         ],
-        "order": 70,
+        "order": 69,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "text",
-          "docling_ref": "#/texts/73"
+          "docling_ref": "#/texts/72"
         }
       },
       {
-        "id": "#/texts/74",
+        "id": "#/texts/73",
         "type": "heading",
         "text": "B ướ c 2: Xác đ ị nh ph ạ m vi c ủ a SOP",
         "page_number": 2,
@@ -1448,17 +1428,17 @@
           220.30003527525,
           165.50448773275002
         ],
-        "order": 71,
+        "order": 70,
         "heading_level": 1,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "section_header",
-          "docling_ref": "#/texts/74"
+          "docling_ref": "#/texts/73"
         }
       },
       {
-        "id": "#/texts/75",
+        "id": "#/texts/74",
         "type": "text",
         "text": "Xác đ ị nh ph ạ m vi áp d ụ ng đ ể đ ả m b ả o quy trình áp d ụ ng cho đúng các ho ạ t đ ộ ng và đ ố i t ượ ng liên quan.",
         "page_number": 2,
@@ -1468,17 +1448,17 @@
           520.6900277654998,
           146.84140223275006
         ],
-        "order": 72,
+        "order": 71,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "text",
-          "docling_ref": "#/texts/75"
+          "docling_ref": "#/texts/74"
         }
       },
       {
-        "id": "#/texts/78",
+        "id": "#/texts/77",
         "type": "heading",
         "text": "B ướ c 3: Xác đ ị nh hình d ạ ng & đ ị nh d ạ ng SOP",
         "page_number": 3,
@@ -1488,17 +1468,17 @@
           271.13003400449986,
           791.43007373275
         ],
-        "order": 73,
+        "order": 72,
         "heading_level": 1,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "section_header",
-          "docling_ref": "#/texts/78"
+          "docling_ref": "#/texts/77"
         }
       },
       {
-        "id": "#/texts/79",
+        "id": "#/texts/78",
         "type": "text",
         "text": "Quy ế t đ ị nh lo ạ i đ ị nh d ạ ng mu ố n s ử d ụ ng cho SOP tùy theo tính ch ấ t công vi ệ c:",
         "page_number": 3,
@@ -1508,17 +1488,17 @@
           406.88003061074994,
           772.76698823275
         ],
-        "order": 74,
+        "order": 73,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "text",
-          "docling_ref": "#/texts/79"
+          "docling_ref": "#/texts/78"
         }
       },
       {
-        "id": "#/texts/80",
+        "id": "#/texts/79",
         "type": "list",
         "text": "Flowchart or workflow diagram: Đ ượ c s ử d ụ ng đ ể hi ể n th ị các quy trình v ớ i các k ế t qu ả không th ể đoán tr ướ c đ ượ c ho ặ c có nhi ề u nhánh quy ế t đ ị nh r ẽ h ướ ng. ·",
         "page_number": 3,
@@ -1527,6 +1507,26 @@
           726.330816073,
           536.9750315115,
           756.35390198275
+        ],
+        "order": 74,
+        "heading_level": null,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "list_item",
+          "docling_ref": "#/texts/79"
+        }
+      },
+      {
+        "id": "#/texts/80",
+        "type": "list",
+        "text": "Simple steps: Vi ế t d ướ i d ạ ng danh sách g ạ ch đ ầ u dòng ho ặ c đánh s ố , bao g ồ m các tài li ệ u nh ư h ướ ng d ẫ n an toàn. M ẫ u SOP này khá đ ơ n gi ả n, ng ắ n g ọ n và d ễ làm theo. ·",
+        "page_number": 3,
+        "bbox": [
+          60.030987,
+          689.754644323,
+          529.1478520545,
+          719.77773023275
         ],
         "order": 75,
         "heading_level": null,
@@ -1540,13 +1540,13 @@
       {
         "id": "#/texts/81",
         "type": "list",
-        "text": "Simple steps: Vi ế t d ướ i d ạ ng danh sách g ạ ch đ ầ u dòng ho ặ c đánh s ố , bao g ồ m các tài li ệ u nh ư h ướ ng d ẫ n an toàn. M ẫ u SOP này khá đ ơ n gi ả n, ng ắ n g ọ n và d ễ làm theo. ·",
+        "text": "Hierarchical steps: Danh sách s ố có c ấ p b ậ c phân nhánh chi ti ế t (b ướ c chính kèm các hành đ ộ ng nh ỏ ), áp d ụ ng cho các quy trình k ỹ thu ậ t ph ứ c t ạ p. ·",
         "page_number": 3,
         "bbox": [
           60.030987,
-          689.754644323,
-          529.1478520545,
-          719.77773023275
+          653.178472573,
+          532.2144050894999,
+          683.20155848275
         ],
         "order": 76,
         "heading_level": null,
@@ -1559,26 +1559,6 @@
       },
       {
         "id": "#/texts/82",
-        "type": "list",
-        "text": "Hierarchical steps: Danh sách s ố có c ấ p b ậ c phân nhánh chi ti ế t (b ướ c chính kèm các hành đ ộ ng nh ỏ ), áp d ụ ng cho các quy trình k ỹ thu ậ t ph ứ c t ạ p. ·",
-        "page_number": 3,
-        "bbox": [
-          60.030987,
-          653.178472573,
-          532.2144050894999,
-          683.20155848275
-        ],
-        "order": 77,
-        "heading_level": null,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "list_item",
-          "docling_ref": "#/texts/82"
-        }
-      },
-      {
-        "id": "#/texts/83",
         "type": "heading",
         "text": "B ướ c 4: Xác đ ị nh các y ế u t ố ph ụ thu ộ c trong SOP",
         "page_number": 3,
@@ -1588,17 +1568,17 @@
           290.88003351074985,
           623.37538598275
         ],
-        "order": 78,
+        "order": 77,
         "heading_level": 1,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "section_header",
-          "docling_ref": "#/texts/83"
+          "docling_ref": "#/texts/82"
         }
       },
       {
-        "id": "#/texts/84",
+        "id": "#/texts/83",
         "type": "text",
         "text": "Xác đ ị nh các m ố i ph ụ thu ộ c v ớ i các quy trình hi ệ n hành. Đ ồ ng th ờ i xác đ ị nh đ ố i t ượ ng đang h ướ ng đ ế n đ ể có cách vi ế t phù h ợ p (SOP cho nhân viên cũ s ẽ khác v ớ i SOP đào t ạ o nhân viên m ớ i).",
         "page_number": 3,
@@ -1608,17 +1588,17 @@
           539.34002729925,
           604.71230048275
         ],
-        "order": 79,
+        "order": 78,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "text",
-          "docling_ref": "#/texts/84"
+          "docling_ref": "#/texts/83"
         }
       },
       {
-        "id": "#/texts/85",
+        "id": "#/texts/84",
         "type": "heading",
         "text": "B ướ c 5: Xác đ ị nh và th ự c hi ệ n các b ướ c cùng quy trình",
         "page_number": 3,
@@ -1628,17 +1608,17 @@
           318.3800328232498,
           552.38612873275
         ],
-        "order": 80,
+        "order": 79,
         "heading_level": 1,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "section_header",
-          "docling_ref": "#/texts/85"
+          "docling_ref": "#/texts/84"
         }
       },
       {
-        "id": "#/texts/86",
+        "id": "#/texts/85",
         "type": "text",
         "text": "Mô t ả chi ti ế t và đ ầ y đ ủ các b ướ c th ự c hi ệ n đ ể b ấ t kỳ nhân s ự nào cũng có th ể làm theo m ộ t cách chính xác và đ ồ ng nh ấ t.",
         "page_number": 3,
@@ -1648,17 +1628,17 @@
           545.08002715575,
           533.7230424827501
         ],
-        "order": 81,
+        "order": 80,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "text",
-          "docling_ref": "#/texts/86"
+          "docling_ref": "#/texts/85"
         }
       },
       {
-        "id": "#/texts/87",
+        "id": "#/texts/86",
         "type": "heading",
         "text": "B ướ c 6: Ki ể m tra và đánh giá hi ệ u qu ả c ủ a SOP",
         "page_number": 3,
@@ -1668,17 +1648,17 @@
           280.1900337779999,
           481.39687073275
         ],
-        "order": 82,
+        "order": 81,
         "heading_level": 1,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "section_header",
-          "docling_ref": "#/texts/87"
+          "docling_ref": "#/texts/86"
         }
       },
       {
-        "id": "#/texts/88",
+        "id": "#/texts/87",
         "type": "text",
         "text": "Sau khi tri ể n khai th ử nghi ệ m th ự c t ế , đánh giá tính kh ả thi và đo l ườ ng k ế t qu ả đ ể k ị p th ờ i đi ề u ch ỉ nh, hoàn thi ệ n.",
         "page_number": 3,
@@ -1688,17 +1668,17 @@
           529.30002755025,
           462.73378448275
         ],
-        "order": 83,
+        "order": 82,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "text",
-          "docling_ref": "#/texts/88"
+          "docling_ref": "#/texts/87"
         }
       },
       {
-        "id": "#/texts/89",
+        "id": "#/texts/88",
         "type": "heading",
         "text": "B ướ c 7: Phê duy ệ t và công b ố SOP",
         "page_number": 3,
@@ -1708,17 +1688,17 @@
           220.62003526725,
           410.40761273275007
         ],
-        "order": 84,
+        "order": 83,
         "heading_level": 1,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "section_header",
-          "docling_ref": "#/texts/89"
+          "docling_ref": "#/texts/88"
         }
       },
       {
-        "id": "#/texts/90",
+        "id": "#/texts/89",
         "type": "text",
         "text": "SOP c ầ n đ ượ c phê duy ệ t chính th ứ c b ở i các c ấ p qu ả n lý và đ ượ c công b ố , ph ổ bi ế n, đào t ạ o cho toàn th ể nhân viên liên quan.",
         "page_number": 3,
@@ -1728,17 +1708,17 @@
           523.1900277029999,
           391.74452723275
         ],
-        "order": 85,
+        "order": 84,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "text",
-          "docling_ref": "#/texts/90"
+          "docling_ref": "#/texts/89"
         }
       },
       {
-        "id": "#/texts/91",
+        "id": "#/texts/90",
         "type": "heading",
         "text": "B ướ c 8: C ậ p nh ậ t và b ả o trì SOP",
         "page_number": 3,
@@ -1748,17 +1728,17 @@
           208.29003557550004,
           339.83144123274997
         ],
-        "order": 86,
+        "order": 85,
         "heading_level": 1,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "section_header",
-          "docling_ref": "#/texts/91"
+          "docling_ref": "#/texts/90"
         }
       },
       {
-        "id": "#/texts/92",
+        "id": "#/texts/91",
         "type": "text",
         "text": "Th ườ ng xuyên rà soát (đ ị nh kỳ 6 - 12 tháng) và b ả o trì SOP nh ằ m b ả o đ ả m tính c ậ p nh ậ t, phù h ợ p v ớ i s ự phát tri ể n c ủ a t ổ ch ứ c.",
         "page_number": 3,
@@ -1768,17 +1748,17 @@
           543.4600271962498,
           321.1683549827501
         ],
-        "order": 87,
+        "order": 86,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "text",
-          "docling_ref": "#/texts/92"
+          "docling_ref": "#/texts/91"
         }
       },
       {
-        "id": "#/texts/93",
+        "id": "#/texts/92",
         "type": "heading",
         "text": "M ộ t s ố đi ể m các nhà qu ả n tr ị c ầ n l ư u ý khi vi ế t SOP:",
         "page_number": 3,
@@ -1788,17 +1768,17 @@
           305.17503320024986,
           262.84218323275
         ],
-        "order": 88,
+        "order": 87,
         "heading_level": 1,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "section_header",
-          "docling_ref": "#/texts/93"
+          "docling_ref": "#/texts/92"
         }
       },
       {
-        "id": "#/texts/94",
+        "id": "#/texts/93",
         "type": "list",
         "text": "T ấ t c ả các công vi ệ c tr ọ ng y ế u đ ề u b ắ t bu ộ c ph ả i có SOP. ·",
         "page_number": 3,
@@ -1807,6 +1787,26 @@
           232.81909732300005,
           326.2450330484999,
           246.42909698275002
+        ],
+        "order": 88,
+        "heading_level": null,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "list_item",
+          "docling_ref": "#/texts/93"
+        }
+      },
+      {
+        "id": "#/texts/94",
+        "type": "list",
+        "text": "Trình bày n ộ i dung c ụ th ể , súc tích, d ễ hi ể u đ ể nhân viên d ễ dàng làm theo. ·",
+        "page_number": 3,
+        "bbox": [
+          61.905987,
+          212.65601182299997,
+          403.97503110524985,
+          226.26601148274995
         ],
         "order": 89,
         "heading_level": null,
@@ -1820,13 +1820,13 @@
       {
         "id": "#/texts/95",
         "type": "list",
-        "text": "Trình bày n ộ i dung c ụ th ể , súc tích, d ễ hi ể u đ ể nhân viên d ễ dàng làm theo. ·",
+        "text": "Các SOP ph ả i đ ượ c xem xét k ỹ l ưỡ ng và phê duy ệ t tr ướ c khi ban hành. ·",
         "page_number": 3,
         "bbox": [
           61.905987,
-          212.65601182299997,
-          403.97503110524985,
-          226.26601148274995
+          192.4929255730001,
+          387.0750315277499,
+          206.10292523275007
         ],
         "order": 90,
         "heading_level": null,
@@ -1840,13 +1840,13 @@
       {
         "id": "#/texts/96",
         "type": "list",
-        "text": "Các SOP ph ả i đ ượ c xem xét k ỹ l ưỡ ng và phê duy ệ t tr ướ c khi ban hành. ·",
+        "text": "Hình th ứ c và n ộ i dung c ủ a quy trình chu ẩ n SOP có th ể thay đ ổ i linh ho ạ t tùy vào t ừ ng phòng ban, b ộ ph ậ n trong doanh nghi ệ p. ·",
         "page_number": 3,
         "bbox": [
           61.905987,
-          192.4929255730001,
-          387.0750315277499,
-          206.10292523275007
+          155.91675382300002,
+          541.8750276577498,
+          185.93983973275
         ],
         "order": 91,
         "heading_level": null,
@@ -1859,26 +1859,6 @@
       },
       {
         "id": "#/texts/97",
-        "type": "list",
-        "text": "Hình th ứ c và n ộ i dung c ủ a quy trình chu ẩ n SOP có th ể thay đ ổ i linh ho ạ t tùy vào t ừ ng phòng ban, b ộ ph ậ n trong doanh nghi ệ p. ·",
-        "page_number": 3,
-        "bbox": [
-          61.905987,
-          155.91675382300002,
-          541.8750276577498,
-          185.93983973275
-        ],
-        "order": 92,
-        "heading_level": null,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "list_item",
-          "docling_ref": "#/texts/97"
-        }
-      },
-      {
-        "id": "#/texts/98",
         "type": "heading",
         "text": "3. H ướ ng d ẫ n v ậ n hành SOP hi ệ u qu ả",
         "page_number": 3,
@@ -1888,17 +1868,17 @@
           286.26503496,
           122.00648273274999
         ],
-        "order": 93,
+        "order": 92,
         "heading_level": 1,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "section_header",
-          "docling_ref": "#/texts/98"
+          "docling_ref": "#/texts/97"
         }
       },
       {
-        "id": "#/texts/99",
+        "id": "#/texts/98",
         "type": "text",
         "text": "Đ ể quy trình chu ẩ n SOP đ ượ c đ ư a vào th ự c t ế ho ạ t đ ộ ng đ ạ t hi ệ u qu ả cao nh ấ t, s ự ph ố i h ợ p gi ữ a hai vai trò qu ả n lý và nhân viên là then ch ố t:",
         "page_number": 3,
@@ -1908,17 +1888,17 @@
           555.6390266011497,
           93.52643648275
         ],
-        "order": 94,
+        "order": 93,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "text",
-          "docling_ref": "#/texts/99"
+          "docling_ref": "#/texts/98"
         }
       },
       {
-        "id": "#/texts/102",
+        "id": "#/texts/101",
         "type": "heading",
         "text": "CƠ CHẾ PHỐI HỢP & VẬN HÀNH SOP GIỮA QUẢN LÝ VÀ NHÂN VIÊN",
         "page_number": 4,
@@ -1927,6 +1907,26 @@
           776.65567088125,
           446.83666007100453,
           788.86926116875
+        ],
+        "order": 94,
+        "heading_level": 1,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "section_header",
+          "docling_ref": "#/texts/101"
+        }
+      },
+      {
+        "id": "#/texts/102",
+        "type": "heading",
+        "text": "👔 NGƯỜI QUẢN LÝ (MANAGEMENT)",
+        "page_number": 4,
+        "bbox": [
+          91.45226082192599,
+          745.3006405907499,
+          241.25822287373848,
+          756.53714365525
         ],
         "order": 95,
         "heading_level": 1,
@@ -1939,26 +1939,6 @@
       },
       {
         "id": "#/texts/103",
-        "type": "heading",
-        "text": "👔 NGƯỜI QUẢN LÝ (MANAGEMENT)",
-        "page_number": 4,
-        "bbox": [
-          91.45226082192599,
-          745.3006405907499,
-          241.25822287373848,
-          756.53714365525
-        ],
-        "order": 96,
-        "heading_level": 1,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "section_header",
-          "docling_ref": "#/texts/103"
-        }
-      },
-      {
-        "id": "#/texts/104",
         "type": "list",
         "text": "· Hướng dẫn, truyền đạt & đào tạo",
         "page_number": 4,
@@ -1968,17 +1948,17 @@
           194.1548350273635,
           730.61204962825
         ],
-        "order": 97,
+        "order": 96,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "list_item",
-          "docling_ref": "#/texts/104"
+          "docling_ref": "#/texts/103"
         }
       },
       {
-        "id": "#/texts/105",
+        "id": "#/texts/104",
         "type": "text",
         "text": "Phổ biến cặn kẽ từng quy trình cho cấp dưới",
         "page_number": 4,
@@ -1988,17 +1968,17 @@
           206.269671353148,
           716.93211111475
         ],
-        "order": 98,
+        "order": 97,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "text",
-          "docling_ref": "#/texts/105"
+          "docling_ref": "#/texts/104"
         }
       },
       {
-        "id": "#/texts/106",
+        "id": "#/texts/105",
         "type": "list",
         "text": "· Giám sát & phát hiện sai lệch Kịp thời chấn chỉnh lỗi sai và rủi ro phát sinh",
         "page_number": 4,
@@ -2007,6 +1987,26 @@
           678.502524547,
           206.00376015019197,
           700.48160662825
+        ],
+        "order": 98,
+        "heading_level": null,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "list_item",
+          "docling_ref": "#/texts/105"
+        }
+      },
+      {
+        "id": "#/texts/106",
+        "type": "list",
+        "text": "· Lắng nghe & tối ưu hóa quy trình",
+        "page_number": 4,
+        "bbox": [
+          79.55084774999999,
+          661.075650229,
+          194.37158267343298,
+          670.35116362825
         ],
         "order": 99,
         "heading_level": null,
@@ -2019,26 +2019,6 @@
       },
       {
         "id": "#/texts/107",
-        "type": "list",
-        "text": "· Lắng nghe & tối ưu hóa quy trình",
-        "page_number": 4,
-        "bbox": [
-          79.55084774999999,
-          661.075650229,
-          194.37158267343298,
-          670.35116362825
-        ],
-        "order": 100,
-        "heading_level": null,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "list_item",
-          "docling_ref": "#/texts/107"
-        }
-      },
-      {
-        "id": "#/texts/108",
         "type": "heading",
         "text": "👷 NHÂN VIÊN THỰC THI (EMPLOYEES)",
         "page_number": 4,
@@ -2048,17 +2028,17 @@
           507.000631501095,
           756.53714365525
         ],
-        "order": 101,
+        "order": 100,
         "heading_level": 1,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "section_header",
-          "docling_ref": "#/texts/108"
+          "docling_ref": "#/texts/107"
         }
       },
       {
-        "id": "#/texts/109",
+        "id": "#/texts/108",
         "type": "list",
         "text": "· Tự giác & tuân thủ nghiêm ngặt",
         "page_number": 4,
@@ -2067,6 +2047,26 @@
           721.336536229,
           451.87883546788197,
           730.61204962825
+        ],
+        "order": 101,
+        "heading_level": null,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "raw_label": "list_item",
+          "docling_ref": "#/texts/108"
+        }
+      },
+      {
+        "id": "#/texts/109",
+        "type": "list",
+        "text": "Thực hiện đúng từng bước, không tự ý cắt xén",
+        "page_number": 4,
+        "bbox": [
+          341.39874525,
+          708.632967547,
+          474.10361265961797,
+          716.93211111475
         ],
         "order": 102,
         "heading_level": null,
@@ -2080,13 +2080,13 @@
       {
         "id": "#/texts/110",
         "type": "list",
-        "text": "Thực hiện đúng từng bước, không tự ý cắt xén",
+        "text": "· Đảm bảo chất lượng đầu ra",
         "page_number": 4,
         "bbox": [
           341.39874525,
-          708.632967547,
-          474.10361265961797,
-          716.93211111475
+          691.206093229,
+          436.9547772455115,
+          700.48160662825
         ],
         "order": 103,
         "heading_level": null,
@@ -2100,13 +2100,13 @@
       {
         "id": "#/texts/111",
         "type": "list",
-        "text": "· Đảm bảo chất lượng đầu ra",
+        "text": "Chịu trách nhiệm trực tiếp với công việc được giao",
         "page_number": 4,
         "bbox": [
           341.39874525,
-          691.206093229,
-          436.9547772455115,
-          700.48160662825
+          678.502524547,
+          485.02831370429845,
+          686.80166811475
         ],
         "order": 104,
         "heading_level": null,
@@ -2120,13 +2120,13 @@
       {
         "id": "#/texts/112",
         "type": "list",
-        "text": "Chịu trách nhiệm trực tiếp với công việc được giao",
+        "text": "· Đóng góp sáng kiến cải tiến thực tế",
         "page_number": 4,
         "bbox": [
           341.39874525,
-          678.502524547,
-          485.02831370429845,
-          686.80166811475
+          661.075650229,
+          463.663531812324,
+          670.35116362825
         ],
         "order": 105,
         "heading_level": null,
@@ -2139,26 +2139,6 @@
       },
       {
         "id": "#/texts/113",
-        "type": "list",
-        "text": "· Đóng góp sáng kiến cải tiến thực tế",
-        "page_number": 4,
-        "bbox": [
-          341.39874525,
-          661.075650229,
-          463.663531812324,
-          670.35116362825
-        ],
-        "order": 106,
-        "heading_level": null,
-        "section_path": [],
-        "metadata": {
-          "source": "docling",
-          "raw_label": "list_item",
-          "docling_ref": "#/texts/113"
-        }
-      },
-      {
-        "id": "#/texts/114",
         "type": "caption",
         "text": "Hình 3: Ng ườ i qu ả n lý c ầ n tr ự c ti ế p h ướ ng d ẫ n, truy ề n đ ạ t và l ắ ng nghe ph ả n h ồ i c ủ a nhân viên trong quy trình SOP",
         "page_number": 4,
@@ -2168,17 +2148,17 @@
           515.6965781730006,
           624.32540198275
         ],
-        "order": 107,
+        "order": 106,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "caption",
-          "docling_ref": "#/texts/114"
+          "docling_ref": "#/texts/113"
         }
       },
       {
-        "id": "#/texts/115",
+        "id": "#/texts/114",
         "type": "heading",
         "text": "1. Trách nhi ệ m c ủ a Ng ườ i Qu ả n lý",
         "page_number": 4,
@@ -2188,17 +2168,17 @@
           215.00503539824993,
           589.94579648275
         ],
-        "order": 108,
+        "order": 107,
         "heading_level": 1,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "section_header",
-          "docling_ref": "#/texts/115"
+          "docling_ref": "#/texts/114"
         }
       },
       {
-        "id": "#/texts/116",
+        "id": "#/texts/115",
         "type": "text",
         "text": "Ng ườ i qu ả n lý là ng ườ i tr ự c ti ế p h ướ ng d ẫ n và truy ề n đ ạ t quy trình SOP cho c ấ p d ướ i. Vì v ậ y, ng ườ i qu ả n lý c ầ n n ắ m rõ các quy trình công vi ệ c, ki ể m soát ch ặ t ch ẽ công vi ệ c, k ị p th ờ i phát hi ệ n và x ử lý các sai sót x ả y ra trong quá trình th ự c hi ệ n. Đ ồ ng th ờ i, nhà qu ả n lý c ầ n bi ế t l ắ ng nghe ý ki ế n c ủ a nhân viên v ề nh ữ ng v ấ n đ ề phát sinh ho ặ c ch ư a phù h ợ p đ ể không ng ừ ng c ả i ti ế n và hoàn thi ệ n quy trình SOP.",
         "page_number": 4,
@@ -2208,17 +2188,17 @@
           544.4075271631873,
           570.53271023275
         ],
-        "order": 109,
+        "order": 108,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "text",
-          "docling_ref": "#/texts/116"
+          "docling_ref": "#/texts/115"
         }
       },
       {
-        "id": "#/texts/117",
+        "id": "#/texts/116",
         "type": "heading",
         "text": "2. Trách nhi ệ m c ủ a Nhân viên",
         "page_number": 4,
@@ -2228,17 +2208,17 @@
           192.35503596449996,
           480.88036673275
         ],
-        "order": 110,
+        "order": 109,
         "heading_level": 1,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "section_header",
-          "docling_ref": "#/texts/117"
+          "docling_ref": "#/texts/116"
         }
       },
       {
-        "id": "#/texts/118",
+        "id": "#/texts/117",
         "type": "text",
         "text": "Nhân viên là đ ố i t ượ ng tr ự c ti ế p làm vi ệ c và ch ị u trách nhi ệ m tuân theo các quy trình SOP tiêu chu ẩ n d ướ i s ự h ướ ng d ẫ n c ủ a c ấ p trên. Vì v ậ y, h ọ ph ả i có ý th ứ c t ự giác hoàn thành t ố t công vi ệ c đ ượ c giao, không làm sai nhi ệ m v ụ c ủ a mình. Đ ồ ng th ờ i, nhân viên có th ể góp ý, đ ề xu ấ t các gi ả i pháp nh ằ m nâng cao ch ấ t l ượ ng s ả n ph ẩ m, d ị ch v ụ cũng nh ư giúp công vi ệ c hi ệ u qu ả h ơ n. Tuy nhiên, nhân viên không th ể t ự ý thay đ ổ i quy trình hi ệ n có mà m ọ i đi ề u ch ỉ nh ph ả i xin ý ki ế n và đ ượ c c ấ p trên đ ồ ng ý.",
         "page_number": 4,
@@ -2248,17 +2228,17 @@
           544.4235271627871,
           461.4672804827501
         ],
-        "order": 111,
+        "order": 110,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "text",
-          "docling_ref": "#/texts/118"
+          "docling_ref": "#/texts/117"
         }
       },
       {
-        "id": "#/texts/119",
+        "id": "#/texts/118",
         "type": "heading",
         "text": "4. Phân bi ệ t m ộ t s ố đ ị nh nghĩa SOP ph ổ bi ế n theo lĩnh v ự c",
         "page_number": 4,
@@ -2268,17 +2248,17 @@
           414.65303249100003,
           355.79466623275005
         ],
-        "order": 112,
+        "order": 111,
         "heading_level": 1,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "section_header",
-          "docling_ref": "#/texts/119"
+          "docling_ref": "#/texts/118"
         }
       },
       {
-        "id": "#/texts/120",
+        "id": "#/texts/119",
         "type": "text",
         "text": "SOP đ ượ c ứ ng d ụ ng trong nhi ề u ngành ngh ề khác nhau v ớ i m ụ c đích tr ợ giúp quá trình s ả n xu ấ t hay cung ứ ng d ị ch v ụ theo đúng tiêu chu ẩ n k ỹ thu ậ t đ ả m b ả o ch ấ t l ượ ng:",
         "page_number": 4,
@@ -2288,17 +2268,17 @@
           555.5210266040999,
           327.31461998275006
         ],
-        "order": 113,
+        "order": 112,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "text",
-          "docling_ref": "#/texts/120"
+          "docling_ref": "#/texts/119"
         }
       },
       {
-        "id": "#/texts/123",
+        "id": "#/texts/122",
         "type": "text",
         "text": "K ế t lu ậ n: Vi ệ c xây d ự ng quy trình chu ẩ n SOP là m ộ t quá trình đòi h ỏ i tính c ẩ n th ậ n và chi ti ế t. Vi ệ c đ ầ u t ư th ờ i gian và tài nguyên đ ể xây d ự ng quy trình chu ẩ n SOP s ẽ mang l ạ i l ợ i ích l ớ n cho t ổ ch ứ c doanh nghi ệ p, giúp nâng cao ch ấ t l ượ ng và hi ệ u qu ả ho ạ t đ ộ ng.",
         "page_number": 5,
@@ -2308,17 +2288,17 @@
           555.6247759290443,
           628.2039909827499
         ],
-        "order": 114,
+        "order": 113,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "text",
-          "docling_ref": "#/texts/123"
+          "docling_ref": "#/texts/122"
         }
       },
       {
-        "id": "#/texts/124",
+        "id": "#/texts/123",
         "type": "text",
         "text": "* Bài vi ế t g ố c cung c ấ p thông tin chuyên đ ề qu ả n tr ị ch ấ t l ượ ng t ừ Vinacontrol CE (https://vnce.vn/sop-la-gi).",
         "page_number": 5,
@@ -2328,13 +2308,13 @@
           444.4805275942506,
           593.55159848275
         ],
-        "order": 115,
+        "order": 114,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "raw_label": "text",
-          "docling_ref": "#/texts/124"
+          "docling_ref": "#/texts/123"
         }
       }
     ],
@@ -2350,7 +2330,7 @@
           556.2632518507813,
           285.28442255580785
         ],
-        "order": 116,
+        "order": 115,
         "heading_level": null,
         "section_path": [],
         "metadata": {
@@ -2392,7 +2372,7 @@
           556.0294055660736,
           800.0541164194495
         ],
-        "order": 117,
+        "order": 116,
         "heading_level": null,
         "section_path": [],
         "metadata": {
@@ -2432,7 +2412,7 @@
           547.2520011194224,
           299.3374530749155
         ],
-        "order": 118,
+        "order": 117,
         "heading_level": null,
         "section_path": [],
         "metadata": {
@@ -2498,9 +2478,6 @@
             },
             {
               "$ref": "#/texts/28"
-            },
-            {
-              "$ref": "#/texts/29"
             }
           ]
         },
@@ -2525,13 +2502,16 @@
           549.7635321631327,
           525.4184460136369
         ],
-        "order": 119,
+        "order": 118,
         "heading_level": null,
         "section_path": [],
         "metadata": {
           "source": "docling",
           "docling_ref": "#/pictures/1",
           "child_refs": [
+            {
+              "$ref": "#/texts/39"
+            },
             {
               "$ref": "#/texts/40"
             },
@@ -2621,9 +2601,6 @@
             },
             {
               "$ref": "#/texts/69"
-            },
-            {
-              "$ref": "#/texts/70"
             }
           ]
         },
@@ -2631,7 +2608,7 @@
           "uri": null,
           "caption": null,
           "caption_refs": [
-            "{'$ref': '#/texts/40'}"
+            "{'$ref': '#/texts/39'}"
           ],
           "ocr_text": null,
           "description": null
@@ -2648,7 +2625,7 @@
           359.4039085117257,
           756.5856565142699
         ],
-        "order": 120,
+        "order": 119,
         "heading_level": null,
         "section_path": [],
         "metadata": {
@@ -3228,27 +3205,7 @@
       }
     },
     {
-      "id": "#/texts/29",
-      "type": "text",
-      "text": "A",
-      "page_number": 1,
-      "bbox": [
-        78.33333333333334,
-        181.889764,
-        94.66666666666667,
-        187.22309733333327
-      ],
-      "order": 28,
-      "heading_level": null,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "text",
-        "docling_ref": "#/texts/29"
-      }
-    },
-    {
-      "id": "#/texts/32",
+      "id": "#/texts/31",
       "type": "heading",
       "text": "2. T ư v ấ n xây d ự ng quy trình chu ẩ n SOP",
       "page_number": 2,
@@ -3258,17 +3215,17 @@
         304.54303460849997,
         797.82288923275
       ],
-      "order": 29,
+      "order": 28,
       "heading_level": 1,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "section_header",
-        "docling_ref": "#/texts/32"
+        "docling_ref": "#/texts/31"
       }
     },
     {
-      "id": "#/texts/33",
+      "id": "#/texts/32",
       "type": "text",
       "text": "M ộ t quy trình v ậ n hành tiêu chu ẩ n hi ệ u qu ả ph ả i gi ả i thích rõ ràng các b ướ c c ầ n th ự c hi ệ n đ ể hoàn thành m ộ t nhi ệ m v ụ nào đó. Đ ồ ng th ờ i th ể hi ệ n cho nhân viên th ấ y đ ượ c nh ữ ng r ủ i ro có th ể x ả y ra khi th ự c hi ệ n quy trình. H ướ ng d ẫ n ứ ng d ụ ng SOP nên ng ắ n g ọ n và d ễ hi ể u, t ậ p trung vào nh ữ ng gì c ầ n ph ả i làm. Sau khi vi ế t xong, c ầ n phân tích và c ậ p nh ậ t đ ị nh kỳ theo 6 - 12 tháng đ ể đ ả m b ả o SOP v ẫ n phù h ợ p v ớ i các tiêu chu ẩ n và yêu c ầ u c ủ a t ổ ch ứ c.",
       "page_number": 2,
@@ -3277,6 +3234,26 @@
         690.080499073,
         555.5962766022185,
         769.3428422327501
+      ],
+      "order": 29,
+      "heading_level": null,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "text",
+        "docling_ref": "#/texts/32"
+      }
+    },
+    {
+      "id": "#/texts/33",
+      "type": "text",
+      "text": "Tr ướ c khi vi ế t SOP, các nhà qu ả n tr ị nên th ự c hi ệ n đánh giá r ủ i ro t ấ t c ả các b ướ c trong quy trình nh ằ m xác đ ị nh b ấ t kỳ tr ở ng ạ i nào có th ể phát sinh. Các v ấ n đ ề c ầ n đ ượ c làm rõ bao g ồ m:",
+      "page_number": 2,
+      "bbox": [
+        39.6850395,
+        650.504327323,
+        555.5010266045999,
+        680.52741248275
       ],
       "order": 30,
       "heading_level": null,
@@ -3289,26 +3266,6 @@
     },
     {
       "id": "#/texts/34",
-      "type": "text",
-      "text": "Tr ướ c khi vi ế t SOP, các nhà qu ả n tr ị nên th ự c hi ệ n đánh giá r ủ i ro t ấ t c ả các b ướ c trong quy trình nh ằ m xác đ ị nh b ấ t kỳ tr ở ng ạ i nào có th ể phát sinh. Các v ấ n đ ề c ầ n đ ượ c làm rõ bao g ồ m:",
-      "page_number": 2,
-      "bbox": [
-        39.6850395,
-        650.504327323,
-        555.5010266045999,
-        680.52741248275
-      ],
-      "order": 31,
-      "heading_level": null,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "text",
-        "docling_ref": "#/texts/34"
-      }
-    },
-    {
-      "id": "#/texts/35",
       "type": "list",
       "text": "Ai th ự c hi ệ n vai trò gì? Phân đ ị nh rõ ch ứ c danh ch ị u trách nhi ệ m. ·",
       "page_number": 2,
@@ -3317,6 +3274,26 @@
         627.3312410732501,
         353.60515176749993,
         640.95124073275
+      ],
+      "order": 31,
+      "heading_level": null,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "list_item",
+        "docling_ref": "#/texts/34"
+      }
+    },
+    {
+      "id": "#/texts/35",
+      "type": "list",
+      "text": "M ỗ i vai trò c ầ n làm nh ữ ng gì? Xác đ ị nh chi ti ế t nhi ệ m v ụ và thao tác c ụ th ể . ·",
+      "page_number": 2,
+      "bbox": [
+        48.405987,
+        607.16815557325,
+        400.9100736735,
+        620.78815523275
       ],
       "order": 32,
       "heading_level": null,
@@ -3330,13 +3307,13 @@
     {
       "id": "#/texts/36",
       "type": "list",
-      "text": "M ỗ i vai trò c ầ n làm nh ữ ng gì? Xác đ ị nh chi ti ế t nhi ệ m v ụ và thao tác c ụ th ể . ·",
+      "text": "M ụ c tiêu ho ặ c k ế t qu ả công vi ệ c ph ả i đ ạ t đ ượ c là gì? Ch ỉ s ố đo l ườ ng KPI / Output c ầ n đ ạ t. ·",
       "page_number": 2,
       "bbox": [
         48.405987,
-        607.16815557325,
-        400.9100736735,
-        620.78815523275
+        587.00506932325,
+        480.57115823474976,
+        600.62506898275
       ],
       "order": 33,
       "heading_level": null,
@@ -3350,13 +3327,13 @@
     {
       "id": "#/texts/37",
       "type": "list",
-      "text": "M ụ c tiêu ho ặ c k ế t qu ả công vi ệ c ph ả i đ ạ t đ ượ c là gì? Ch ỉ s ố đo l ườ ng KPI / Output c ầ n đ ạ t. ·",
+      "text": "Nh ữ ng gì c ầ n th ự c hi ệ n đã đ ượ c gi ả i thích rõ ràng hay ch ư a? ·",
       "page_number": 2,
       "bbox": [
         48.405987,
-        587.00506932325,
-        480.57115823474976,
-        600.62506898275
+        566.84198307325,
+        350.47503210524974,
+        580.46198273275
       ],
       "order": 34,
       "heading_level": null,
@@ -3369,26 +3346,6 @@
     },
     {
       "id": "#/texts/38",
-      "type": "list",
-      "text": "Nh ữ ng gì c ầ n th ự c hi ệ n đã đ ượ c gi ả i thích rõ ràng hay ch ư a? ·",
-      "page_number": 2,
-      "bbox": [
-        48.405987,
-        566.84198307325,
-        350.47503210524974,
-        580.46198273275
-      ],
-      "order": 35,
-      "heading_level": null,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "list_item",
-        "docling_ref": "#/texts/38"
-      }
-    },
-    {
-      "id": "#/texts/39",
       "type": "heading",
       "text": "LỘ TRÌNH 8 BƯỚC XÂY DỰNG & TRIỂN KHAI QUY TRÌNH CHUẨN SOP",
       "page_number": 2,
@@ -3398,17 +3355,17 @@
         457.47565179804826,
         542.98806383575
       ],
-      "order": 36,
+      "order": 35,
       "heading_level": 1,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "section_header",
-        "docling_ref": "#/texts/39"
+        "docling_ref": "#/texts/38"
       }
     },
     {
-      "id": "#/texts/40",
+      "id": "#/texts/39",
       "type": "caption",
       "text": "Hình 2: S ơ đ ồ 8 b ướ c tri ể n khai xây d ự ng và duy trì quy trình thao tác chu ẩ n SOP",
       "page_number": 2,
@@ -3418,17 +3375,17 @@
         450.55897300500067,
         274.69422548274997
       ],
-      "order": 37,
+      "order": 36,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "caption",
-        "docling_ref": "#/texts/40"
+        "docling_ref": "#/texts/39"
       }
     },
     {
-      "id": "#/texts/41",
+      "id": "#/texts/40",
       "type": "heading",
       "text": "BƯỚC 1",
       "page_number": 2,
@@ -3437,6 +3394,26 @@
         500.5761707657501,
         126.283152733392,
         511.5089818802501
+      ],
+      "order": 37,
+      "heading_level": 1,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "section_header",
+        "docling_ref": "#/texts/40"
+      }
+    },
+    {
+      "id": "#/texts/41",
+      "type": "heading",
+      "text": "Mục tiêu SOP",
+      "page_number": 2,
+      "bbox": [
+        84.35361686597999,
+        473.5761700157501,
+        137.30020822861047,
+        484.5089811302501
       ],
       "order": 38,
       "heading_level": 1,
@@ -3449,26 +3426,6 @@
     },
     {
       "id": "#/texts/42",
-      "type": "heading",
-      "text": "Mục tiêu SOP",
-      "page_number": 2,
-      "bbox": [
-        84.35361686597999,
-        473.5761700157501,
-        137.30020822861047,
-        484.5089811302501
-      ],
-      "order": 39,
-      "heading_level": 1,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "section_header",
-        "docling_ref": "#/texts/42"
-      }
-    },
-    {
-      "id": "#/texts/43",
       "type": "text",
       "text": "Xác định mục đích và lý do vì sao cần ban hành quy trình",
       "page_number": 2,
@@ -3477,6 +3434,26 @@
         434.7114932605001,
         138.73920026858247,
         466.5047238733751
+      ],
+      "order": 39,
+      "heading_level": null,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "text",
+        "docling_ref": "#/texts/42"
+      }
+    },
+    {
+      "id": "#/texts/43",
+      "type": "text",
+      "text": "→",
+      "page_number": 2,
+      "bbox": [
+        164.432192279574,
+        460.43592640750006,
+        175.43943582857398,
+        475.71208899400006
       ],
       "order": 40,
       "heading_level": null,
@@ -3489,26 +3466,6 @@
     },
     {
       "id": "#/texts/44",
-      "type": "text",
-      "text": "→",
-      "page_number": 2,
-      "bbox": [
-        164.432192279574,
-        460.43592640750006,
-        175.43943582857398,
-        475.71208899400006
-      ],
-      "order": 41,
-      "heading_level": null,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "text",
-        "docling_ref": "#/texts/44"
-      }
-    },
-    {
-      "id": "#/texts/45",
       "type": "heading",
       "text": "BƯỚC 2",
       "page_number": 2,
@@ -3517,6 +3474,26 @@
         500.5761707657501,
         248.14802098339197,
         511.5089818802501
+      ],
+      "order": 41,
+      "heading_level": 1,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "section_header",
+        "docling_ref": "#/texts/44"
+      }
+    },
+    {
+      "id": "#/texts/45",
+      "type": "heading",
+      "text": "Phạm vi áp dụng",
+      "page_number": 2,
+      "bbox": [
+        199.21158284026274,
+        473.5761700157501,
+        266.17220643000974,
+        484.5089811302501
       ],
       "order": 42,
       "heading_level": 1,
@@ -3529,26 +3506,6 @@
     },
     {
       "id": "#/texts/46",
-      "type": "heading",
-      "text": "Phạm vi áp dụng",
-      "page_number": 2,
-      "bbox": [
-        199.21158284026274,
-        473.5761700157501,
-        266.17220643000974,
-        484.5089811302501
-      ],
-      "order": 43,
-      "heading_level": 1,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "section_header",
-        "docling_ref": "#/texts/46"
-      }
-    },
-    {
-      "id": "#/texts/47",
       "type": "text",
       "text": "Xác định ranh giới, phòng ban và cá nhân chịu sự điều chỉnh",
       "page_number": 2,
@@ -3557,6 +3514,26 @@
         434.7114932605001,
         267.522961737801,
         466.5047238733751
+      ],
+      "order": 43,
+      "heading_level": null,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "text",
+        "docling_ref": "#/texts/46"
+      }
+    },
+    {
+      "id": "#/texts/47",
+      "type": "text",
+      "text": "→",
+      "page_number": 2,
+      "bbox": [
+        286.29706052957397,
+        460.43592640750006,
+        297.304304078574,
+        475.71208899400006
       ],
       "order": 44,
       "heading_level": null,
@@ -3569,26 +3546,6 @@
     },
     {
       "id": "#/texts/48",
-      "type": "text",
-      "text": "→",
-      "page_number": 2,
-      "bbox": [
-        286.29706052957397,
-        460.43592640750006,
-        297.304304078574,
-        475.71208899400006
-      ],
-      "order": 45,
-      "heading_level": null,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "text",
-        "docling_ref": "#/texts/48"
-      }
-    },
-    {
-      "id": "#/texts/49",
       "type": "heading",
       "text": "BƯỚC 3",
       "page_number": 2,
@@ -3597,6 +3554,26 @@
         500.5761707657501,
         370.01288923339195,
         511.5089818802501
+      ],
+      "order": 45,
+      "heading_level": 1,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "section_header",
+        "docling_ref": "#/texts/48"
+      }
+    },
+    {
+      "id": "#/texts/49",
+      "type": "heading",
+      "text": "Chọn định dạng",
+      "page_number": 2,
+      "bbox": [
+        322.9111084385227,
+        473.5761700157501,
+        386.20241660202,
+        484.5089811302501
       ],
       "order": 46,
       "heading_level": 1,
@@ -3609,26 +3586,6 @@
     },
     {
       "id": "#/texts/50",
-      "type": "heading",
-      "text": "Chọn định dạng",
-      "page_number": 2,
-      "bbox": [
-        322.9111084385227,
-        473.5761700157501,
-        386.20241660202,
-        484.5089811302501
-      ],
-      "order": 47,
-      "heading_level": 1,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "section_header",
-        "docling_ref": "#/texts/50"
-      }
-    },
-    {
-      "id": "#/texts/51",
       "type": "text",
       "text": "Lưu đồ (Flowchart), bước đơn giản hay các bước phân cấp",
       "page_number": 2,
@@ -3637,6 +3594,26 @@
         434.7114932605001,
         382.55202890602567,
         466.5047238733751
+      ],
+      "order": 47,
+      "heading_level": null,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "text",
+        "docling_ref": "#/texts/50"
+      }
+    },
+    {
+      "id": "#/texts/51",
+      "type": "text",
+      "text": "→",
+      "page_number": 2,
+      "bbox": [
+        408.16192877957394,
+        460.43592640750006,
+        419.16917232857395,
+        475.71208899400006
       ],
       "order": 48,
       "heading_level": null,
@@ -3649,26 +3626,6 @@
     },
     {
       "id": "#/texts/52",
-      "type": "text",
-      "text": "→",
-      "page_number": 2,
-      "bbox": [
-        408.16192877957394,
-        460.43592640750006,
-        419.16917232857395,
-        475.71208899400006
-      ],
-      "order": 49,
-      "heading_level": null,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "text",
-        "docling_ref": "#/texts/52"
-      }
-    },
-    {
-      "id": "#/texts/53",
       "type": "heading",
       "text": "BƯỚC 4",
       "page_number": 2,
@@ -3677,6 +3634,26 @@
         500.5761707657501,
         491.877757483392,
         511.5089818802501
+      ],
+      "order": 49,
+      "heading_level": 1,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "section_header",
+        "docling_ref": "#/texts/52"
+      }
+    },
+    {
+      "id": "#/texts/53",
+      "type": "heading",
+      "text": "Yếu tố phụ thuộc",
+      "page_number": 2,
+      "bbox": [
+        442.174533183828,
+        473.5761700157501,
+        510.668432816166,
+        484.5089811302501
       ],
       "order": 50,
       "heading_level": 1,
@@ -3689,26 +3666,6 @@
     },
     {
       "id": "#/texts/54",
-      "type": "heading",
-      "text": "Yếu tố phụ thuộc",
-      "page_number": 2,
-      "bbox": [
-        442.174533183828,
-        473.5761700157501,
-        510.668432816166,
-        484.5089811302501
-      ],
-      "order": 51,
-      "heading_level": 1,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "section_header",
-        "docling_ref": "#/texts/54"
-      }
-    },
-    {
-      "id": "#/texts/55",
       "type": "text",
       "text": "Mối nối các quy trình, đặc thù đối tượng tiếp nhận văn bản",
       "page_number": 2,
@@ -3718,17 +3675,17 @@
         507.71778443690624,
         466.5047238733751
       ],
-      "order": 52,
+      "order": 51,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "text",
-        "docling_ref": "#/texts/55"
+        "docling_ref": "#/texts/54"
       }
     },
     {
-      "id": "#/texts/56",
+      "id": "#/texts/55",
       "type": "heading",
       "text": "BƯỚC 5",
       "page_number": 2,
@@ -3737,6 +3694,26 @@
         380.17076201575003,
         126.283152733392,
         391.10357313025
+      ],
+      "order": 52,
+      "heading_level": 1,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "section_header",
+        "docling_ref": "#/texts/55"
+      }
+    },
+    {
+      "id": "#/texts/56",
+      "type": "heading",
+      "text": "Soạn thảo chi tiết",
+      "page_number": 2,
+      "bbox": [
+        75.64852473227998,
+        353.17076126575006,
+        146.00514492987372,
+        364.10357238025006
       ],
       "order": 53,
       "heading_level": 1,
@@ -3749,26 +3726,6 @@
     },
     {
       "id": "#/texts/57",
-      "type": "heading",
-      "text": "Soạn thảo chi tiết",
-      "page_number": 2,
-      "bbox": [
-        75.64852473227998,
-        353.17076126575006,
-        146.00514492987372,
-        364.10357238025006
-      ],
-      "order": 54,
-      "heading_level": 1,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "section_header",
-        "docling_ref": "#/texts/57"
-      }
-    },
-    {
-      "id": "#/texts/58",
       "type": "text",
       "text": "Xác định từng bước, hướng dẫn thao tác rõ ràng, cụ thể",
       "page_number": 2,
@@ -3777,6 +3734,26 @@
         314.3060845105001,
         140.10038852260948,
         346.09931512337505
+      ],
+      "order": 54,
+      "heading_level": null,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "text",
+        "docling_ref": "#/texts/57"
+      }
+    },
+    {
+      "id": "#/texts/58",
+      "type": "text",
+      "text": "→",
+      "page_number": 2,
+      "bbox": [
+        164.432192279574,
+        340.0305176575,
+        175.43943582857398,
+        355.30668024400006
       ],
       "order": 55,
       "heading_level": null,
@@ -3789,26 +3766,6 @@
     },
     {
       "id": "#/texts/59",
-      "type": "text",
-      "text": "→",
-      "page_number": 2,
-      "bbox": [
-        164.432192279574,
-        340.0305176575,
-        175.43943582857398,
-        355.30668024400006
-      ],
-      "order": 56,
-      "heading_level": null,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "text",
-        "docling_ref": "#/texts/59"
-      }
-    },
-    {
-      "id": "#/texts/60",
       "type": "heading",
       "text": "BƯỚC 6",
       "page_number": 2,
@@ -3817,6 +3774,26 @@
         380.17076201575003,
         248.14802098339197,
         391.10357313025
+      ],
+      "order": 56,
+      "heading_level": 1,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "section_header",
+        "docling_ref": "#/texts/59"
+      }
+    },
+    {
+      "id": "#/texts/60",
+      "type": "heading",
+      "text": "Thử nghiệm & Đo",
+      "page_number": 2,
+      "bbox": [
+        197.73430771814623,
+        353.17076126575006,
+        267.64969828186196,
+        364.10357238025006
       ],
       "order": 57,
       "heading_level": 1,
@@ -3829,26 +3806,6 @@
     },
     {
       "id": "#/texts/61",
-      "type": "heading",
-      "text": "Thử nghiệm & Đo",
-      "page_number": 2,
-      "bbox": [
-        197.73430771814623,
-        353.17076126575006,
-        267.64969828186196,
-        364.10357238025006
-      ],
-      "order": 58,
-      "heading_level": 1,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "section_header",
-        "docling_ref": "#/texts/61"
-      }
-    },
-    {
-      "id": "#/texts/62",
       "type": "text",
       "text": "Kiểm tra thực tế, đánh giá hiệu quả và thu thập góp ý",
       "page_number": 2,
@@ -3857,6 +3814,26 @@
         314.3060845105001,
         258.991303014324,
         346.09931512337505
+      ],
+      "order": 58,
+      "heading_level": null,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "text",
+        "docling_ref": "#/texts/61"
+      }
+    },
+    {
+      "id": "#/texts/62",
+      "type": "text",
+      "text": "→",
+      "page_number": 2,
+      "bbox": [
+        286.29706052957397,
+        340.0305176575,
+        297.304304078574,
+        355.30668024400006
       ],
       "order": 59,
       "heading_level": null,
@@ -3869,26 +3846,6 @@
     },
     {
       "id": "#/texts/63",
-      "type": "text",
-      "text": "→",
-      "page_number": 2,
-      "bbox": [
-        286.29706052957397,
-        340.0305176575,
-        297.304304078574,
-        355.30668024400006
-      ],
-      "order": 60,
-      "heading_level": null,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "text",
-        "docling_ref": "#/texts/63"
-      }
-    },
-    {
-      "id": "#/texts/64",
       "type": "heading",
       "text": "BƯỚC 7",
       "page_number": 2,
@@ -3897,6 +3854,26 @@
         380.17076201575003,
         370.01288923339195,
         391.10357313025
+      ],
+      "order": 60,
+      "heading_level": 1,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "section_header",
+        "docling_ref": "#/texts/63"
+      }
+    },
+    {
+      "id": "#/texts/64",
+      "type": "heading",
+      "text": "Ký duyệt & Công bố",
+      "page_number": 2,
+      "bbox": [
+        315.6059721815482,
+        353.17076126575006,
+        393.5077695887302,
+        364.10357238025006
       ],
       "order": 61,
       "heading_level": 1,
@@ -3909,26 +3886,6 @@
     },
     {
       "id": "#/texts/65",
-      "type": "heading",
-      "text": "Ký duyệt & Công bố",
-      "page_number": 2,
-      "bbox": [
-        315.6059721815482,
-        353.17076126575006,
-        393.5077695887302,
-        364.10357238025006
-      ],
-      "order": 62,
-      "heading_level": 1,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "section_header",
-        "docling_ref": "#/texts/65"
-      }
-    },
-    {
-      "id": "#/texts/66",
       "type": "text",
       "text": "Lãnh đạo phê duyệt, truyền thông và đào tạo toàn diện cho nhân sự",
       "page_number": 2,
@@ -3937,6 +3894,26 @@
         314.3060845105001,
         389.66386413060377,
         346.09931512337505
+      ],
+      "order": 62,
+      "heading_level": null,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "text",
+        "docling_ref": "#/texts/65"
+      }
+    },
+    {
+      "id": "#/texts/66",
+      "type": "text",
+      "text": "→",
+      "page_number": 2,
+      "bbox": [
+        408.16192877957394,
+        340.0305176575,
+        419.16917232857395,
+        355.30668024400006
       ],
       "order": 63,
       "heading_level": null,
@@ -3949,26 +3926,6 @@
     },
     {
       "id": "#/texts/67",
-      "type": "text",
-      "text": "→",
-      "page_number": 2,
-      "bbox": [
-        408.16192877957394,
-        340.0305176575,
-        419.16917232857395,
-        355.30668024400006
-      ],
-      "order": 64,
-      "heading_level": null,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "text",
-        "docling_ref": "#/texts/67"
-      }
-    },
-    {
-      "id": "#/texts/68",
       "type": "heading",
       "text": "BƯỚC 8",
       "page_number": 2,
@@ -3977,6 +3934,26 @@
         380.17076201575003,
         491.877757483392,
         391.10357313025
+      ],
+      "order": 64,
+      "heading_level": 1,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "section_header",
+        "docling_ref": "#/texts/67"
+      }
+    },
+    {
+      "id": "#/texts/68",
+      "type": "heading",
+      "text": "Cập nhật định kỳ",
+      "page_number": 2,
+      "bbox": [
+        442.4556644889345,
+        353.17076126575006,
+        510.3876722137725,
+        364.10357238025006
       ],
       "order": 65,
       "heading_level": 1,
@@ -3989,26 +3966,6 @@
     },
     {
       "id": "#/texts/69",
-      "type": "heading",
-      "text": "Cập nhật định kỳ",
-      "page_number": 2,
-      "bbox": [
-        442.4556644889345,
-        353.17076126575006,
-        510.3876722137725,
-        364.10357238025006
-      ],
-      "order": 66,
-      "heading_level": 1,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "section_header",
-        "docling_ref": "#/texts/69"
-      }
-    },
-    {
-      "id": "#/texts/70",
       "type": "text",
       "text": "Rà soát 6 - 12 tháng, cập nhật điều chỉnh phù hợp biến đổi",
       "page_number": 2,
@@ -4018,17 +3975,17 @@
         506.0954893918425,
         346.09931512337505
       ],
-      "order": 67,
+      "order": 66,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "text",
-        "docling_ref": "#/texts/70"
+        "docling_ref": "#/texts/69"
       }
     },
     {
-      "id": "#/texts/71",
+      "id": "#/texts/70",
       "type": "heading",
       "text": "Chi ti ế t 8 b ướ c tri ể n khai SOP:",
       "page_number": 2,
@@ -4037,6 +3994,26 @@
         234.204028,
         193.23703949999995,
         248.50502800000004
+      ],
+      "order": 67,
+      "heading_level": 1,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "section_header",
+        "docling_ref": "#/texts/70"
+      }
+    },
+    {
+      "id": "#/texts/71",
+      "type": "heading",
+      "text": "B ướ c 1: Xác đ ị nh m ụ c tiêu c ủ a SOP",
+      "page_number": 2,
+      "bbox": [
+        51.3100395,
+        206.46065982325,
+        223.6100351925,
+        220.08065948274998
       ],
       "order": 68,
       "heading_level": 1,
@@ -4049,26 +4026,6 @@
     },
     {
       "id": "#/texts/72",
-      "type": "heading",
-      "text": "B ướ c 1: Xác đ ị nh m ụ c tiêu c ủ a SOP",
-      "page_number": 2,
-      "bbox": [
-        51.3100395,
-        206.46065982325,
-        223.6100351925,
-        220.08065948274998
-      ],
-      "order": 69,
-      "heading_level": 1,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "section_header",
-        "docling_ref": "#/texts/72"
-      }
-    },
-    {
-      "id": "#/texts/73",
       "type": "text",
       "text": "Xác đ ị nh m ụ c tiêu c ủ a nhi ệ m v ụ và hi ể u lý do t ạ i sao ph ả i c ầ n đ ế n SOP cho ho ạ t đ ộ ng này.",
       "page_number": 2,
@@ -4078,17 +4035,17 @@
         458.2100293274999,
         201.41757398275
       ],
-      "order": 70,
+      "order": 69,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "text",
-        "docling_ref": "#/texts/73"
+        "docling_ref": "#/texts/72"
       }
     },
     {
-      "id": "#/texts/74",
+      "id": "#/texts/73",
       "type": "heading",
       "text": "B ướ c 2: Xác đ ị nh ph ạ m vi c ủ a SOP",
       "page_number": 2,
@@ -4098,17 +4055,17 @@
         220.30003527525,
         165.50448773275002
       ],
-      "order": 71,
+      "order": 70,
       "heading_level": 1,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "section_header",
-        "docling_ref": "#/texts/74"
+        "docling_ref": "#/texts/73"
       }
     },
     {
-      "id": "#/texts/75",
+      "id": "#/texts/74",
       "type": "text",
       "text": "Xác đ ị nh ph ạ m vi áp d ụ ng đ ể đ ả m b ả o quy trình áp d ụ ng cho đúng các ho ạ t đ ộ ng và đ ố i t ượ ng liên quan.",
       "page_number": 2,
@@ -4118,17 +4075,17 @@
         520.6900277654998,
         146.84140223275006
       ],
-      "order": 72,
+      "order": 71,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "text",
-        "docling_ref": "#/texts/75"
+        "docling_ref": "#/texts/74"
       }
     },
     {
-      "id": "#/texts/78",
+      "id": "#/texts/77",
       "type": "heading",
       "text": "B ướ c 3: Xác đ ị nh hình d ạ ng & đ ị nh d ạ ng SOP",
       "page_number": 3,
@@ -4138,17 +4095,17 @@
         271.13003400449986,
         791.43007373275
       ],
-      "order": 73,
+      "order": 72,
       "heading_level": 1,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "section_header",
-        "docling_ref": "#/texts/78"
+        "docling_ref": "#/texts/77"
       }
     },
     {
-      "id": "#/texts/79",
+      "id": "#/texts/78",
       "type": "text",
       "text": "Quy ế t đ ị nh lo ạ i đ ị nh d ạ ng mu ố n s ử d ụ ng cho SOP tùy theo tính ch ấ t công vi ệ c:",
       "page_number": 3,
@@ -4158,17 +4115,17 @@
         406.88003061074994,
         772.76698823275
       ],
-      "order": 74,
+      "order": 73,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "text",
-        "docling_ref": "#/texts/79"
+        "docling_ref": "#/texts/78"
       }
     },
     {
-      "id": "#/texts/80",
+      "id": "#/texts/79",
       "type": "list",
       "text": "Flowchart or workflow diagram: Đ ượ c s ử d ụ ng đ ể hi ể n th ị các quy trình v ớ i các k ế t qu ả không th ể đoán tr ướ c đ ượ c ho ặ c có nhi ề u nhánh quy ế t đ ị nh r ẽ h ướ ng. ·",
       "page_number": 3,
@@ -4177,6 +4134,26 @@
         726.330816073,
         536.9750315115,
         756.35390198275
+      ],
+      "order": 74,
+      "heading_level": null,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "list_item",
+        "docling_ref": "#/texts/79"
+      }
+    },
+    {
+      "id": "#/texts/80",
+      "type": "list",
+      "text": "Simple steps: Vi ế t d ướ i d ạ ng danh sách g ạ ch đ ầ u dòng ho ặ c đánh s ố , bao g ồ m các tài li ệ u nh ư h ướ ng d ẫ n an toàn. M ẫ u SOP này khá đ ơ n gi ả n, ng ắ n g ọ n và d ễ làm theo. ·",
+      "page_number": 3,
+      "bbox": [
+        60.030987,
+        689.754644323,
+        529.1478520545,
+        719.77773023275
       ],
       "order": 75,
       "heading_level": null,
@@ -4190,13 +4167,13 @@
     {
       "id": "#/texts/81",
       "type": "list",
-      "text": "Simple steps: Vi ế t d ướ i d ạ ng danh sách g ạ ch đ ầ u dòng ho ặ c đánh s ố , bao g ồ m các tài li ệ u nh ư h ướ ng d ẫ n an toàn. M ẫ u SOP này khá đ ơ n gi ả n, ng ắ n g ọ n và d ễ làm theo. ·",
+      "text": "Hierarchical steps: Danh sách s ố có c ấ p b ậ c phân nhánh chi ti ế t (b ướ c chính kèm các hành đ ộ ng nh ỏ ), áp d ụ ng cho các quy trình k ỹ thu ậ t ph ứ c t ạ p. ·",
       "page_number": 3,
       "bbox": [
         60.030987,
-        689.754644323,
-        529.1478520545,
-        719.77773023275
+        653.178472573,
+        532.2144050894999,
+        683.20155848275
       ],
       "order": 76,
       "heading_level": null,
@@ -4209,26 +4186,6 @@
     },
     {
       "id": "#/texts/82",
-      "type": "list",
-      "text": "Hierarchical steps: Danh sách s ố có c ấ p b ậ c phân nhánh chi ti ế t (b ướ c chính kèm các hành đ ộ ng nh ỏ ), áp d ụ ng cho các quy trình k ỹ thu ậ t ph ứ c t ạ p. ·",
-      "page_number": 3,
-      "bbox": [
-        60.030987,
-        653.178472573,
-        532.2144050894999,
-        683.20155848275
-      ],
-      "order": 77,
-      "heading_level": null,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "list_item",
-        "docling_ref": "#/texts/82"
-      }
-    },
-    {
-      "id": "#/texts/83",
       "type": "heading",
       "text": "B ướ c 4: Xác đ ị nh các y ế u t ố ph ụ thu ộ c trong SOP",
       "page_number": 3,
@@ -4238,17 +4195,17 @@
         290.88003351074985,
         623.37538598275
       ],
-      "order": 78,
+      "order": 77,
       "heading_level": 1,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "section_header",
-        "docling_ref": "#/texts/83"
+        "docling_ref": "#/texts/82"
       }
     },
     {
-      "id": "#/texts/84",
+      "id": "#/texts/83",
       "type": "text",
       "text": "Xác đ ị nh các m ố i ph ụ thu ộ c v ớ i các quy trình hi ệ n hành. Đ ồ ng th ờ i xác đ ị nh đ ố i t ượ ng đang h ướ ng đ ế n đ ể có cách vi ế t phù h ợ p (SOP cho nhân viên cũ s ẽ khác v ớ i SOP đào t ạ o nhân viên m ớ i).",
       "page_number": 3,
@@ -4258,17 +4215,17 @@
         539.34002729925,
         604.71230048275
       ],
-      "order": 79,
+      "order": 78,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "text",
-        "docling_ref": "#/texts/84"
+        "docling_ref": "#/texts/83"
       }
     },
     {
-      "id": "#/texts/85",
+      "id": "#/texts/84",
       "type": "heading",
       "text": "B ướ c 5: Xác đ ị nh và th ự c hi ệ n các b ướ c cùng quy trình",
       "page_number": 3,
@@ -4278,17 +4235,17 @@
         318.3800328232498,
         552.38612873275
       ],
-      "order": 80,
+      "order": 79,
       "heading_level": 1,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "section_header",
-        "docling_ref": "#/texts/85"
+        "docling_ref": "#/texts/84"
       }
     },
     {
-      "id": "#/texts/86",
+      "id": "#/texts/85",
       "type": "text",
       "text": "Mô t ả chi ti ế t và đ ầ y đ ủ các b ướ c th ự c hi ệ n đ ể b ấ t kỳ nhân s ự nào cũng có th ể làm theo m ộ t cách chính xác và đ ồ ng nh ấ t.",
       "page_number": 3,
@@ -4298,17 +4255,17 @@
         545.08002715575,
         533.7230424827501
       ],
-      "order": 81,
+      "order": 80,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "text",
-        "docling_ref": "#/texts/86"
+        "docling_ref": "#/texts/85"
       }
     },
     {
-      "id": "#/texts/87",
+      "id": "#/texts/86",
       "type": "heading",
       "text": "B ướ c 6: Ki ể m tra và đánh giá hi ệ u qu ả c ủ a SOP",
       "page_number": 3,
@@ -4318,17 +4275,17 @@
         280.1900337779999,
         481.39687073275
       ],
-      "order": 82,
+      "order": 81,
       "heading_level": 1,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "section_header",
-        "docling_ref": "#/texts/87"
+        "docling_ref": "#/texts/86"
       }
     },
     {
-      "id": "#/texts/88",
+      "id": "#/texts/87",
       "type": "text",
       "text": "Sau khi tri ể n khai th ử nghi ệ m th ự c t ế , đánh giá tính kh ả thi và đo l ườ ng k ế t qu ả đ ể k ị p th ờ i đi ề u ch ỉ nh, hoàn thi ệ n.",
       "page_number": 3,
@@ -4338,17 +4295,17 @@
         529.30002755025,
         462.73378448275
       ],
-      "order": 83,
+      "order": 82,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "text",
-        "docling_ref": "#/texts/88"
+        "docling_ref": "#/texts/87"
       }
     },
     {
-      "id": "#/texts/89",
+      "id": "#/texts/88",
       "type": "heading",
       "text": "B ướ c 7: Phê duy ệ t và công b ố SOP",
       "page_number": 3,
@@ -4358,17 +4315,17 @@
         220.62003526725,
         410.40761273275007
       ],
-      "order": 84,
+      "order": 83,
       "heading_level": 1,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "section_header",
-        "docling_ref": "#/texts/89"
+        "docling_ref": "#/texts/88"
       }
     },
     {
-      "id": "#/texts/90",
+      "id": "#/texts/89",
       "type": "text",
       "text": "SOP c ầ n đ ượ c phê duy ệ t chính th ứ c b ở i các c ấ p qu ả n lý và đ ượ c công b ố , ph ổ bi ế n, đào t ạ o cho toàn th ể nhân viên liên quan.",
       "page_number": 3,
@@ -4378,17 +4335,17 @@
         523.1900277029999,
         391.74452723275
       ],
-      "order": 85,
+      "order": 84,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "text",
-        "docling_ref": "#/texts/90"
+        "docling_ref": "#/texts/89"
       }
     },
     {
-      "id": "#/texts/91",
+      "id": "#/texts/90",
       "type": "heading",
       "text": "B ướ c 8: C ậ p nh ậ t và b ả o trì SOP",
       "page_number": 3,
@@ -4398,17 +4355,17 @@
         208.29003557550004,
         339.83144123274997
       ],
-      "order": 86,
+      "order": 85,
       "heading_level": 1,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "section_header",
-        "docling_ref": "#/texts/91"
+        "docling_ref": "#/texts/90"
       }
     },
     {
-      "id": "#/texts/92",
+      "id": "#/texts/91",
       "type": "text",
       "text": "Th ườ ng xuyên rà soát (đ ị nh kỳ 6 - 12 tháng) và b ả o trì SOP nh ằ m b ả o đ ả m tính c ậ p nh ậ t, phù h ợ p v ớ i s ự phát tri ể n c ủ a t ổ ch ứ c.",
       "page_number": 3,
@@ -4418,17 +4375,17 @@
         543.4600271962498,
         321.1683549827501
       ],
-      "order": 87,
+      "order": 86,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "text",
-        "docling_ref": "#/texts/92"
+        "docling_ref": "#/texts/91"
       }
     },
     {
-      "id": "#/texts/93",
+      "id": "#/texts/92",
       "type": "heading",
       "text": "M ộ t s ố đi ể m các nhà qu ả n tr ị c ầ n l ư u ý khi vi ế t SOP:",
       "page_number": 3,
@@ -4438,17 +4395,17 @@
         305.17503320024986,
         262.84218323275
       ],
-      "order": 88,
+      "order": 87,
       "heading_level": 1,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "section_header",
-        "docling_ref": "#/texts/93"
+        "docling_ref": "#/texts/92"
       }
     },
     {
-      "id": "#/texts/94",
+      "id": "#/texts/93",
       "type": "list",
       "text": "T ấ t c ả các công vi ệ c tr ọ ng y ế u đ ề u b ắ t bu ộ c ph ả i có SOP. ·",
       "page_number": 3,
@@ -4457,6 +4414,26 @@
         232.81909732300005,
         326.2450330484999,
         246.42909698275002
+      ],
+      "order": 88,
+      "heading_level": null,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "list_item",
+        "docling_ref": "#/texts/93"
+      }
+    },
+    {
+      "id": "#/texts/94",
+      "type": "list",
+      "text": "Trình bày n ộ i dung c ụ th ể , súc tích, d ễ hi ể u đ ể nhân viên d ễ dàng làm theo. ·",
+      "page_number": 3,
+      "bbox": [
+        61.905987,
+        212.65601182299997,
+        403.97503110524985,
+        226.26601148274995
       ],
       "order": 89,
       "heading_level": null,
@@ -4470,13 +4447,13 @@
     {
       "id": "#/texts/95",
       "type": "list",
-      "text": "Trình bày n ộ i dung c ụ th ể , súc tích, d ễ hi ể u đ ể nhân viên d ễ dàng làm theo. ·",
+      "text": "Các SOP ph ả i đ ượ c xem xét k ỹ l ưỡ ng và phê duy ệ t tr ướ c khi ban hành. ·",
       "page_number": 3,
       "bbox": [
         61.905987,
-        212.65601182299997,
-        403.97503110524985,
-        226.26601148274995
+        192.4929255730001,
+        387.0750315277499,
+        206.10292523275007
       ],
       "order": 90,
       "heading_level": null,
@@ -4490,13 +4467,13 @@
     {
       "id": "#/texts/96",
       "type": "list",
-      "text": "Các SOP ph ả i đ ượ c xem xét k ỹ l ưỡ ng và phê duy ệ t tr ướ c khi ban hành. ·",
+      "text": "Hình th ứ c và n ộ i dung c ủ a quy trình chu ẩ n SOP có th ể thay đ ổ i linh ho ạ t tùy vào t ừ ng phòng ban, b ộ ph ậ n trong doanh nghi ệ p. ·",
       "page_number": 3,
       "bbox": [
         61.905987,
-        192.4929255730001,
-        387.0750315277499,
-        206.10292523275007
+        155.91675382300002,
+        541.8750276577498,
+        185.93983973275
       ],
       "order": 91,
       "heading_level": null,
@@ -4509,26 +4486,6 @@
     },
     {
       "id": "#/texts/97",
-      "type": "list",
-      "text": "Hình th ứ c và n ộ i dung c ủ a quy trình chu ẩ n SOP có th ể thay đ ổ i linh ho ạ t tùy vào t ừ ng phòng ban, b ộ ph ậ n trong doanh nghi ệ p. ·",
-      "page_number": 3,
-      "bbox": [
-        61.905987,
-        155.91675382300002,
-        541.8750276577498,
-        185.93983973275
-      ],
-      "order": 92,
-      "heading_level": null,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "list_item",
-        "docling_ref": "#/texts/97"
-      }
-    },
-    {
-      "id": "#/texts/98",
       "type": "heading",
       "text": "3. H ướ ng d ẫ n v ậ n hành SOP hi ệ u qu ả",
       "page_number": 3,
@@ -4538,17 +4495,17 @@
         286.26503496,
         122.00648273274999
       ],
-      "order": 93,
+      "order": 92,
       "heading_level": 1,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "section_header",
-        "docling_ref": "#/texts/98"
+        "docling_ref": "#/texts/97"
       }
     },
     {
-      "id": "#/texts/99",
+      "id": "#/texts/98",
       "type": "text",
       "text": "Đ ể quy trình chu ẩ n SOP đ ượ c đ ư a vào th ự c t ế ho ạ t đ ộ ng đ ạ t hi ệ u qu ả cao nh ấ t, s ự ph ố i h ợ p gi ữ a hai vai trò qu ả n lý và nhân viên là then ch ố t:",
       "page_number": 3,
@@ -4558,17 +4515,17 @@
         555.6390266011497,
         93.52643648275
       ],
-      "order": 94,
+      "order": 93,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "text",
-        "docling_ref": "#/texts/99"
+        "docling_ref": "#/texts/98"
       }
     },
     {
-      "id": "#/texts/102",
+      "id": "#/texts/101",
       "type": "heading",
       "text": "CƠ CHẾ PHỐI HỢP & VẬN HÀNH SOP GIỮA QUẢN LÝ VÀ NHÂN VIÊN",
       "page_number": 4,
@@ -4577,6 +4534,26 @@
         776.65567088125,
         446.83666007100453,
         788.86926116875
+      ],
+      "order": 94,
+      "heading_level": 1,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "section_header",
+        "docling_ref": "#/texts/101"
+      }
+    },
+    {
+      "id": "#/texts/102",
+      "type": "heading",
+      "text": "👔 NGƯỜI QUẢN LÝ (MANAGEMENT)",
+      "page_number": 4,
+      "bbox": [
+        91.45226082192599,
+        745.3006405907499,
+        241.25822287373848,
+        756.53714365525
       ],
       "order": 95,
       "heading_level": 1,
@@ -4589,26 +4566,6 @@
     },
     {
       "id": "#/texts/103",
-      "type": "heading",
-      "text": "👔 NGƯỜI QUẢN LÝ (MANAGEMENT)",
-      "page_number": 4,
-      "bbox": [
-        91.45226082192599,
-        745.3006405907499,
-        241.25822287373848,
-        756.53714365525
-      ],
-      "order": 96,
-      "heading_level": 1,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "section_header",
-        "docling_ref": "#/texts/103"
-      }
-    },
-    {
-      "id": "#/texts/104",
       "type": "list",
       "text": "· Hướng dẫn, truyền đạt & đào tạo",
       "page_number": 4,
@@ -4618,17 +4575,17 @@
         194.1548350273635,
         730.61204962825
       ],
-      "order": 97,
+      "order": 96,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "list_item",
-        "docling_ref": "#/texts/104"
+        "docling_ref": "#/texts/103"
       }
     },
     {
-      "id": "#/texts/105",
+      "id": "#/texts/104",
       "type": "text",
       "text": "Phổ biến cặn kẽ từng quy trình cho cấp dưới",
       "page_number": 4,
@@ -4638,17 +4595,17 @@
         206.269671353148,
         716.93211111475
       ],
-      "order": 98,
+      "order": 97,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "text",
-        "docling_ref": "#/texts/105"
+        "docling_ref": "#/texts/104"
       }
     },
     {
-      "id": "#/texts/106",
+      "id": "#/texts/105",
       "type": "list",
       "text": "· Giám sát & phát hiện sai lệch Kịp thời chấn chỉnh lỗi sai và rủi ro phát sinh",
       "page_number": 4,
@@ -4657,6 +4614,26 @@
         678.502524547,
         206.00376015019197,
         700.48160662825
+      ],
+      "order": 98,
+      "heading_level": null,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "list_item",
+        "docling_ref": "#/texts/105"
+      }
+    },
+    {
+      "id": "#/texts/106",
+      "type": "list",
+      "text": "· Lắng nghe & tối ưu hóa quy trình",
+      "page_number": 4,
+      "bbox": [
+        79.55084774999999,
+        661.075650229,
+        194.37158267343298,
+        670.35116362825
       ],
       "order": 99,
       "heading_level": null,
@@ -4669,26 +4646,6 @@
     },
     {
       "id": "#/texts/107",
-      "type": "list",
-      "text": "· Lắng nghe & tối ưu hóa quy trình",
-      "page_number": 4,
-      "bbox": [
-        79.55084774999999,
-        661.075650229,
-        194.37158267343298,
-        670.35116362825
-      ],
-      "order": 100,
-      "heading_level": null,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "list_item",
-        "docling_ref": "#/texts/107"
-      }
-    },
-    {
-      "id": "#/texts/108",
       "type": "heading",
       "text": "👷 NHÂN VIÊN THỰC THI (EMPLOYEES)",
       "page_number": 4,
@@ -4698,17 +4655,17 @@
         507.000631501095,
         756.53714365525
       ],
-      "order": 101,
+      "order": 100,
       "heading_level": 1,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "section_header",
-        "docling_ref": "#/texts/108"
+        "docling_ref": "#/texts/107"
       }
     },
     {
-      "id": "#/texts/109",
+      "id": "#/texts/108",
       "type": "list",
       "text": "· Tự giác & tuân thủ nghiêm ngặt",
       "page_number": 4,
@@ -4717,6 +4674,26 @@
         721.336536229,
         451.87883546788197,
         730.61204962825
+      ],
+      "order": 101,
+      "heading_level": null,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "raw_label": "list_item",
+        "docling_ref": "#/texts/108"
+      }
+    },
+    {
+      "id": "#/texts/109",
+      "type": "list",
+      "text": "Thực hiện đúng từng bước, không tự ý cắt xén",
+      "page_number": 4,
+      "bbox": [
+        341.39874525,
+        708.632967547,
+        474.10361265961797,
+        716.93211111475
       ],
       "order": 102,
       "heading_level": null,
@@ -4730,13 +4707,13 @@
     {
       "id": "#/texts/110",
       "type": "list",
-      "text": "Thực hiện đúng từng bước, không tự ý cắt xén",
+      "text": "· Đảm bảo chất lượng đầu ra",
       "page_number": 4,
       "bbox": [
         341.39874525,
-        708.632967547,
-        474.10361265961797,
-        716.93211111475
+        691.206093229,
+        436.9547772455115,
+        700.48160662825
       ],
       "order": 103,
       "heading_level": null,
@@ -4750,13 +4727,13 @@
     {
       "id": "#/texts/111",
       "type": "list",
-      "text": "· Đảm bảo chất lượng đầu ra",
+      "text": "Chịu trách nhiệm trực tiếp với công việc được giao",
       "page_number": 4,
       "bbox": [
         341.39874525,
-        691.206093229,
-        436.9547772455115,
-        700.48160662825
+        678.502524547,
+        485.02831370429845,
+        686.80166811475
       ],
       "order": 104,
       "heading_level": null,
@@ -4770,13 +4747,13 @@
     {
       "id": "#/texts/112",
       "type": "list",
-      "text": "Chịu trách nhiệm trực tiếp với công việc được giao",
+      "text": "· Đóng góp sáng kiến cải tiến thực tế",
       "page_number": 4,
       "bbox": [
         341.39874525,
-        678.502524547,
-        485.02831370429845,
-        686.80166811475
+        661.075650229,
+        463.663531812324,
+        670.35116362825
       ],
       "order": 105,
       "heading_level": null,
@@ -4789,26 +4766,6 @@
     },
     {
       "id": "#/texts/113",
-      "type": "list",
-      "text": "· Đóng góp sáng kiến cải tiến thực tế",
-      "page_number": 4,
-      "bbox": [
-        341.39874525,
-        661.075650229,
-        463.663531812324,
-        670.35116362825
-      ],
-      "order": 106,
-      "heading_level": null,
-      "section_path": [],
-      "metadata": {
-        "source": "docling",
-        "raw_label": "list_item",
-        "docling_ref": "#/texts/113"
-      }
-    },
-    {
-      "id": "#/texts/114",
       "type": "caption",
       "text": "Hình 3: Ng ườ i qu ả n lý c ầ n tr ự c ti ế p h ướ ng d ẫ n, truy ề n đ ạ t và l ắ ng nghe ph ả n h ồ i c ủ a nhân viên trong quy trình SOP",
       "page_number": 4,
@@ -4818,17 +4775,17 @@
         515.6965781730006,
         624.32540198275
       ],
-      "order": 107,
+      "order": 106,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "caption",
-        "docling_ref": "#/texts/114"
+        "docling_ref": "#/texts/113"
       }
     },
     {
-      "id": "#/texts/115",
+      "id": "#/texts/114",
       "type": "heading",
       "text": "1. Trách nhi ệ m c ủ a Ng ườ i Qu ả n lý",
       "page_number": 4,
@@ -4838,17 +4795,17 @@
         215.00503539824993,
         589.94579648275
       ],
-      "order": 108,
+      "order": 107,
       "heading_level": 1,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "section_header",
-        "docling_ref": "#/texts/115"
+        "docling_ref": "#/texts/114"
       }
     },
     {
-      "id": "#/texts/116",
+      "id": "#/texts/115",
       "type": "text",
       "text": "Ng ườ i qu ả n lý là ng ườ i tr ự c ti ế p h ướ ng d ẫ n và truy ề n đ ạ t quy trình SOP cho c ấ p d ướ i. Vì v ậ y, ng ườ i qu ả n lý c ầ n n ắ m rõ các quy trình công vi ệ c, ki ể m soát ch ặ t ch ẽ công vi ệ c, k ị p th ờ i phát hi ệ n và x ử lý các sai sót x ả y ra trong quá trình th ự c hi ệ n. Đ ồ ng th ờ i, nhà qu ả n lý c ầ n bi ế t l ắ ng nghe ý ki ế n c ủ a nhân viên v ề nh ữ ng v ấ n đ ề phát sinh ho ặ c ch ư a phù h ợ p đ ể không ng ừ ng c ả i ti ế n và hoàn thi ệ n quy trình SOP.",
       "page_number": 4,
@@ -4858,17 +4815,17 @@
         544.4075271631873,
         570.53271023275
       ],
-      "order": 109,
+      "order": 108,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "text",
-        "docling_ref": "#/texts/116"
+        "docling_ref": "#/texts/115"
       }
     },
     {
-      "id": "#/texts/117",
+      "id": "#/texts/116",
       "type": "heading",
       "text": "2. Trách nhi ệ m c ủ a Nhân viên",
       "page_number": 4,
@@ -4878,17 +4835,17 @@
         192.35503596449996,
         480.88036673275
       ],
-      "order": 110,
+      "order": 109,
       "heading_level": 1,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "section_header",
-        "docling_ref": "#/texts/117"
+        "docling_ref": "#/texts/116"
       }
     },
     {
-      "id": "#/texts/118",
+      "id": "#/texts/117",
       "type": "text",
       "text": "Nhân viên là đ ố i t ượ ng tr ự c ti ế p làm vi ệ c và ch ị u trách nhi ệ m tuân theo các quy trình SOP tiêu chu ẩ n d ướ i s ự h ướ ng d ẫ n c ủ a c ấ p trên. Vì v ậ y, h ọ ph ả i có ý th ứ c t ự giác hoàn thành t ố t công vi ệ c đ ượ c giao, không làm sai nhi ệ m v ụ c ủ a mình. Đ ồ ng th ờ i, nhân viên có th ể góp ý, đ ề xu ấ t các gi ả i pháp nh ằ m nâng cao ch ấ t l ượ ng s ả n ph ẩ m, d ị ch v ụ cũng nh ư giúp công vi ệ c hi ệ u qu ả h ơ n. Tuy nhiên, nhân viên không th ể t ự ý thay đ ổ i quy trình hi ệ n có mà m ọ i đi ề u ch ỉ nh ph ả i xin ý ki ế n và đ ượ c c ấ p trên đ ồ ng ý.",
       "page_number": 4,
@@ -4898,17 +4855,17 @@
         544.4235271627871,
         461.4672804827501
       ],
-      "order": 111,
+      "order": 110,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "text",
-        "docling_ref": "#/texts/118"
+        "docling_ref": "#/texts/117"
       }
     },
     {
-      "id": "#/texts/119",
+      "id": "#/texts/118",
       "type": "heading",
       "text": "4. Phân bi ệ t m ộ t s ố đ ị nh nghĩa SOP ph ổ bi ế n theo lĩnh v ự c",
       "page_number": 4,
@@ -4918,17 +4875,17 @@
         414.65303249100003,
         355.79466623275005
       ],
-      "order": 112,
+      "order": 111,
       "heading_level": 1,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "section_header",
-        "docling_ref": "#/texts/119"
+        "docling_ref": "#/texts/118"
       }
     },
     {
-      "id": "#/texts/120",
+      "id": "#/texts/119",
       "type": "text",
       "text": "SOP đ ượ c ứ ng d ụ ng trong nhi ề u ngành ngh ề khác nhau v ớ i m ụ c đích tr ợ giúp quá trình s ả n xu ấ t hay cung ứ ng d ị ch v ụ theo đúng tiêu chu ẩ n k ỹ thu ậ t đ ả m b ả o ch ấ t l ượ ng:",
       "page_number": 4,
@@ -4938,17 +4895,17 @@
         555.5210266040999,
         327.31461998275006
       ],
-      "order": 113,
+      "order": 112,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "text",
-        "docling_ref": "#/texts/120"
+        "docling_ref": "#/texts/119"
       }
     },
     {
-      "id": "#/texts/123",
+      "id": "#/texts/122",
       "type": "text",
       "text": "K ế t lu ậ n: Vi ệ c xây d ự ng quy trình chu ẩ n SOP là m ộ t quá trình đòi h ỏ i tính c ẩ n th ậ n và chi ti ế t. Vi ệ c đ ầ u t ư th ờ i gian và tài nguyên đ ể xây d ự ng quy trình chu ẩ n SOP s ẽ mang l ạ i l ợ i ích l ớ n cho t ổ ch ứ c doanh nghi ệ p, giúp nâng cao ch ấ t l ượ ng và hi ệ u qu ả ho ạ t đ ộ ng.",
       "page_number": 5,
@@ -4958,17 +4915,17 @@
         555.6247759290443,
         628.2039909827499
       ],
-      "order": 114,
+      "order": 113,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "text",
-        "docling_ref": "#/texts/123"
+        "docling_ref": "#/texts/122"
       }
     },
     {
-      "id": "#/texts/124",
+      "id": "#/texts/123",
       "type": "text",
       "text": "* Bài vi ế t g ố c cung c ấ p thông tin chuyên đ ề qu ả n tr ị ch ấ t l ượ ng t ừ Vinacontrol CE (https://vnce.vn/sop-la-gi).",
       "page_number": 5,
@@ -4978,13 +4935,13 @@
         444.4805275942506,
         593.55159848275
       ],
-      "order": 115,
+      "order": 114,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "raw_label": "text",
-        "docling_ref": "#/texts/124"
+        "docling_ref": "#/texts/123"
       }
     },
     {
@@ -4998,7 +4955,7 @@
         556.2632518507813,
         285.28442255580785
       ],
-      "order": 116,
+      "order": 115,
       "heading_level": null,
       "section_path": [],
       "metadata": {
@@ -5040,7 +4997,7 @@
         556.0294055660736,
         800.0541164194495
       ],
-      "order": 117,
+      "order": 116,
       "heading_level": null,
       "section_path": [],
       "metadata": {
@@ -5078,7 +5035,7 @@
         547.2520011194224,
         299.3374530749155
       ],
-      "order": 118,
+      "order": 117,
       "heading_level": null,
       "section_path": [],
       "metadata": {
@@ -5144,9 +5101,6 @@
           },
           {
             "$ref": "#/texts/28"
-          },
-          {
-            "$ref": "#/texts/29"
           }
         ]
       },
@@ -5171,13 +5125,16 @@
         549.7635321631327,
         525.4184460136369
       ],
-      "order": 119,
+      "order": 118,
       "heading_level": null,
       "section_path": [],
       "metadata": {
         "source": "docling",
         "docling_ref": "#/pictures/1",
         "child_refs": [
+          {
+            "$ref": "#/texts/39"
+          },
           {
             "$ref": "#/texts/40"
           },
@@ -5267,9 +5224,6 @@
           },
           {
             "$ref": "#/texts/69"
-          },
-          {
-            "$ref": "#/texts/70"
           }
         ]
       },
@@ -5277,7 +5231,7 @@
         "uri": null,
         "caption": null,
         "caption_refs": [
-          "{'$ref': '#/texts/40'}"
+          "{'$ref': '#/texts/39'}"
         ],
         "ocr_text": null,
         "description": null
@@ -5294,7 +5248,7 @@
         359.4039085117257,
         756.5856565142699
       ],
-      "order": 120,
+      "order": 119,
       "heading_level": null,
       "section_path": [],
       "metadata": {

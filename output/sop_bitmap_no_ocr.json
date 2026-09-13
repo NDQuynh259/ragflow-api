@@ -1,0 +1,293 @@
+{
+  "document_id": "docling-test-sop-2026",
+  "filename": "sop_la_gi_vnce_bitmap.pdf",
+  "page_count": 5,
+  "parser_metadata": {
+    "parser": "DoclingParser",
+    "text_count": 0,
+    "table_count": 2,
+    "image_count": 3
+  },
+  "parsing_time_seconds": 8.62,
+  "counts": {
+    "total": 5,
+    "text": 0,
+    "table": 2,
+    "image": 3
+  },
+  "separated": {
+    "text": [],
+    "table": [
+      {
+        "id": "#/tables/0",
+        "type": "table",
+        "text": "",
+        "page_number": 4,
+        "bbox": [
+          39.297176070232524,
+          56.69820587353922,
+          555.8709154457451,
+          285.3421054286349
+        ],
+        "order": 0,
+        "heading_level": null,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "docling_ref": "#/tables/0"
+        },
+        "table_data": {
+          "headers": [],
+          "rows": [],
+          "num_rows": 0,
+          "num_cols": 0,
+          "caption": null
+        }
+      },
+      {
+        "id": "#/tables/1",
+        "type": "table",
+        "text": "",
+        "page_number": 5,
+        "bbox": [
+          39.2795240588041,
+          657.7074115439481,
+          555.6088442275079,
+          799.9555078417799
+        ],
+        "order": 1,
+        "heading_level": null,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "docling_ref": "#/tables/1"
+        },
+        "table_data": {
+          "headers": [],
+          "rows": [],
+          "num_rows": 0,
+          "num_cols": 0,
+          "caption": null
+        }
+      }
+    ],
+    "image": [
+      {
+        "id": "#/pictures/0",
+        "type": "image",
+        "text": "",
+        "page_number": 1,
+        "bbox": [
+          47.11103914771624,
+          142.41019208453758,
+          547.3017535464294,
+          299.27442481028356
+        ],
+        "order": 2,
+        "heading_level": null,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "docling_ref": "#/pictures/0",
+          "child_refs": []
+        },
+        "image_data": {
+          "uri": null,
+          "caption": null,
+          "caption_refs": [],
+          "ocr_text": null,
+          "description": null
+        }
+      },
+      {
+        "id": "#/pictures/1",
+        "type": "image",
+        "text": "",
+        "page_number": 2,
+        "bbox": [
+          42.78004403807109,
+          288.4720668229853,
+          549.0787049166072,
+          532.9916654123265
+        ],
+        "order": 3,
+        "heading_level": null,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "docling_ref": "#/pictures/1",
+          "child_refs": []
+        },
+        "image_data": {
+          "uri": null,
+          "caption": null,
+          "caption_refs": [],
+          "ocr_text": null,
+          "description": null
+        }
+      },
+      {
+        "id": "#/pictures/2",
+        "type": "image",
+        "text": "",
+        "page_number": 4,
+        "bbox": [
+          349.8552311496197,
+          745.4940315892018,
+          359.1124900193592,
+          756.7439704552893
+        ],
+        "order": 4,
+        "heading_level": null,
+        "section_path": [],
+        "metadata": {
+          "source": "docling",
+          "docling_ref": "#/pictures/2",
+          "child_refs": []
+        },
+        "image_data": {
+          "uri": null,
+          "caption": null,
+          "caption_refs": [],
+          "ocr_text": null,
+          "description": null
+        }
+      }
+    ]
+  },
+  "all_elements": [
+    {
+      "id": "#/tables/0",
+      "type": "table",
+      "text": "",
+      "page_number": 4,
+      "bbox": [
+        39.297176070232524,
+        56.69820587353922,
+        555.8709154457451,
+        285.3421054286349
+      ],
+      "order": 0,
+      "heading_level": null,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "docling_ref": "#/tables/0"
+      },
+      "table_data": {
+        "headers": [],
+        "rows": [],
+        "num_rows": 0,
+        "num_cols": 0,
+        "caption": null
+      }
+    },
+    {
+      "id": "#/tables/1",
+      "type": "table",
+      "text": "",
+      "page_number": 5,
+      "bbox": [
+        39.2795240588041,
+        657.7074115439481,
+        555.6088442275079,
+        799.9555078417799
+      ],
+      "order": 1,
+      "heading_level": null,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "docling_ref": "#/tables/1"
+      },
+      "table_data": {
+        "headers": [],
+        "rows": [],
+        "num_rows": 0,
+        "num_cols": 0,
+        "caption": null
+      }
+    },
+    {
+      "id": "#/pictures/0",
+      "type": "image",
+      "text": "",
+      "page_number": 1,
+      "bbox": [
+        47.11103914771624,
+        142.41019208453758,
+        547.3017535464294,
+        299.27442481028356
+      ],
+      "order": 2,
+      "heading_level": null,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "docling_ref": "#/pictures/0",
+        "child_refs": []
+      },
+      "image_data": {
+        "uri": null,
+        "caption": null,
+        "caption_refs": [],
+        "ocr_text": null,
+        "description": null
+      }
+    },
+    {
+      "id": "#/pictures/1",
+      "type": "image",
+      "text": "",
+      "page_number": 2,
+      "bbox": [
+        42.78004403807109,
+        288.4720668229853,
+        549.0787049166072,
+        532.9916654123265
+      ],
+      "order": 3,
+      "heading_level": null,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "docling_ref": "#/pictures/1",
+        "child_refs": []
+      },
+      "image_data": {
+        "uri": null,
+        "caption": null,
+        "caption_refs": [],
+        "ocr_text": null,
+        "description": null
+      }
+    },
+    {
+      "id": "#/pictures/2",
+      "type": "image",
+      "text": "",
+      "page_number": 4,
+      "bbox": [
+        349.8552311496197,
+        745.4940315892018,
+        359.1124900193592,
+        756.7439704552893
+      ],
+      "order": 4,
+      "heading_level": null,
+      "section_path": [],
+      "metadata": {
+        "source": "docling",
+        "docling_ref": "#/pictures/2",
+        "child_refs": []
+      },
+      "image_data": {
+        "uri": null,
+        "caption": null,
+        "caption_refs": [],
+        "ocr_text": null,
+        "description": null
+      }
+    }
+  ]
+}
