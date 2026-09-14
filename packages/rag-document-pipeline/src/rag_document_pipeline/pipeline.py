@@ -2,7 +2,7 @@
 
 Orchestrates: parse → normalize → type-aware chunking → validate.
 
-The pipeline uses Docling as the default parser and HeadingAwareChunker
+The pipeline uses OpenDataLoader as the default parser and HeadingAwareChunker
 as the default chunker.  Both can be replaced via constructor injection.
 """
 
@@ -29,7 +29,7 @@ class DocumentPipeline:
     Flow::
 
         PDF bytes
-          → Parser (Docling or OpenDataLoader)
+          → Parser (OpenDataLoader)
           → Normalize (Unicode NFC, mojibake repair, whitespace)
           → Type-aware chunking (text / table / image)
           → Validate chunks
@@ -47,7 +47,7 @@ class DocumentPipeline:
         if chunk_size <= 0 or not 0 <= chunk_overlap < chunk_size:
             raise ValueError("Invalid chunk window")
 
-        # Default: Docling parser, fallback to OpenDataLoader if not available
+        # Default: OpenDataLoader parser
         if parser is not None:
             self.parser = parser
         else:
@@ -236,27 +236,9 @@ class DocumentPipeline:
 
     @staticmethod
     def _default_parser() -> Parser:
-        """Choose parser based on PARSER_PROVIDER env var or availability."""
-        import os
+        """Choose parser based on PARSER_PROVIDER env var or default to OpenDataLoader."""
+        from rag_document_pipeline.parsers.opendataloader import (
+            OpenDataLoaderParser,
+        )
 
-        provider = os.environ.get("PARSER_PROVIDER", "opendataloader").lower()
-        if provider == "opendataloader":
-            try:
-                from rag_document_pipeline.parsers.opendataloader import (
-                    OpenDataLoaderParser,
-                )
-
-                return OpenDataLoaderParser()
-            except Exception:
-                pass
-
-        try:
-            from rag_document_pipeline.parsers.docling import DoclingParser
-
-            return DoclingParser()
-        except Exception:
-            from rag_document_pipeline.parsers.opendataloader import (
-                OpenDataLoaderParser,
-            )
-
-            return OpenDataLoaderParser()
+        return OpenDataLoaderParser()

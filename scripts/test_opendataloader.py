@@ -165,5 +165,10 @@ def test_parse(pdf_path_str: str):
         print(f"  - {dest_img_dir} ({len(list(dest_img_dir.glob('*')))} images)")
 
 if __name__ == "__main__":
-    target_file = sys.argv[1] if len(sys.argv) > 1 else r"C:\Users\ndquynh\Downloads\sop_la_gi_vnce_co_hinh_anh_bitmap.pdf"
+    default_path = (
+        r"C:\Users\Admin\Downloads\sop_la_gi_vnce_co_hinh_anh_bitmap.pdf"
+        if Path(r"C:\Users\Admin\Downloads\sop_la_gi_vnce_co_hinh_anh_bitmap.pdf").exists()
+        else r"C:\Users\ndquynh\Downloads\sop_la_gi_vnce_co_hinh_anh_bitmap.pdf"
+    )
+    target_file = sys.argv[1] if len(sys.argv) > 1 else default_path
     test_parse(target_file)
