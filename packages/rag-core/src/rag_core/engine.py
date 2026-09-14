@@ -5,12 +5,11 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from rag_contracts.chunks import ChunkRecord
+from rag_contracts import ChunkRecord, DocumentChunk
 from rag_core.embeddings.base import Embedder
 from rag_core.generation.service import GenerationResult, GenerationService
 from rag_core.ports.vector_store import VectorStore
 from rag_core.retrieval.service import RetrievalService
-from rag_document_pipeline import DocumentChunk
 
 logger = logging.getLogger(__name__)
 

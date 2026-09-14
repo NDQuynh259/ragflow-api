@@ -1,5 +1,14 @@
-"""Shared contracts between rag-document-pipeline and rag-core."""
+"""Shared domain contracts across the workspace."""
 
-from .chunks import ChunkRecord, SearchResult
+from .chunks import ChunkRecord, DocumentChunk, SearchResult
+from .elements import ElementType, ImageData, LayoutElement, TableData
 
-__all__ = ["ChunkRecord", "SearchResult"]
+__all__ = [
+    "ChunkRecord",
+    "DocumentChunk",
+    "SearchResult",
+    "ElementType",
+    "ImageData",
+    "LayoutElement",
+    "TableData",
+]

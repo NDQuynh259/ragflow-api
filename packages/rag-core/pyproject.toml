@@ -4,7 +4,6 @@ version = "0.1.0"
 dependencies = [
     "pydantic>=2.8",
     "rag-contracts",
-    "rag-document-pipeline",
     "google-genai>=1.0",
     "psycopg[binary]>=3.1",
     "pgvector>=0.3",
@@ -13,7 +12,6 @@ requires-python = ">=3.11"
 
 [tool.uv.sources]
 rag-contracts = { workspace = true }
-rag-document-pipeline = { workspace = true }
 
 [build-system]
 requires = ["setuptools>=68"]
