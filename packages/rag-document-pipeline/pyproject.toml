@@ -1,7 +1,7 @@
 [project]
 name = "rag-document-pipeline"
 version = "0.1.0"
-dependencies = ["pydantic>=2.8", "opendataloader-pdf>=2.0.0", "docling>=2.0.0", "langchain-core>=0.3", "langchain-text-splitters>=0.3"]
+dependencies = ["pydantic>=2.8", "opendataloader-pdf>=2.0.0", "langchain-core>=0.3", "langchain-text-splitters>=0.3"]
 requires-python = ">=3.11"
 [build-system]
 requires = ["setuptools>=68"]

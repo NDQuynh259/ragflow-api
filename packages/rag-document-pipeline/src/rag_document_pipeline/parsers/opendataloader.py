@@ -84,6 +84,9 @@ class OpenDataLoaderParser:
         candidates = sorted(output.rglob("*.json"))
         return candidates[0] if candidates else None
 
+
+    # region _to_elements
+    
     @classmethod
     def _to_elements(cls, payload: Any, *, image_dir: Path | None = None) -> list[LayoutElement]:
         raw = payload.get("elements", payload.get("kids", payload)) if isinstance(payload, dict) else payload
