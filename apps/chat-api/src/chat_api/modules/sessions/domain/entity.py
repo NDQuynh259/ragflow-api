@@ -1,0 +1,40 @@
+"""ChatSession Domain Aggregate."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from typing import Any
+import uuid
+
+from chat_api.shared.domain.base_entity import AggregateRoot
+
+
+@dataclass(kw_only=True)
+class ChatSession(AggregateRoot[uuid.UUID]):
+    workspace_id: uuid.UUID
+    user_id: uuid.UUID | None = None
+    title: str = "New Chat"
+    rag_config: dict[str, Any] = field(
+        default_factory=lambda: {"top_k": 5, "rerank": True}
+    )
+    deleted_at: datetime | None = None
+    attached_document_ids: list[uuid.UUID] = field(default_factory=list)
+
+    def update_title(self, new_title: str) -> None:
+        self.title = new_title.strip() or "Untitled Chat"
+        self.updated_at = datetime.now(timezone.utc)
+
+    def update_rag_config(self, config: dict[str, Any]) -> None:
+        self.rag_config.update(config)
+        self.updated_at = datetime.now(timezone.utc)
+
+    def attach_document(self, document_id: uuid.UUID) -> None:
+        if document_id not in self.attached_document_ids:
+            self.attached_document_ids.append(document_id)
+            self.updated_at = datetime.now(timezone.utc)
+
+    def detach_document(self, document_id: uuid.UUID) -> None:
+        if document_id in self.attached_document_ids:
+            self.attached_document_ids.remove(document_id)
+            self.updated_at = datetime.now(timezone.utc)

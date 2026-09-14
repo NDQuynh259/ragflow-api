@@ -12,6 +12,7 @@ class DocumentChunk(BaseModel):
 
     id: str
     document_id: str
+    workspace_id: str = ""
     content: str
     index: int = 0
     page_start: int = 1
@@ -35,6 +36,7 @@ class ChunkRecord(BaseModel):
 
     id: str
     document_id: str
+    workspace_id: str = ""
     content: str
     embedding: list[float] = Field(default_factory=list)
     kind: str = "text"

@@ -1,0 +1,171 @@
+"""Shared test fixtures and in-memory test doubles for Modular Monolith."""
+
+import uuid
+import pytest
+
+from chat_api.modules.documents.domain.entity import Document, DocumentStatus
+from chat_api.modules.documents.domain.repository import DocumentRepository
+from chat_api.modules.messages.domain.entity import Message
+from chat_api.modules.messages.domain.repository import MessageRepository
+from chat_api.modules.sessions.domain.entity import ChatSession
+from chat_api.modules.sessions.domain.repository import ChatSessionRepository
+from chat_api.modules.workspaces.domain.entity import Workspace
+from chat_api.modules.workspaces.domain.repository import WorkspaceRepository
+from chat_api.shared.domain.uow import UnitOfWork
+from chat_api.shared.infrastructure.queue.port import IngestionQueuePort
+from chat_api.shared.infrastructure.rag.port import RAGEnginePort
+from chat_api.shared.infrastructure.storage.port import ObjectStoragePort
+
+
+class InMemoryWorkspaceRepo(WorkspaceRepository):
+    def __init__(self):
+        self.data: dict[uuid.UUID, Workspace] = {}
+
+    def get_by_id(self, workspace_id: uuid.UUID) -> Workspace | None:
+        return self.data.get(workspace_id)
+
+    def get_by_slug(self, slug: str) -> Workspace | None:
+        return next((w for w in self.data.values() if w.slug == slug), None)
+
+    def save(self, workspace: Workspace) -> Workspace:
+        self.data[workspace.id] = workspace
+        return workspace
+
+
+class InMemoryDocRepo(DocumentRepository):
+    def __init__(self):
+        self.data: dict[uuid.UUID, Document] = {}
+
+    def get_by_id(self, document_id: uuid.UUID) -> Document | None:
+        return self.data.get(document_id)
+
+    def get_by_content_hash(self, workspace_id: uuid.UUID, content_hash: str) -> Document | None:
+        return next(
+            (d for d in self.data.values() if d.workspace_id == workspace_id and d.content_hash == content_hash),
+            None,
+        )
+
+    def list_by_workspace(self, workspace_id: uuid.UUID, limit: int = 50, offset: int = 0) -> list[Document]:
+        return [d for d in self.data.values() if d.workspace_id == workspace_id]
+
+    def get_ready_documents_by_ids(self, workspace_id: uuid.UUID, document_ids: list[uuid.UUID]) -> list[Document]:
+        return [
+            d for d in self.data.values()
+            if d.workspace_id == workspace_id and d.id in document_ids and d.status == DocumentStatus.READY
+        ]
+
+    def save(self, document: Document) -> Document:
+        self.data[document.id] = document
+        return document
+
+    def delete(self, document_id: uuid.UUID) -> bool:
+        if document_id in self.data:
+            del self.data[document_id]
+            return True
+        return False
+
+
+class InMemorySessionRepo(ChatSessionRepository):
+    def __init__(self):
+        self.data: dict[uuid.UUID, ChatSession] = {}
+
+    def get_by_id(self, session_id: uuid.UUID) -> ChatSession | None:
+        return self.data.get(session_id)
+
+    def list_by_workspace(self, workspace_id: uuid.UUID, user_id=None, limit: int = 50, offset: int = 0) -> list[ChatSession]:
+        return [s for s in self.data.values() if s.workspace_id == workspace_id]
+
+    def save(self, session: ChatSession) -> ChatSession:
+        self.data[session.id] = session
+        return session
+
+    def delete(self, session_id: uuid.UUID) -> bool:
+        if session_id in self.data:
+            del self.data[session_id]
+            return True
+        return False
+
+
+class InMemoryMessageRepo(MessageRepository):
+    def __init__(self):
+        self.data: dict[uuid.UUID, Message] = {}
+
+    def get_by_id(self, message_id: uuid.UUID) -> Message | None:
+        return self.data.get(message_id)
+
+    def list_by_session(self, session_id: uuid.UUID, limit: int = 100, offset: int = 0) -> list[Message]:
+        return [m for m in self.data.values() if m.session_id == session_id]
+
+    def save(self, message: Message) -> Message:
+        self.data[message.id] = message
+        return message
+
+
+class FakeUnitOfWork(UnitOfWork):
+    def __init__(self):
+        self.workspaces = InMemoryWorkspaceRepo()
+        self.documents = InMemoryDocRepo()
+        self.sessions = InMemorySessionRepo()
+        self.messages = InMemoryMessageRepo()
+        self.users = None
+        self.committed = False
+
+    def commit(self) -> None:
+        self.committed = True
+
+    def rollback(self) -> None:
+        pass
+
+
+class FakeStorage(ObjectStoragePort):
+    def save(self, filename: str, content: bytes, workspace_id: uuid.UUID) -> str:
+        return f"fake://{workspace_id}/{filename}"
+
+    def get(self, storage_uri: str) -> bytes:
+        return b"content"
+
+    def delete(self, storage_uri: str) -> bool:
+        return True
+
+
+class FakeQueue(IngestionQueuePort):
+    def __init__(self):
+        self.enqueued = []
+
+    def enqueue_ingestion(self, document_id, job_id, storage_uri, workspace_id):
+        self.enqueued.append((document_id, job_id, storage_uri, workspace_id))
+
+
+class FakeRAGEngine(RAGEnginePort):
+    def answer(self, query: str, document_ids=None, top_k=None):
+        citations = []
+        if document_ids:
+            citations.append({
+                "document_id": document_ids[0],
+                "chunk_id": "chunk_1",
+                "page_number": 1,
+                "bbox": [0.1, 0.1, 0.5, 0.5],
+                "quote": "Trích dẫn tài liệu",
+                "relevance_score": 0.95,
+            })
+        return "Câu trả lời RAG test", citations, {"prompt_tokens": 10, "completion_tokens": 20}
+
+
+@pytest.fixture
+def fake_uow():
+    return FakeUnitOfWork()
+
+
+@pytest.fixture
+def fake_storage():
+    return FakeStorage()
+
+
+@pytest.fixture
+def fake_queue():
+    return FakeQueue()
+
+
+@pytest.fixture
+def fake_rag():
+    return FakeRAGEngine()

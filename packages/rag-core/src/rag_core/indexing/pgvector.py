@@ -61,6 +61,19 @@ class PgVectorStore:
             self._conn = psycopg.connect(self._dsn, autocommit=True)
         return self._conn
 
+    def _has_workspace_id_col(self) -> bool:
+        """Check if workspace_id column exists on table."""
+        conn = self._get_conn()
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = %s AND column_name = 'workspace_id'
+                """,
+                (self._table,),
+            )
+            return cur.fetchone() is not None
+
     def ensure_schema(self) -> None:
         """Create the pgvector extension and chunks table if missing."""
         conn = self._get_conn()
@@ -70,6 +83,7 @@ class PgVectorStore:
                 CREATE TABLE IF NOT EXISTS {self._table} (
                     id              TEXT PRIMARY KEY,
                     document_id     TEXT NOT NULL,
+                    workspace_id    TEXT,
                     content         TEXT NOT NULL,
                     embedding       vector({self._dim}),
                     kind            TEXT DEFAULT 'text',
@@ -87,6 +101,10 @@ class PgVectorStore:
             cur.execute(f"""
                 CREATE INDEX IF NOT EXISTS idx_{self._table}_document_id
                 ON {self._table} (document_id)
+            """)
+            cur.execute(f"""
+                CREATE INDEX IF NOT EXISTS idx_{self._table}_workspace_id
+                ON {self._table} (workspace_id)
             """)
             cur.execute(f"""
                 CREATE INDEX IF NOT EXISTS idx_{self._table}_kind
@@ -109,52 +127,95 @@ class PgVectorStore:
         conn = self._get_conn()
         batch_size = int(os.environ.get("DB_INSERT_BATCH_SIZE", "100"))
         total = 0
+        has_ws = self._has_workspace_id_col()
 
         for i in range(0, len(records), batch_size):
             batch = records[i : i + batch_size]
             with conn.cursor() as cur:
                 for rec in batch:
-                    cur.execute(
-                        f"""
-                        INSERT INTO {self._table}
-                            (id, document_id, content, embedding, kind,
-                             page_start, page_end, element_ids, bboxes,
-                             section_path, token_count, indexable, metadata)
-                        VALUES
-                            (%s, %s, %s, %s, %s,
-                             %s, %s, %s, %s,
-                             %s, %s, %s, %s)
-                        ON CONFLICT (id) DO UPDATE SET
-                            content = EXCLUDED.content,
-                            embedding = EXCLUDED.embedding,
-                            kind = EXCLUDED.kind,
-                            page_start = EXCLUDED.page_start,
-                            page_end = EXCLUDED.page_end,
-                            element_ids = EXCLUDED.element_ids,
-                            bboxes = EXCLUDED.bboxes,
-                            section_path = EXCLUDED.section_path,
-                            token_count = EXCLUDED.token_count,
-                            indexable = EXCLUDED.indexable,
-                            metadata = EXCLUDED.metadata
-                        """,
-                        (
-                            rec.id,
-                            rec.document_id,
-                            rec.content,
-                            _vec_literal(rec.embedding),
-                            rec.kind,
-                            rec.page_start,
-                            rec.page_end,
-                            json.dumps(rec.element_ids),
-                            json.dumps(
-                                [list(b) for b in rec.bboxes]
+                    ws_id = getattr(rec, "workspace_id", None) or None
+                    if has_ws and ws_id:
+                        cur.execute(
+                            f"""
+                            INSERT INTO {self._table}
+                                (id, document_id, workspace_id, content, embedding, kind,
+                                 page_start, page_end, element_ids, bboxes,
+                                 section_path, token_count, indexable, metadata)
+                            VALUES
+                                (%s, %s, %s, %s, %s, %s,
+                                 %s, %s, %s, %s,
+                                 %s, %s, %s, %s)
+                            ON CONFLICT (id) DO UPDATE SET
+                                workspace_id = EXCLUDED.workspace_id,
+                                content = EXCLUDED.content,
+                                embedding = EXCLUDED.embedding,
+                                kind = EXCLUDED.kind,
+                                page_start = EXCLUDED.page_start,
+                                page_end = EXCLUDED.page_end,
+                                element_ids = EXCLUDED.element_ids,
+                                bboxes = EXCLUDED.bboxes,
+                                section_path = EXCLUDED.section_path,
+                                token_count = EXCLUDED.token_count,
+                                indexable = EXCLUDED.indexable,
+                                metadata = EXCLUDED.metadata
+                            """,
+                            (
+                                rec.id,
+                                rec.document_id,
+                                ws_id,
+                                rec.content,
+                                _vec_literal(rec.embedding),
+                                rec.kind,
+                                rec.page_start,
+                                rec.page_end,
+                                json.dumps(rec.element_ids),
+                                json.dumps([list(b) for b in rec.bboxes]),
+                                json.dumps(rec.section_path),
+                                rec.token_count,
+                                rec.indexable,
+                                json.dumps(rec.metadata),
                             ),
-                            json.dumps(rec.section_path),
-                            rec.token_count,
-                            rec.indexable,
-                            json.dumps(rec.metadata),
-                        ),
-                    )
+                        )
+                    else:
+                        cur.execute(
+                            f"""
+                            INSERT INTO {self._table}
+                                (id, document_id, content, embedding, kind,
+                                 page_start, page_end, element_ids, bboxes,
+                                 section_path, token_count, indexable, metadata)
+                            VALUES
+                                (%s, %s, %s, %s, %s,
+                                 %s, %s, %s, %s,
+                                 %s, %s, %s, %s)
+                            ON CONFLICT (id) DO UPDATE SET
+                                content = EXCLUDED.content,
+                                embedding = EXCLUDED.embedding,
+                                kind = EXCLUDED.kind,
+                                page_start = EXCLUDED.page_start,
+                                page_end = EXCLUDED.page_end,
+                                element_ids = EXCLUDED.element_ids,
+                                bboxes = EXCLUDED.bboxes,
+                                section_path = EXCLUDED.section_path,
+                                token_count = EXCLUDED.token_count,
+                                indexable = EXCLUDED.indexable,
+                                metadata = EXCLUDED.metadata
+                            """,
+                            (
+                                rec.id,
+                                rec.document_id,
+                                rec.content,
+                                _vec_literal(rec.embedding),
+                                rec.kind,
+                                rec.page_start,
+                                rec.page_end,
+                                json.dumps(rec.element_ids),
+                                json.dumps([list(b) for b in rec.bboxes]),
+                                json.dumps(rec.section_path),
+                                rec.token_count,
+                                rec.indexable,
+                                json.dumps(rec.metadata),
+                            ),
+                        )
                 total += len(batch)
 
         logger.info("Upserted %d records into '%s'", total, self._table)
@@ -171,19 +232,22 @@ class PgVectorStore:
         conn = self._get_conn()
 
         where_clauses = ["indexable = TRUE"]
-        params: list[Any] = [_vec_literal(vector), top_k]
+        filter_params: list[Any] = []
 
         if filter:
+            if "workspace_id" in filter and filter["workspace_id"]:
+                where_clauses.append("workspace_id = %s")
+                filter_params.append(str(filter["workspace_id"]))
             if "document_ids" in filter:
                 doc_ids = filter["document_ids"]
                 placeholders = ", ".join(["%s"] * len(doc_ids))
                 where_clauses.append(
                     f"document_id IN ({placeholders})"
                 )
-                params = [_vec_literal(vector)] + list(doc_ids) + [top_k]
+                filter_params.extend(doc_ids)
             if "kind" in filter:
                 where_clauses.append("kind = %s")
-                params.insert(-1, filter["kind"])
+                filter_params.append(filter["kind"])
 
         where = " AND ".join(where_clauses)
 
@@ -198,13 +262,7 @@ class PgVectorStore:
             LIMIT %s
         """
         # We need the vector twice: once for score, once for ORDER BY
-        final_params = [_vec_literal(vector)]
-        if filter and "document_ids" in filter:
-            final_params.extend(filter["document_ids"])
-        if filter and "kind" in filter:
-            final_params.append(filter["kind"])
-        final_params.append(_vec_literal(vector))
-        final_params.append(top_k)
+        final_params = [_vec_literal(vector)] + filter_params + [_vec_literal(vector), top_k]
 
         results: list[SearchResult] = []
         with conn.cursor() as cur:

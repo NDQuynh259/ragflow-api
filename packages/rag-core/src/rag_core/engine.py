@@ -82,6 +82,7 @@ class RAGEngine:
                 ChunkRecord(
                     id=chunk.id,
                     document_id=chunk.document_id,
+                    workspace_id=getattr(chunk, "workspace_id", ""),
                     content=chunk.content,
                     embedding=vector,
                     kind=chunk.kind,
