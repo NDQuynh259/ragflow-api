@@ -1,6 +1,7 @@
 {
   "filename": "sop_la_gi_vnce_co_hinh_anh_bitmap.pdf",
   "elapsed_seconds": 1.63,
+  "elapsed_seconds": 1.32,
   "total_elements": 37,
   "type_breakdown": {
     "paragraph": 21,
@@ -19,6 +20,7 @@
     "5": 3
   },
   "images_directory": "C:/Users/ndquynh/Documents/RAG/output/sop_la_gi_vnce_co_hinh_anh_bitmap_images",
+  "images_directory": "C:/Users/Admin/Documents/Project/ragflow-api/output/sop_la_gi_vnce_co_hinh_anh_bitmap_images",
   "elements": [
     {
       "id": "1",
