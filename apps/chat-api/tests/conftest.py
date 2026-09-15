@@ -3,12 +3,16 @@
 import uuid
 import pytest
 
+from chat_api.modules.auth.domain.entity import UserSession
+from chat_api.modules.auth.domain.repository import UserSessionRepository
 from chat_api.modules.documents.domain.entity import Document, DocumentStatus
 from chat_api.modules.documents.domain.repository import DocumentRepository
 from chat_api.modules.messages.domain.entity import Message
 from chat_api.modules.messages.domain.repository import MessageRepository
 from chat_api.modules.sessions.domain.entity import ChatSession
 from chat_api.modules.sessions.domain.repository import ChatSessionRepository
+from chat_api.modules.users.domain.entity import User
+from chat_api.modules.users.domain.repository import UserRepository
 from chat_api.modules.workspaces.domain.entity import Workspace
 from chat_api.modules.workspaces.domain.repository import WorkspaceRepository
 from chat_api.shared.domain.uow import UnitOfWork
@@ -26,6 +30,9 @@ class InMemoryWorkspaceRepo(WorkspaceRepository):
 
     def get_by_slug(self, slug: str) -> Workspace | None:
         return next((w for w in self.data.values() if w.slug == slug), None)
+
+    def list_by_user_id(self, user_id: uuid.UUID) -> list[Workspace]:
+        return [w for w in self.data.values() if w.is_member(user_id)]
 
     def save(self, workspace: Workspace) -> Workspace:
         self.data[workspace.id] = workspace
@@ -101,13 +108,53 @@ class InMemoryMessageRepo(MessageRepository):
         return message
 
 
+class InMemoryUserRepo(UserRepository):
+    def __init__(self):
+        self.data: dict[uuid.UUID, User] = {}
+
+    def get_by_id(self, user_id: uuid.UUID) -> User | None:
+        return self.data.get(user_id)
+
+    def get_by_email(self, email: str) -> User | None:
+        return next((u for u in self.data.values() if u.email == email), None)
+
+    def save(self, user: User) -> User:
+        self.data[user.id] = user
+        return user
+
+
+class InMemoryUserSessionRepo(UserSessionRepository):
+    def __init__(self):
+        self.data: dict[str, UserSession] = {}
+
+    def get_by_token(self, token: str) -> UserSession | None:
+        return self.data.get(token)
+
+    def save(self, session: UserSession) -> UserSession:
+        self.data[session.token] = session
+        return session
+
+    def delete_by_token(self, token: str) -> bool:
+        if token in self.data:
+            del self.data[token]
+            return True
+        return False
+
+    def delete_by_user_id(self, user_id: uuid.UUID) -> int:
+        to_del = [t for t, s in self.data.items() if s.user_id == user_id]
+        for t in to_del:
+            del self.data[t]
+        return len(to_del)
+
+
 class FakeUnitOfWork(UnitOfWork):
     def __init__(self):
         self.workspaces = InMemoryWorkspaceRepo()
         self.documents = InMemoryDocRepo()
         self.sessions = InMemorySessionRepo()
         self.messages = InMemoryMessageRepo()
-        self.users = None
+        self.users = InMemoryUserRepo()
+        self.user_sessions = InMemoryUserSessionRepo()
         self.committed = False
 
     def commit(self) -> None:

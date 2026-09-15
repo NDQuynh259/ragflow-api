@@ -20,14 +20,33 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # 0. Enable extensions
+    # 0. Enable extensions and uuid_generate_v7 function
     op.execute("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";")
+    op.execute("CREATE EXTENSION IF NOT EXISTS \"pgcrypto\";")
     op.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+
+    # Create RFC 9562 compliant UUIDv7 generator for PostgreSQL
+    op.execute("""
+    CREATE OR REPLACE FUNCTION uuid_generate_v7()
+    RETURNS uuid
+    AS $$
+    DECLARE
+      unix_time_ms bytea;
+      uuid_bytes bytea;
+    BEGIN
+      unix_time_ms = substring(int8send(floor(extract(epoch from clock_timestamp()) * 1000)::bigint) from 3 for 6);
+      uuid_bytes = unix_time_ms || gen_random_bytes(10);
+      uuid_bytes = set_byte(uuid_bytes, 6, (get_byte(uuid_bytes, 6) & 15) | 112);
+      uuid_bytes = set_byte(uuid_bytes, 8, (get_byte(uuid_bytes, 8) & 63) | 128);
+      RETURN encode(uuid_bytes, 'hex')::uuid;
+    END
+    $$ LANGUAGE plpgsql VOLATILE;
+    """)
 
     # 1. Workspaces table
     op.create_table(
         "workspaces",
-        sa.Column("id", UUID(as_uuid=True), server_default=sa.text("uuid_generate_v4()"), primary_key=True),
+        sa.Column("id", UUID(as_uuid=True), server_default=sa.text("uuid_generate_v7()"), primary_key=True),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("slug", sa.String(100), nullable=False, unique=True),
         sa.Column("settings", JSONB, server_default=sa.text("'{}'::jsonb"), nullable=False),
@@ -39,7 +58,7 @@ def upgrade() -> None:
     # 2. Users table
     op.create_table(
         "users",
-        sa.Column("id", UUID(as_uuid=True), server_default=sa.text("uuid_generate_v4()"), primary_key=True),
+        sa.Column("id", UUID(as_uuid=True), server_default=sa.text("uuid_generate_v7()"), primary_key=True),
         sa.Column("email", sa.String(255), nullable=False, unique=True),
         sa.Column("full_name", sa.String(255), nullable=True),
         sa.Column("hashed_password", sa.String(255), nullable=False),
@@ -52,7 +71,7 @@ def upgrade() -> None:
     # 3. Workspace Members table
     op.create_table(
         "workspace_members",
-        sa.Column("id", UUID(as_uuid=True), server_default=sa.text("uuid_generate_v4()"), primary_key=True),
+        sa.Column("id", UUID(as_uuid=True), server_default=sa.text("uuid_generate_v7()"), primary_key=True),
         sa.Column("workspace_id", UUID(as_uuid=True), sa.ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False),
         sa.Column("user_id", UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
         sa.Column("role", sa.String(50), server_default=sa.text("'member'"), nullable=False),
@@ -66,7 +85,7 @@ def upgrade() -> None:
     # 4. Documents table
     op.create_table(
         "documents",
-        sa.Column("id", UUID(as_uuid=True), server_default=sa.text("uuid_generate_v4()"), primary_key=True),
+        sa.Column("id", UUID(as_uuid=True), server_default=sa.text("uuid_generate_v7()"), primary_key=True),
         sa.Column("workspace_id", UUID(as_uuid=True), sa.ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False),
         sa.Column("filename", sa.String(500), nullable=False),
         sa.Column("storage_uri", sa.Text(), nullable=False),
@@ -89,7 +108,7 @@ def upgrade() -> None:
     # 5. Ingestion Jobs table
     op.create_table(
         "ingestion_jobs",
-        sa.Column("id", UUID(as_uuid=True), server_default=sa.text("uuid_generate_v4()"), primary_key=True),
+        sa.Column("id", UUID(as_uuid=True), server_default=sa.text("uuid_generate_v7()"), primary_key=True),
         sa.Column("document_id", UUID(as_uuid=True), sa.ForeignKey("documents.id", ondelete="CASCADE"), nullable=False),
         sa.Column("status", sa.String(30), server_default=sa.text("'queued'"), nullable=False),
         sa.Column("retry_count", sa.Integer(), server_default=sa.text("0"), nullable=False),
@@ -140,7 +159,7 @@ def upgrade() -> None:
     # 7. Chat Sessions table
     op.create_table(
         "chat_sessions",
-        sa.Column("id", UUID(as_uuid=True), server_default=sa.text("uuid_generate_v4()"), primary_key=True),
+        sa.Column("id", UUID(as_uuid=True), server_default=sa.text("uuid_generate_v7()"), primary_key=True),
         sa.Column("workspace_id", UUID(as_uuid=True), sa.ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False),
         sa.Column("user_id", UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
         sa.Column("title", sa.String(255), server_default=sa.text("'New Chat'"), nullable=False),
@@ -162,7 +181,7 @@ def upgrade() -> None:
     # 9. Messages table
     op.create_table(
         "messages",
-        sa.Column("id", UUID(as_uuid=True), server_default=sa.text("uuid_generate_v4()"), primary_key=True),
+        sa.Column("id", UUID(as_uuid=True), server_default=sa.text("uuid_generate_v7()"), primary_key=True),
         sa.Column("session_id", UUID(as_uuid=True), sa.ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False),
         sa.Column("role", sa.String(20), nullable=False),
         sa.Column("content", sa.Text(), nullable=False),
@@ -177,7 +196,7 @@ def upgrade() -> None:
     # 10. Message Citations table
     op.create_table(
         "message_citations",
-        sa.Column("id", UUID(as_uuid=True), server_default=sa.text("uuid_generate_v4()"), primary_key=True),
+        sa.Column("id", UUID(as_uuid=True), server_default=sa.text("uuid_generate_v7()"), primary_key=True),
         sa.Column("message_id", UUID(as_uuid=True), sa.ForeignKey("messages.id", ondelete="CASCADE"), nullable=False),
         sa.Column("chunk_id", sa.String(), sa.ForeignKey("chunks.id", ondelete="CASCADE"), nullable=False),
         sa.Column("document_id", UUID(as_uuid=True), sa.ForeignKey("documents.id", ondelete="CASCADE"), nullable=False),
@@ -192,7 +211,7 @@ def upgrade() -> None:
     # 11. Message Feedbacks table
     op.create_table(
         "message_feedbacks",
-        sa.Column("id", UUID(as_uuid=True), server_default=sa.text("uuid_generate_v4()"), primary_key=True),
+        sa.Column("id", UUID(as_uuid=True), server_default=sa.text("uuid_generate_v7()"), primary_key=True),
         sa.Column("message_id", UUID(as_uuid=True), sa.ForeignKey("messages.id", ondelete="CASCADE"), nullable=False),
         sa.Column("user_id", UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
         sa.Column("rating", sa.SmallInteger(), nullable=False),
@@ -215,3 +234,4 @@ def downgrade() -> None:
     op.drop_table("workspace_members")
     op.drop_table("users")
     op.drop_table("workspaces")
+    op.execute("DROP FUNCTION IF EXISTS uuid_generate_v7();")

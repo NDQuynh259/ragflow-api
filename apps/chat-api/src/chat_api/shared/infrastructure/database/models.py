@@ -1,5 +1,6 @@
 """Centralized model imports for Alembic and metadata reflection."""
 
+from chat_api.modules.auth.infrastructure.model import UserSession
 from chat_api.modules.documents.infrastructure.model import Chunk, Document, IngestionJob
 from chat_api.modules.messages.infrastructure.model import (
     Message,
@@ -16,6 +17,7 @@ __all__ = [
     "Workspace",
     "WorkspaceMember",
     "User",
+    "UserSession",
     "Document",
     "IngestionJob",
     "Chunk",

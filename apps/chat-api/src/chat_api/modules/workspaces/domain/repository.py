@@ -18,5 +18,9 @@ class WorkspaceRepository(ABC):
         pass
 
     @abstractmethod
+    def list_by_user_id(self, user_id: uuid.UUID) -> list[Workspace]:
+        pass
+
+    @abstractmethod
     def save(self, workspace: Workspace) -> Workspace:
         pass

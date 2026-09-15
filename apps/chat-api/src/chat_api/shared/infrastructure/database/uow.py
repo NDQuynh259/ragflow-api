@@ -7,6 +7,9 @@ from typing import Callable, Self
 from fastapi import Depends
 from sqlalchemy.orm import Session, sessionmaker
 
+from chat_api.modules.auth.infrastructure.repository import (
+    SqlAlchemyUserSessionRepository,
+)
 from chat_api.modules.documents.infrastructure.repository import (
     SqlAlchemyDocumentRepository,
 )
@@ -49,6 +52,7 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
         self.messages = SqlAlchemyMessageRepository(self.session)
         self.workspaces = SqlAlchemyWorkspaceRepository(self.session)
         self.users = SqlAlchemyUserRepository(self.session)
+        self.user_sessions = SqlAlchemyUserSessionRepository(self.session)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:

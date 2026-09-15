@@ -8,6 +8,7 @@ import uuid
 
 from chat_api.modules.sessions.application.dtos import SessionDTO
 from chat_api.modules.sessions.domain.entity import ChatSession
+from chat_api.shared.domain.uuid7 import uuid7
 from chat_api.shared.domain.uow import UnitOfWork
 from chat_api.shared.exceptions import EntityNotFoundException
 
@@ -31,7 +32,7 @@ class CreateSessionHandler:
                 raise EntityNotFoundException("Workspace", cmd.workspace_id)
 
             session = ChatSession(
-                id=uuid.uuid4(),
+                id=uuid7(),
                 workspace_id=cmd.workspace_id,
                 user_id=cmd.user_id,
                 title=cmd.title.strip() or "New Chat",

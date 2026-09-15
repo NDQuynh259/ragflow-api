@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from chat_api.modules.auth.presentation.router import router as auth_router
 from chat_api.modules.documents.presentation.router import router as documents_router
 from chat_api.modules.health.presentation.router import router as health_router
 from chat_api.modules.messages.presentation.router import router as messages_router
@@ -13,6 +14,7 @@ from chat_api.modules.sessions.presentation.router import router as sessions_rou
 from chat_api.shared.config import settings
 from chat_api.shared.logging import setup_logging
 from chat_api.shared.middleware import register_exception_handlers
+from chat_api.shared.openapi import setup_openapi_3_0
 
 
 @asynccontextmanager
@@ -24,11 +26,15 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
+    description="Multimodal RAG Platform API (PostgreSQL 16 + pgvector + Hybrid Search)",
     debug=settings.DEBUG,
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url=None,
+    redoc_url=None,
 )
+
+# Configure OpenAPI 3.0.0 and Scalar Documentation
+setup_openapi_3_0(app)
 
 # CORS
 app.add_middleware(
@@ -47,6 +53,7 @@ app.include_router(health_router)
 
 module_routers = [
     health_router,
+    auth_router,
     sessions_router,
     documents_router,
     messages_router,

@@ -1,0 +1,19 @@
+[project]
+name = "core"
+version = "0.1.0"
+dependencies = [
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.1",
+    "uuid-utils>=0.9.0",
+]
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.pyright]
+venvPath = ".."
+venv = ".venv"

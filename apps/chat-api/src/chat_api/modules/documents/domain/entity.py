@@ -8,6 +8,7 @@ from enum import Enum
 import uuid
 
 from chat_api.shared.domain.base_entity import AggregateRoot, Entity
+from chat_api.shared.domain.uuid7 import uuid7
 
 
 class DocumentStatus(str, Enum):
@@ -27,6 +28,7 @@ class IngestionStatus(str, Enum):
 
 @dataclass(kw_only=True)
 class IngestionJob(Entity[uuid.UUID]):
+    id: uuid.UUID = field(default_factory=uuid7)
     document_id: uuid.UUID
     status: IngestionStatus = IngestionStatus.QUEUED
     retry_count: int = 0
@@ -40,6 +42,7 @@ class IngestionJob(Entity[uuid.UUID]):
 
 @dataclass(kw_only=True)
 class Document(AggregateRoot[uuid.UUID]):
+    id: uuid.UUID = field(default_factory=uuid7)
     workspace_id: uuid.UUID
     filename: str
     storage_uri: str
@@ -77,7 +80,7 @@ class Document(AggregateRoot[uuid.UUID]):
         chunker_name: str = "heading_aware",
     ) -> IngestionJob:
         job = IngestionJob(
-            id=uuid.uuid4(),
+            id=uuid7(),
             document_id=self.id,
             status=IngestionStatus.QUEUED,
             parser_name=parser_name,

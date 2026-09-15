@@ -8,6 +8,7 @@ import uuid
 
 from chat_api.modules.documents.application.dtos import DocumentDTO, IngestionJobDTO
 from chat_api.modules.documents.domain.entity import Document, DocumentStatus
+from chat_api.shared.domain.uuid7 import uuid7
 from chat_api.shared.domain.uow import UnitOfWork
 from chat_api.shared.exceptions import EntityNotFoundException
 from chat_api.shared.infrastructure.queue.port import IngestionQueuePort
@@ -53,7 +54,7 @@ class UploadDocumentHandler:
 
             # Create document aggregate
             document = Document(
-                id=uuid.uuid4(),
+                id=uuid7(),
                 workspace_id=cmd.workspace_id,
                 filename=cmd.filename,
                 storage_uri=storage_uri,

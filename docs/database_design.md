@@ -35,7 +35,149 @@ Hệ thống RAG lưu trữ dữ liệu theo 3 phân tầng chuyên biệt nhằ
 
 ---
 
-## 2. Sơ đồ Thực thể Quan hệ (ERD - Entity Relationship Diagram)
+## 2. Sơ đồ Thực thể Quan hệ & Bản đồ Liên kết (ERD & Relational Schema)
+
+Hệ thống gồm 11 bảng chuẩn hóa được tổ chức theo 4 phân hệ Bounded Context. Dưới đây là các góc nhìn trực quan từ tổng quan quan hệ, bản đồ liên kết khóa ngoại (PK/FK), đến chi tiết từng thuộc tính.
+
+### 2.1. Sơ đồ Cấu trúc Liên kết & Quan hệ Giữa các Bảng (Relational Flowchart)
+
+Sơ đồ thể hiện trực quan liên kết Khóa chính (PK 🔑) đến Khóa ngoại (FK 🔗), bậc quan hệ ($1:N$, $N:M$), và chính sách toàn vẹn (`CASCADE` vs `SET NULL`):
+
+```mermaid
+flowchart TD
+    %% Styling
+    classDef workspace fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef document fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
+    classDef chunk fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef chat fill:#fff8e1,stroke:#f57f17,stroke-width:2px,color:#e65100;
+
+    subgraph SG_AUTH ["1. Phân hệ Workspace & Xác thực (Multi-Tenancy)"]
+        WS["<b>workspaces</b><br/>──────<br/>🔑 id (PK)<br/>• name, slug<br/>• settings"]:::workspace
+        U["<b>users</b><br/>──────<br/>🔑 id (PK)<br/>• email, full_name<br/>• hashed_password"]:::workspace
+        WM["<b>workspace_members</b><br/>──────<br/>🔑 id (PK)<br/>🔗 workspace_id (FK)<br/>🔗 user_id (FK)<br/>• role ('owner'|'admin'|'member')"]:::workspace
+    end
+
+    subgraph SG_DOC ["2. Phân hệ Tài liệu & Ingestion Pipeline"]
+        DOC["<b>documents</b><br/>──────<br/>🔑 id (PK)<br/>🔗 workspace_id (FK)<br/>• filename, storage_uri<br/>• content_hash, status"]:::document
+        JOB["<b>ingestion_jobs</b><br/>──────<br/>🔑 id (PK)<br/>🔗 document_id (FK)<br/>• status, retry_count<br/>• parser_name, chunker_name"]:::document
+    end
+
+    subgraph SG_CHUNK ["3. Phân hệ RAG Vector & Full-Text Search"]
+        CHUNK["<b>chunks</b><br/>──────<br/>🔑 id (PK)<br/>🔗 document_id (FK)<br/>🔗 workspace_id (FK)<br/>• content, embedding (768)<br/>• tsv_content (tsvector)<br/>• kind, bboxes, element_ids"]:::chunk
+    end
+
+    subgraph SG_CHAT ["4. Phân hệ Phiên Chat, Trích dẫn & Đánh giá"]
+        CS["<b>chat_sessions</b><br/>──────<br/>🔑 id (PK)<br/>🔗 workspace_id (FK)<br/>🔗 user_id (FK)<br/>• title, rag_config"]:::chat
+        SD["<b>session_documents</b><br/>──────<br/>🔑🔗 session_id (PK, FK)<br/>🔑🔗 document_id (PK, FK)<br/>• attached_at"]:::chat
+        MSG["<b>messages</b><br/>──────<br/>🔑 id (PK)<br/>🔗 session_id (FK)<br/>• role, content<br/>• tokens, latency_ms"]:::chat
+        CIT["<b>message_citations</b><br/>──────<br/>🔑 id (PK)<br/>🔗 message_id (FK)<br/>🔗 chunk_id (FK)<br/>🔗 document_id (FK)<br/>• page_number, bbox, quote"]:::chat
+        FB["<b>message_feedbacks</b><br/>──────<br/>🔑 id (PK)<br/>🔗 message_id (FK)<br/>🔗 user_id (FK)<br/>• rating (+1 / -1), comment"]:::chat
+    end
+
+    %% Relations Auth
+    WS -->|"1 : N (CASCADE)"| WM
+    U -->|"1 : N (CASCADE)"| WM
+
+    %% Relations Workspace to Core
+    WS -->|"1 : N (CASCADE)"| DOC
+    WS -->|"1 : N (CASCADE)"| CHUNK
+    WS -->|"1 : N (CASCADE)"| CS
+
+    %% Relations User to Chat
+    U -.->|"1 : N (SET NULL)"| CS
+    U -.->|"1 : N (SET NULL)"| FB
+
+    %% Relations Document
+    DOC -->|"1 : N (CASCADE)"| JOB
+    DOC -->|"1 : N (CASCADE)"| CHUNK
+    DOC -->|"1 : N (CASCADE)"| SD
+    DOC -->|"1 : N (CASCADE)"| CIT
+
+    %% Relations Session
+    CS -->|"1 : N (CASCADE)"| SD
+    CS -->|"1 : N (CASCADE)"| MSG
+
+    %% Relations Message
+    MSG -->|"1 : N (CASCADE)"| CIT
+    MSG -->|"1 : N (CASCADE)"| FB
+
+    %% Relations Chunk
+    CHUNK -->|"1 : N (CASCADE)"| CIT
+```
+
+### 2.2. Sơ đồ Quan hệ Bảng Dạng Khung Khối (ASCII Schema Architecture Diagram)
+
+Sơ đồ dưới đây trực quan hóa toàn bộ 11 bảng cơ sở dữ liệu theo phong cách đồ họa ASCII Box Art, thể hiện rõ các tầng phân hệ, khóa chính (PK), khóa ngoại (FK), và các mũi tên quan hệ ($1 : N$, $N : M$, CASCADE, SET NULL):
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                   BẢN ĐỒ QUAN HỆ CƠ SỞ DỮ LIỆU (DATABASE ERD)                                │
+│                     Hệ thống 11 Bảng Chuẩn Hóa - PostgreSQL 16 + pgvector (Hybrid RAG)                      │
+└─────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────┐                                         ┌─────────────────────────────────┐
+│           workspaces            │                                         │              users              │
+│ - id: UUID (PK)                 │                                         │ - id: UUID (PK)                 │
+│ - name: VARCHAR(255)            │                                         │ - email: VARCHAR(255) (UK)      │
+│ - slug: VARCHAR(100) (UK)       │                                         │ - full_name: VARCHAR(255)       │
+│ - settings: JSONB               │                                         │ - hashed_password: VARCHAR(255) │
+│ - created_at, updated_at        │                                         │ - is_active: BOOLEAN            │
+└────────────────┬────────────────┘                                         └────────────────┬────────────────┘
+                 │                                                                           │
+                 ├────────────────────────────────────┬──────────────────────────────────────┤
+                 │ (1 : N)                            │ (1 : N)                              │ (1 : N, SET NULL)
+                 │ CASCADE                            │ CASCADE                              │ Không xóa session
+                 ▼                                    ▼                                      ▼
+┌─────────────────────────────────┐   ┌─────────────────────────────────┐   ┌─────────────────────────────────┐
+│            documents            │   │        workspace_members        │   │          chat_sessions          │
+│ - id: UUID (PK)                 │   │ - id: UUID (PK)                 │   │ - id: UUID (PK)                 │
+│ - workspace_id: UUID (FK)       │   │ - workspace_id: UUID (FK)       │   │ - workspace_id: UUID (FK)       │
+│ - filename, storage_uri         │   │ - user_id: UUID (FK)            │   │ - user_id: UUID (FK, SET NULL)  │
+│ - content_hash, mime_type       │   │ - role: 'owner'|'admin'|'member'│   │ - title: VARCHAR(255)           │
+│ - status: queued|ready|failed   │   │ - created_at: TIMESTAMPTZ       │   │ - rag_config: JSONB             │
+│ - page_count, metadata: JSONB   │   └─────────────────────────────────┘   │ - created_at, updated_at        │
+└────────────────┬────────────────┘                                         └────────────────┬────────────────┘
+                 │                                                                           │
+         ┌───────┴───────────────┬───────────────────────────────┐           ┌───────────────┤
+         │ (1 : N)               │ (1 : N)                       │ (N : 1)   │ (N : 1)       │ (1 : N)
+         │ CASCADE               │ CASCADE                       │ CASCADE   │ CASCADE       │ CASCADE
+         ▼                       ▼                               ▼           ▼               ▼
+┌─────────────────┐   ┌─────────────────────────────────┐   ┌─────────────────────┐ ┌─────────────────────────┐
+│ ingestion_jobs  │   │             chunks              │   │  session_documents  │ │        messages         │
+│ - id: UUID (PK) │   │ - id: VARCHAR (PK)              │   │ (Bảng trung gian    │ │ - id: UUID (PK)         │
+│ - document_id   │   │ - document_id: UUID (FK)        │   │  ghép 2 quan hệ     │ │ - session_id: UUID (FK) │
+│ - status, retry │   │ - workspace_id: UUID (FK)       │   │  N : 1 Documents    │ │ - role, content         │
+│ - parser_name   │   │ - content: TEXT                 │   │  N : 1 Sessions)    │ │ - prompt/completion tok │
+│ - chunker_name  │   │ - embedding: vector(768)        │   │                     │ │ - latency_ms            │
+│ - started_at    │   │ - tsv_content: tsvector (GIN)   │   │ - session_id  (PK)  │ └────────────┬────────────┘
+│ - completed_at  │   │ - kind: text|table|figure|...   │   │ - document_id (PK)  │              │
+│ - elapsed_sec   │   │ - bboxes, element_ids: JSONB    │   │ - attached_at       │              │
+└─────────────────┘   └────────────────┬────────────────┘   └─────────────────────┘              │
+                                       │                                                         │
+                                       │ (Trích dẫn chunk)                 ┌─────────────────────┤
+                                       │ CASCADE                           │ (1 : N, CASCADE)    │ (1 : N, CASCADE)
+                                       │                                   │ Lưu bằng chứng      │ Đánh giá câu trả lời
+                                       ▼                                   ▼                     ▼
+                      ┌────────────────────────────────────────────────────────┐ ┌─────────────────────────────────┐
+                      │                   message_citations                    │ │        message_feedbacks        │
+                      │ - id: UUID (PK)                                        │ │ - id: UUID (PK)                 │
+                      │ - message_id: UUID (FK -> messages.id)                 │ │ - message_id: UUID (FK)         │
+                      │ - chunk_id: VARCHAR (FK -> chunks.id)                  │ │ - user_id: UUID (FK, SET NULL)  │
+                      │ - document_id: UUID (FK -> documents.id)               │ │ - rating: SMALLINT (+1 / -1)    │
+                      │ - page_number: INT, bbox: JSONB                        │ │ - comment: TEXT                 │
+                      │ - quote: TEXT, relevance_score: FLOAT                  │ │ - created_at: TIMESTAMPTZ       │
+                      └────────────────────────────────────────────────────────┘ └─────────────────────────────────┘
+
+Chú giải các ký hiệu & Quy tắc toàn vẹn dữ liệu:
+  • (PK)              : Khóa chính (Primary Key), định danh duy nhất của bản ghi
+  • (FK)              : Khóa ngoại (Foreign Key), tham chiếu đến khóa chính của bảng cha tương ứng
+  • (1 : N) / (N : 1) : Quan hệ Một - Nhiều (Bảng cha 1 : N Bảng con; Từ bảng con trỏ lên bảng cha là N : 1)
+  • Bảng trung gian   : session_documents chứa 2 khóa ngoại (N : 1 về documents và N : 1 về chat_sessions), tạo thành quan hệ logic Nhiều - Nhiều (N : M) giữa Documents và Sessions
+  • CASCADE           : Tự động xóa sạch các bản ghi con phụ thuộc khi bản ghi cha bị xóa (tránh dữ liệu mồ côi)
+  • SET NULL          : Tự động gán NULL cho khóa ngoại khi xóa bản ghi cha (bảo tồn dữ liệu lịch sử phiên chat/feedback)
+```
+
+### 2.3. Sơ đồ Thực thể Thuộc tính Chi tiết (Entity-Attribute ERD)
 
 ```mermaid
 erDiagram
@@ -203,7 +345,7 @@ Hệ thống bao gồm **11 bảng** chuẩn hóa được chia thành 4 nhóm n
 
 | Tên Cột | Kiểu Dữ Liệu | Ràng Buộc | Giá Trị Mặc Định | Mô Tả Nghiệp Vụ |
 | :--- | :--- | :--- | :--- | :--- |
-| `id` | `UUID` | `PRIMARY KEY` | `uuid_generate_v4()` | Định danh duy nhất của workspace |
+| `id` | `UUID` | `PRIMARY KEY` | `uuid_generate_v7()` | Định danh duy nhất của workspace (RFC 9562 k-sortable) |
 | `name` | `VARCHAR(255)` | `NOT NULL` | - | Tên hiển thị của không gian làm việc |
 | `slug` | `VARCHAR(100)` | `NOT NULL, UNIQUE` | - | Mã định danh URL (URL-friendly string) |
 | `settings` | `JSONB` | `NOT NULL` | `'{}'::jsonb` | Cấu hình riêng: giới hạn upload, prompt template, model whitelist |
@@ -220,7 +362,7 @@ Lưu trữ thông tin người dùng trong hệ thống xác thực.
 
 | Tên Cột | Kiểu Dữ Liệu | Ràng Buộc | Giá Trị Mặc Định | Mô Tả Nghiệp Vụ |
 | :--- | :--- | :--- | :--- | :--- |
-| `id` | `UUID` | `PRIMARY KEY` | `uuid_generate_v4()` | Định danh duy nhất của người dùng |
+| `id` | `UUID` | `PRIMARY KEY` | `uuid_generate_v7()` | Định danh duy nhất của người dùng (RFC 9562 k-sortable) |
 | `email` | `VARCHAR(255)` | `NOT NULL, UNIQUE` | - | Email đăng nhập của người dùng |
 | `full_name` | `VARCHAR(255)` | `NULL` | `NULL` | Họ và tên hiển thị |
 | `hashed_password` | `VARCHAR(255)` | `NOT NULL` | - | Mật khẩu băm (bcrypt / argon2) |
@@ -238,7 +380,7 @@ Bảng liên kết quản lý thành viên và phân quyền vai trò (Role-Base
 
 | Tên Cột | Kiểu Dữ Liệu | Ràng Buộc | Giá Trị Mặc Định | Mô Tả Nghiệp Vụ |
 | :--- | :--- | :--- | :--- | :--- |
-| `id` | `UUID` | `PRIMARY KEY` | `uuid_generate_v4()` | Định danh bản ghi quan hệ thành viên |
+| `id` | `UUID` | `PRIMARY KEY` | `uuid_generate_v7()` | Định danh bản ghi quan hệ thành viên |
 | `workspace_id` | `UUID` | `NOT NULL, FK` | - | Tham chiếu `workspaces.id` (`ON DELETE CASCADE`) |
 | `user_id` | `UUID` | `NOT NULL, FK` | - | Tham chiếu `users.id` (`ON DELETE CASCADE`) |
 | `role` | `VARCHAR(50)` | `NOT NULL, CHECK` | `'member'` | Vai trò: `'owner'`, `'admin'`, `'member'` |
@@ -260,7 +402,7 @@ Quản lý metadata của file tài liệu tải lên hệ thống.
 
 | Tên Cột | Kiểu Dữ Liệu | Ràng Buộc | Giá Trị Mặc Định | Mô Tả Nghiệp Vụ |
 | :--- | :--- | :--- | :--- | :--- |
-| `id` | `UUID` | `PRIMARY KEY` | `uuid_generate_v4()` | Định danh tài liệu |
+| `id` | `UUID` | `PRIMARY KEY` | `uuid_generate_v7()` | Định danh tài liệu (RFC 9562 k-sortable) |
 | `workspace_id` | `UUID` | `NOT NULL, FK` | - | Tham chiếu `workspaces.id` (`ON DELETE CASCADE`) |
 | `filename` | `VARCHAR(500)` | `NOT NULL` | - | Tên file gốc người dùng tải lên |
 | `storage_uri` | `TEXT` | `NOT NULL` | - | Đường dẫn Object Storage (ví dụ: `s3://bucket/docs/...`) |
@@ -290,7 +432,7 @@ Ghi lại nhật ký các lần chạy background worker xử lý tài liệu (p
 
 | Tên Cột | Kiểu Dữ Liệu | Ràng Buộc | Giá Trị Mặc Định | Mô Tả Nghiệp Vụ |
 | :--- | :--- | :--- | :--- | :--- |
-| `id` | `UUID` | `PRIMARY KEY` | `uuid_generate_v4()` | Định danh tác vụ ingestion |
+| `id` | `UUID` | `PRIMARY KEY` | `uuid_generate_v7()` | Định danh tác vụ ingestion |
 | `document_id` | `UUID` | `NOT NULL, FK` | - | Tham chiếu `documents.id` (`ON DELETE CASCADE`) |
 | `status` | `VARCHAR(30)` | `NOT NULL, CHECK` | `'queued'` | Trạng thái: `queued`, `running`, `completed`, `failed` |
 | `retry_count` | `INTEGER` | `NOT NULL` | `0` | Số lần đã thử lại khi gặp sự cố mạng/LLM |
@@ -349,7 +491,7 @@ Quản lý các phiên trò chuyện của người dùng trong một workspace 
 
 | Tên Cột | Kiểu Dữ Liệu | Ràng Buộc | Giá Trị Mặc Định | Mô Tả Nghiệp Vụ |
 | :--- | :--- | :--- | :--- | :--- |
-| `id` | `UUID` | `PRIMARY KEY` | `uuid_generate_v4()` | Định danh phiên chat |
+| `id` | `UUID` | `PRIMARY KEY` | `uuid_generate_v7()` | Định danh phiên chat (k-sortable theo thời gian) |
 | `workspace_id` | `UUID` | `NOT NULL, FK` | - | Tham chiếu `workspaces.id` (`ON DELETE CASCADE`) |
 | `user_id` | `UUID` | `NULL, FK` | `NULL` | Tham chiếu `users.id` (`ON DELETE SET NULL`) |
 | `title` | `VARCHAR(255)` | `NOT NULL` | `'New Chat'` | Tiêu đề cuộc hội thoại |
@@ -379,7 +521,7 @@ Lưu trữ toàn bộ lịch sử tin nhắn trong phiên trò chuyện.
 
 | Tên Cột | Kiểu Dữ Liệu | Ràng Buộc | Giá Trị Mặc Định | Mô Tả Nghiệp Vụ |
 | :--- | :--- | :--- | :--- | :--- |
-| `id` | `UUID` | `PRIMARY KEY` | `uuid_generate_v4()` | Định danh tin nhắn |
+| `id` | `UUID` | `PRIMARY KEY` | `uuid_generate_v7()` | Định danh tin nhắn (k-sortable theo thời gian) |
 | `session_id` | `UUID` | `NOT NULL, FK` | - | Tham chiếu `chat_sessions.id` (`ON DELETE CASCADE`) |
 | `role` | `VARCHAR(20)` | `NOT NULL, CHECK` | - | Vai trò người gửi: `'user'`, `'assistant'`, `'system'` |
 | `content` | `TEXT` | `NOT NULL` | - | Nội dung văn bản câu hỏi hoặc câu trả lời |
@@ -400,7 +542,7 @@ Liên kết câu trả lời của trợ lý ảo AI với đúng nguồn phân 
 
 | Tên Cột | Kiểu Dữ Liệu | Ràng Buộc | Giá Trị Mặc Định | Mô Tả Nghiệp Vụ |
 | :--- | :--- | :--- | :--- | :--- |
-| `id` | `UUID` | `PRIMARY KEY` | `uuid_generate_v4()` | Định danh trích dẫn |
+| `id` | `UUID` | `PRIMARY KEY` | `uuid_generate_v7()` | Định danh trích dẫn |
 | `message_id` | `UUID` | `NOT NULL, FK` | - | Tham chiếu `messages.id` (`ON DELETE CASCADE`) |
 | `chunk_id` | `VARCHAR(255)` | `NOT NULL, FK` | - | Tham chiếu `chunks.id` (`ON DELETE CASCADE`) |
 | `document_id` | `UUID` | `NOT NULL, FK` | - | Tham chiếu `documents.id` (`ON DELETE CASCADE`) |
@@ -420,7 +562,7 @@ Thu thập đánh giá chất lượng câu trả lời từ người dùng (RLH
 
 | Tên Cột | Kiểu Dữ Liệu | Ràng Buộc | Giá Trị Mặc Định | Mô Tả Nghiệp Vụ |
 | :--- | :--- | :--- | :--- | :--- |
-| `id` | `UUID` | `PRIMARY KEY` | `uuid_generate_v4()` | Định danh bản ghi đánh giá |
+| `id` | `UUID` | `PRIMARY KEY` | `uuid_generate_v7()` | Định danh bản ghi đánh giá |
 | `message_id` | `UUID` | `NOT NULL, FK` | - | Tham chiếu `messages.id` (`ON DELETE CASCADE`) |
 | `user_id` | `UUID` | `NULL, FK` | `NULL` | Tham chiếu `users.id` (`ON DELETE SET NULL`) |
 | `rating` | `SMALLINT` | `NOT NULL, CHECK` | - | Giá trị đánh giá: `1` (Like / Tốt), `-1` (Dislike / Kém) |
@@ -430,6 +572,69 @@ Thu thập đánh giá chất lượng câu trả lời từ người dùng (RLH
 - **Constraints**:
   - `ck_feedback_rating`: `CHECK (rating IN (-1, 1))`.
   - `uq_user_message_feedback`: `UNIQUE(message_id, user_id)` (Mỗi user chỉ đánh giá 1 lần cho 1 tin nhắn).
+
+---
+
+### 3.12. Chiến lược Định danh Khóa chính UUIDv7 (RFC 9562) & Tối ưu hóa Chỉ mục B-Tree
+
+Hệ thống RAG chuẩn hóa toàn bộ các bảng sử dụng khóa chính dạng UUID sang **UUIDv7 (RFC 9562)** thay thế hoàn toàn cho UUIDv4 truyền thống.
+
+#### 1. Cấu trúc 128-bit của UUIDv7
+UUIDv7 mã hóa thông tin thời gian thực ở các bit trọng số cao nhất (big-endian), kết hợp với dữ liệu entropy ngẫu nhiên bảo mật:
+
+```text
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                           unix_ts_ms                          |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|          unix_ts_ms           |  ver  |       rand_a          |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|var|                        rand_b                             |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                            rand_b                             |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+- **48 bits `unix_ts_ms`**: Timestamp Unix tính bằng mili-giây (cho phép biểu diễn thời gian chính xác tới năm 10,889).
+- **4 bits `ver`**: Giá trị cố định `0111` (phiên bản 7).
+- **12 bits `rand_a`**: Dữ liệu ngẫu nhiên hoặc bộ đếm phân giải sub-millisecond.
+- **2 bits `var`**: Variant RFC 4122/9562 (`10`).
+- **62 bits `rand_b`**: Cryptographic random entropy (đảm bảo không thể trùng lặp ngay cả khi sinh hàng triệu ID mỗi giây).
+
+#### 2. So sánh Kỹ thuật: UUIDv7 vs UUIDv4 vs BIGSERIAL
+
+| Tiêu chí | UUIDv4 (Random) | BIGSERIAL / INT8 | UUIDv7 (RFC 9562 - Chọn) |
+| :--- | :--- | :--- | :--- |
+| **Tính sắp xếp (k-sortable)** | Không (ngẫu nhiên 100%) | Có (tăng dần 1 đơn vị) | **Có (sắp xếp tăng dần theo thời gian)** |
+| **B-Tree Page Split** | Rất cao (chèn ngẫu nhiên vào lá) | Không có (chèn vào lá ngoài cùng) | **Không có (chèn tuần tự vào lá phải)** |
+| **B-Tree Fill Factor** | ~50% (lãng phí 50% RAM/Disk) | ~90-100% (tận dụng tối đa RAM) | **~90-100% (tối ưu hóa bộ nhớ đệm)** |
+| **Tốc độ INSERT quy mô lớn**| Giảm 40-70% khi bảng > 5M rows | Ổn định O(1) | **Ổn định O(1)** |
+| **An toàn bảo mật (Enumeration)**| Cao (khó đoán) | Kém (dễ đoán số lượng bản ghi) | **Rất cao (74-bit random entropy)** |
+| **Sinh ID phân tán (Distributed)**| Có (không cần central lock) | Kém (phụ thuộc sequence DB) | **Xuất sắc (sinh tại worker/API độc lập)** |
+| **Cursor Pagination** | Cần index phụ `(created_at, id)`| Dùng `WHERE id < :cursor` | **Dùng trực tiếp `WHERE id < :cursor`** |
+
+#### 3. Cài đặt PL/pgSQL Function trên PostgreSQL 16
+Tại migration `001_initial_schema.py`, hệ thống khởi tạo hàm `uuid_generate_v7()` nguyên bản mà không cần phụ thuộc extension bên ngoài:
+
+```sql
+CREATE OR REPLACE FUNCTION uuid_generate_v7()
+RETURNS uuid AS $$
+DECLARE
+    unix_time_ms bigint;
+    epoch_ms_bytes bytea;
+    rand_bytes bytea;
+    res bytea;
+BEGIN
+    unix_time_ms := floor(extract(epoch from clock_timestamp()) * 1000)::bigint;
+    epoch_ms_bytes := substring(int8send(unix_time_ms) from 3 for 6);
+    rand_bytes := gen_random_bytes(10);
+    res := epoch_ms_bytes || rand_bytes;
+    res := set_byte(res, 6, (get_byte(res, 6) & 15) | 112); -- ver 7 (0x70)
+    res := set_byte(res, 8, (get_byte(res, 8) & 63) | 128); -- var 1 (0x80)
+    RETURN encode(res, 'hex')::uuid;
+END;
+$$ LANGUAGE plpgsql VOLATILE;
+```
 
 ---
 
@@ -483,11 +688,88 @@ Thao tác này giúp tận dụng thế mạnh của cả 2 phương pháp: Dens
    USING (workspace_id = current_setting('app.current_workspace_id')::uuid);
    ```
 
-### 5.2. Chính sách Cascade Deletion
+### 5.2. Chính sách Cascade Deletion & Sơ đồ Quan hệ Lan truyền (Referential Integrity)
+
 - Khi một `workspace` bị xóa: Toàn bộ `workspace_members`, `documents`, `chunks`, `chat_sessions` đều bị xóa sạch (`ON DELETE CASCADE`), ngăn ngừa hoàn toàn tình trạng dữ liệu mồ côi (orphaned chunks/vectors).
 - Khi một `user` bị xóa: Tài liệu và phiên chat vẫn được bảo tồn để tổ chức không bị mất dữ liệu tri thức, trường `user_id` trong `chat_sessions` và `message_feedbacks` tự động chuyển về `NULL` (`ON DELETE SET NULL`).
 
-### 5.3. Máy trạng thái Vòng đời Tài liệu (Document Ingestion State Machine)
+#### Sơ đồ Cây Lan truyền Quan hệ & Hành vi Xóa (Referential Actions Tree)
+
+```mermaid
+graph TD
+    classDef root fill:#e1f5fe,stroke:#0277bd,stroke-width:2px,color:#01579b;
+    classDef child fill:#fff3e0,stroke:#ef6c00,stroke-width:1.5px,color:#e65100;
+    classDef cascade fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef setnull fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    WS["🏢 workspaces"]:::root
+    U["👤 users"]:::root
+
+    WM["👥 workspace_members"]:::child
+    DOC["📄 documents"]:::child
+    CHUNK["🧩 chunks"]:::child
+    CS["💬 chat_sessions"]:::child
+    JOB["⚙️ ingestion_jobs"]:::child
+    SD["📎 session_documents"]:::child
+    MSG["✉️ messages"]:::child
+    CIT["📌 message_citations"]:::child
+    FB["⭐ message_feedbacks"]:::child
+
+    %% Workspace Cascades
+    WS ==>|"CASCADE (Xóa sạch)"| WM
+    WS ==>|"CASCADE (Xóa sạch)"| DOC
+    WS ==>|"CASCADE (Xóa sạch)"| CHUNK
+    WS ==>|"CASCADE (Xóa sạch)"| CS
+
+    %% User Actions
+    U ==>|"CASCADE"| WM
+    U -.->|"SET NULL (Giữ session)"| CS
+    U -.->|"SET NULL (Giữ feedback)"| FB
+
+    %% Document Cascades
+    DOC ==>|"CASCADE"| JOB
+    DOC ==>|"CASCADE"| CHUNK
+    DOC ==>|"CASCADE"| SD
+    DOC ==>|"CASCADE"| CIT
+
+    %% Chat Session Cascades
+    CS ==>|"CASCADE"| SD
+    CS ==>|"CASCADE"| MSG
+
+    %% Message Cascades
+    MSG ==>|"CASCADE"| CIT
+    MSG ==>|"CASCADE"| FB
+
+    %% Chunk Cascades
+    CHUNK ==>|"CASCADE"| CIT
+```
+
+#### Bảng Ma trận Quan hệ Khóa ngoại & Hành vi Toàn vẹn (Referential Action Matrix)
+
+| Bảng Con (Child) | Khóa Ngoại (Foreign Key) | Bảng Cha (Parent) | Khóa Chính (PK) | Hành vi ON DELETE | Ý nghĩa Nghiệp vụ & Bảo toàn Dữ liệu |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `workspace_members` | `workspace_id` | `workspaces` | `id` | `CASCADE` | Xóa không gian làm việc thì xóa toàn bộ danh sách thành viên |
+| `workspace_members` | `user_id` | `users` | `id` | `CASCADE` | User bị xóa tài khoản thì bị rút khỏi mọi workspace |
+| `documents` | `workspace_id` | `workspaces` | `id` | `CASCADE` | Xóa workspace thì xóa toàn bộ tài liệu trực thuộc |
+| `ingestion_jobs` | `document_id` | `documents` | `id` | `CASCADE` | Xóa tài liệu thì xóa lịch sử các tác vụ bóc tách |
+| `chunks` | `document_id` | `documents` | `id` | `CASCADE` | Xóa tài liệu thì xóa sạch vector và text chunk liên quan |
+| `chunks` | `workspace_id` | `workspaces` | `id` | `CASCADE` | Xóa workspace thì xóa mọi vector chunk của tenant đó |
+| `chat_sessions` | `workspace_id` | `workspaces` | `id` | `CASCADE` | Xóa workspace thì xóa mọi cuộc trò chuyện trong workspace |
+| `chat_sessions` | `user_id` | `users` | `id` | `SET NULL` | User rời đi thì phiên hội thoại vẫn còn cho tổ chức tra cứu |
+| `session_documents`| `session_id` | `chat_sessions` | `id` | `CASCADE` | Xóa phiên chat thì giải phóng liên kết đính kèm tài liệu |
+| `session_documents`| `document_id` | `documents` | `id` | `CASCADE` | Xóa tài liệu thì tự động gỡ khỏi các phiên chat đang đính kèm |
+| `messages` | `session_id` | `chat_sessions` | `id` | `CASCADE` | Xóa phiên chat thì xóa toàn bộ dòng tin nhắn |
+| `message_citations`| `message_id` | `messages` | `id` | `CASCADE` | Xóa tin nhắn thì xóa các trích dẫn bằng chứng kèm theo |
+| `message_citations`| `chunk_id` | `chunks` | `id` | `CASCADE` | Xóa chunk thì xóa tham chiếu trích dẫn để tránh trỏ vào chunk rác |
+| `message_citations`| `document_id` | `documents` | `id` | `CASCADE` | Xóa tài liệu thì hủy bỏ toàn bộ trích dẫn từ tài liệu đó |
+| `message_feedbacks`| `message_id` | `messages` | `id` | `CASCADE` | Xóa tin nhắn thì xóa luôn điểm đánh giá (like/dislike) |
+| `message_feedbacks`| `user_id` | `users` | `id` | `SET NULL` | User bị xóa thì điểm đánh giá vẫn được giữ lại để đánh giá RAG |
+
+---
+
+### 5.3. Máy trạng thái Vòng đời & Quan hệ Thực thể trong Ingestion
+
+#### Sơ đồ Chuyển đổi Trạng thái Tài liệu (Document Lifecycle State Machine)
 
 ```mermaid
 stateDiagram-v2
@@ -498,6 +780,38 @@ stateDiagram-v2
     processing --> failed : Gặp lỗi (timeout, invalid format)
     failed --> queued : Retry Job
     ready --> [*]
+```
+
+#### Sơ đồ Luồng Tương tác Thực thể trong Tiến trình Ingestion (Entity Data Flow)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as 💻 Client / UI
+    participant API as 🚀 chat-api
+    participant DB_Doc as 📄 DB: documents
+    participant DB_Job as ⚙️ DB: ingestion_jobs
+    participant Storage as 🗄️ Object Storage
+    participant Queue as 📬 Ingestion Queue
+    participant Worker as 🛠️ document-worker
+    participant DB_Chunk as 🧩 DB: chunks
+
+    Client->>API: POST /documents (file bytes)
+    API->>Storage: Lưu trữ file gốc (trả về storage_uri)
+    API->>DB_Doc: INSERT documents (status='queued', content_hash, storage_uri)
+    API->>DB_Job: INSERT ingestion_jobs (status='queued', document_id)
+    API->>Queue: Enqueue (job_id, document_id, storage_uri, workspace_id)
+    API-->>Client: 201 Created (document_id, job_id, status='queued')
+
+    Note over Worker,Queue: Worker bất đồng bộ nhận lệnh xử lý
+    Queue->>Worker: Dispatch Ingestion Job
+    Worker->>DB_Job: UPDATE ingestion_jobs (status='running', started_at=NOW())
+    Worker->>DB_Doc: UPDATE documents (status='processing')
+    Worker->>Storage: Tải file PDF từ storage_uri
+    Worker->>Worker: Bóc tách bố cục (PDF/OCR), Phân mảnh (Heading-aware), Tạo Embeddings
+    Worker->>DB_Chunk: BATCH INSERT chunks (document_id, workspace_id, embedding, bboxes, tsv)
+    Worker->>DB_Doc: UPDATE documents (status='ready', page_count, metadata)
+    Worker->>DB_Job: UPDATE ingestion_jobs (status='completed', elapsed_seconds, completed_at=NOW())
 ```
 
 ---

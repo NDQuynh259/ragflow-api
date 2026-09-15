@@ -1,9 +1,10 @@
 [project]
 name = "document-worker"
 version = "0.1.0"
-dependencies = ["rag-document-pipeline", "rag-core"]
+dependencies = ["core", "rag-document-pipeline", "rag-core"]
 requires-python = ">=3.11"
 [tool.uv.sources]
+core = { workspace = true }
 rag-document-pipeline = { workspace = true }
 rag-core = { workspace = true }
 [build-system]
@@ -14,6 +15,7 @@ build-backend = "setuptools.build_meta"
 venvPath = "../.."
 venv = ".venv"
 extraPaths = [
+    "../../core/src",
     "../../packages/rag-contracts/src",
     "../../packages/rag-core/src",
     "../../packages/rag-document-pipeline/src",

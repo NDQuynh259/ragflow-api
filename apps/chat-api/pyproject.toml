@@ -8,12 +8,17 @@ dependencies = [
     "psycopg[binary]>=3.1",
     "pgvector>=0.3",
     "alembic>=1.14",
+    "uuid-utils>=0.9.0",
+    "scalar-fastapi>=1.0.0",
+    "bcrypt>=4.0",
+    "core",
     "rag-document-pipeline",
     "rag-core",
 ]
 requires-python = ">=3.11"
 
 [tool.uv.sources]
+core = { workspace = true }
 rag-document-pipeline = { workspace = true }
 rag-core = { workspace = true }
 [build-system]
@@ -24,6 +29,7 @@ build-backend = "setuptools.build_meta"
 venvPath = "../.."
 venv = ".venv"
 extraPaths = [
+    "../../core/src",
     "../../packages/rag-contracts/src",
     "../../packages/rag-core/src",
     "../../packages/rag-document-pipeline/src",

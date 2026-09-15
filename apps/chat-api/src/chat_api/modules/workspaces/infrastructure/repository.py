@@ -33,6 +33,15 @@ class SqlAlchemyWorkspaceRepository(WorkspaceRepository):
             return None
         return self._to_domain(orm)
 
+    def list_by_user_id(self, user_id: uuid.UUID) -> list[DomainWorkspace]:
+        orms = (
+            self.session.query(ORMWorkspace)
+            .join(ORMMember, ORMMember.workspace_id == ORMWorkspace.id)
+            .filter(ORMMember.user_id == user_id)
+            .all()
+        )
+        return [self._to_domain(o) for o in orms]
+
     def save(self, workspace: DomainWorkspace) -> DomainWorkspace:
         orm = self.session.query(ORMWorkspace).filter(ORMWorkspace.id == workspace.id).first()
         if not orm:
@@ -42,11 +51,31 @@ class SqlAlchemyWorkspaceRepository(WorkspaceRepository):
                 slug=workspace.slug,
                 settings=workspace.settings,
             )
+            for m in workspace.members:
+                orm.members.append(
+                    ORMMember(
+                        id=m.id,
+                        workspace_id=workspace.id,
+                        user_id=m.user_id,
+                        role=m.role.value if hasattr(m.role, "value") else str(m.role),
+                    )
+                )
             self.session.add(orm)
         else:
             orm.name = workspace.name
             orm.slug = workspace.slug
             orm.settings = workspace.settings
+            existing_member_ids = {m.id for m in orm.members}
+            for m in workspace.members:
+                if m.id not in existing_member_ids:
+                    orm.members.append(
+                        ORMMember(
+                            id=m.id,
+                            workspace_id=workspace.id,
+                            user_id=m.user_id,
+                            role=m.role.value if hasattr(m.role, "value") else str(m.role),
+                        )
+                    )
         return workspace
 
     def _to_domain(self, orm: ORMWorkspace) -> DomainWorkspace:

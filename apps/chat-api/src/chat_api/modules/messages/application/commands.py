@@ -8,6 +8,7 @@ import uuid
 
 from chat_api.modules.messages.application.dtos import CitationDTO, MessageDTO
 from chat_api.modules.messages.domain.entity import Message, MessageRole
+from chat_api.shared.domain.uuid7 import uuid7
 from chat_api.shared.domain.uow import UnitOfWork
 from chat_api.shared.exceptions import EntityNotFoundException
 from chat_api.shared.infrastructure.rag.port import RAGEnginePort
@@ -44,7 +45,7 @@ class SendMessageHandler:
 
             # 1. Save user message
             user_msg = Message(
-                id=uuid.uuid4(),
+                id=uuid7(),
                 session_id=cmd.session_id,
                 role=MessageRole.USER,
                 content=cmd.content,
@@ -62,7 +63,7 @@ class SendMessageHandler:
 
             # 3. Create assistant message
             assistant_msg = Message(
-                id=uuid.uuid4(),
+                id=uuid7(),
                 session_id=cmd.session_id,
                 role=MessageRole.ASSISTANT,
                 content=answer,

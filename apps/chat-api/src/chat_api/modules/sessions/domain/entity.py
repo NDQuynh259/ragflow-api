@@ -8,10 +8,12 @@ from typing import Any
 import uuid
 
 from chat_api.shared.domain.base_entity import AggregateRoot
+from chat_api.shared.domain.uuid7 import uuid7
 
 
 @dataclass(kw_only=True)
 class ChatSession(AggregateRoot[uuid.UUID]):
+    id: uuid.UUID = field(default_factory=uuid7)
     workspace_id: uuid.UUID
     user_id: uuid.UUID | None = None
     title: str = "New Chat"

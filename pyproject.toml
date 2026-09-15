@@ -11,19 +11,24 @@ members = [
     "packages/rag-core",
     "apps/chat-api",
     "workers/document-worker",
+    "core",
 ]
 
 [tool.uv.sources]
 rag-contracts = { workspace = true }
 rag-document-pipeline = { workspace = true }
 rag-core = { workspace = true }
+core = { workspace = true }
 
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+packages = []
+
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
-testpaths = ["packages", "tests", "apps", "workers"]
+testpaths = ["packages", "tests", "apps", "workers", "core"]
 norecursedirs = ["scripts", "output", "outputs", "deploy", "docs", "migrations"]
 

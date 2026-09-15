@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Self
 
 if TYPE_CHECKING:
+    from chat_api.modules.auth.domain.repository import UserSessionRepository
     from chat_api.modules.documents.domain.repository import DocumentRepository
     from chat_api.modules.messages.domain.repository import MessageRepository
     from chat_api.modules.sessions.domain.repository import ChatSessionRepository
@@ -21,6 +22,7 @@ class UnitOfWork(ABC):
     messages: MessageRepository
     workspaces: WorkspaceRepository
     users: UserRepository
+    user_sessions: UserSessionRepository
 
     def __enter__(self) -> Self:
         return self

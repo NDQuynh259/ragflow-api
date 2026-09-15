@@ -7,6 +7,7 @@ from enum import Enum
 import uuid
 
 from chat_api.shared.domain.base_entity import AggregateRoot, Entity
+from chat_api.shared.domain.uuid7 import uuid7
 
 
 class MessageRole(str, Enum):
@@ -17,6 +18,7 @@ class MessageRole(str, Enum):
 
 @dataclass(kw_only=True)
 class MessageCitation(Entity[uuid.UUID]):
+    id: uuid.UUID = field(default_factory=uuid7)
     message_id: uuid.UUID
     chunk_id: str
     document_id: uuid.UUID
@@ -28,6 +30,7 @@ class MessageCitation(Entity[uuid.UUID]):
 
 @dataclass(kw_only=True)
 class MessageFeedback(Entity[uuid.UUID]):
+    id: uuid.UUID = field(default_factory=uuid7)
     message_id: uuid.UUID
     rating: int  # -1 or 1
     user_id: uuid.UUID | None = None
@@ -36,6 +39,7 @@ class MessageFeedback(Entity[uuid.UUID]):
 
 @dataclass(kw_only=True)
 class Message(AggregateRoot[uuid.UUID]):
+    id: uuid.UUID = field(default_factory=uuid7)
     session_id: uuid.UUID
     role: MessageRole
     content: str
@@ -55,7 +59,7 @@ class Message(AggregateRoot[uuid.UUID]):
         relevance_score: float | None = None,
     ) -> MessageCitation:
         citation = MessageCitation(
-            id=uuid.uuid4(),
+            id=uuid7(),
             message_id=self.id,
             chunk_id=chunk_id,
             document_id=document_id,

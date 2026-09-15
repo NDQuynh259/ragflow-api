@@ -7,6 +7,7 @@ from enum import Enum
 import uuid
 
 from chat_api.shared.domain.base_entity import AggregateRoot, Entity
+from chat_api.shared.domain.uuid7 import uuid7
 
 
 class WorkspaceRole(str, Enum):
@@ -17,6 +18,7 @@ class WorkspaceRole(str, Enum):
 
 @dataclass(kw_only=True)
 class WorkspaceMember(Entity[uuid.UUID]):
+    id: uuid.UUID = field(default_factory=uuid7)
     workspace_id: uuid.UUID
     user_id: uuid.UUID
     role: WorkspaceRole = WorkspaceRole.MEMBER
@@ -24,6 +26,7 @@ class WorkspaceMember(Entity[uuid.UUID]):
 
 @dataclass(kw_only=True)
 class Workspace(AggregateRoot[uuid.UUID]):
+    id: uuid.UUID = field(default_factory=uuid7)
     name: str
     slug: str
     settings: dict = field(default_factory=dict)

@@ -1,21 +1,7 @@
-"""Ingestion Queue Port interface."""
+"""Ingestion Queue Port interface (re-exported from core.queue.port)."""
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-import uuid
+from core.queue.port import IngestionQueuePort
 
-
-class IngestionQueuePort(ABC):
-    """Abstract port for dispatching document ingestion jobs to workers."""
-
-    @abstractmethod
-    def enqueue_ingestion(
-        self,
-        document_id: uuid.UUID,
-        job_id: uuid.UUID,
-        storage_uri: str,
-        workspace_id: uuid.UUID,
-    ) -> None:
-        """Publish job to background worker queue."""
-        pass
+__all__ = ["IngestionQueuePort"]
