@@ -5,21 +5,19 @@ from __future__ import annotations
 import uuid
 from fastapi import APIRouter, Depends, Query
 
-from chat_api.modules.messages.application.commands import (
-    SendMessageCommand,
-    SendMessageHandler,
-)
-from chat_api.modules.messages.application.queries import (
-    GetSessionMessagesHandler,
-    GetSessionMessagesQuery,
-)
+from chat_api.modules.messages.application.commands import SendMessageCommand
+from chat_api.modules.messages.application.queries import GetSessionMessagesQuery
 from chat_api.modules.messages.presentation.dtos import (
     CitationResponse,
     MessageResponse,
     SendMessageRequest,
 )
-from chat_api.shared.domain.uow import UnitOfWork
-from chat_api.shared.infrastructure.database.uow import get_uow
+from chat_api.modules.auth.presentation.dependencies import (
+    AuthDep,
+    RequirePermission,
+    auth_openapi,
+)
+from chat_api.shared.application.authorization import Permission
 from chat_api.shared.infrastructure.rag.adapter import RAGEngineAdapter
 from chat_api.shared.infrastructure.rag.port import RAGEnginePort
 
@@ -32,15 +30,23 @@ def get_rag_engine() -> RAGEnginePort:
     return _rag_engine
 
 
-@router.post("", response_model=MessageResponse)
+@router.post(
+    "",
+    response_model=MessageResponse,
+    dependencies=[Depends(RequirePermission(Permission.MESSAGE_SEND))],
+    openapi_extra=auth_openapi(Permission.MESSAGE_SEND),
+)
 def send_message(
     session_id: uuid.UUID,
     payload: SendMessageRequest,
-    uow: UnitOfWork = Depends(get_uow),
+    auth: AuthDep,
     rag_engine: RAGEnginePort = Depends(get_rag_engine),
 ) -> MessageResponse:
     cmd = SendMessageCommand(session_id=session_id, content=payload.content)
-    result = SendMessageHandler(uow, rag_engine).handle(cmd)
+    result = auth.command_bus.execute(
+        cmd,
+        dependencies={RAGEnginePort: rag_engine},
+    )
 
     return MessageResponse(
         id=result.id,
@@ -55,15 +61,20 @@ def send_message(
     )
 
 
-@router.get("", response_model=list[MessageResponse])
+@router.get(
+    "",
+    response_model=list[MessageResponse],
+    dependencies=[Depends(RequirePermission(Permission.SESSION_READ))],
+    openapi_extra=auth_openapi(Permission.SESSION_READ),
+)
 def get_session_messages(
     session_id: uuid.UUID,
+    auth: AuthDep,
     limit: int = Query(100, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    uow: UnitOfWork = Depends(get_uow),
 ) -> list[MessageResponse]:
     query = GetSessionMessagesQuery(session_id=session_id, limit=limit, offset=offset)
-    results = GetSessionMessagesHandler(uow).handle(query)
+    results = auth.query_bus.execute(query)
 
     return [
         MessageResponse(

@@ -9,13 +9,22 @@ from chat_api.modules.messages.infrastructure.model import (
 )
 from chat_api.modules.sessions.infrastructure.model import ChatSession, SessionDocument
 from chat_api.modules.users.infrastructure.model import User
-from chat_api.modules.workspaces.infrastructure.model import Workspace, WorkspaceMember
+from chat_api.modules.workspaces.infrastructure.models import (
+    Permission,
+    Role,
+    RolePermission,
+    Workspace,
+    WorkspaceMember,
+)
 from chat_api.shared.infrastructure.database.base import Base
 
 __all__ = [
     "Base",
     "Workspace",
     "WorkspaceMember",
+    "Role",
+    "Permission",
+    "RolePermission",
     "User",
     "UserSession",
     "Document",

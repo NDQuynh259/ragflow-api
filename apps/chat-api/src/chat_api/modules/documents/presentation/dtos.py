@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 
 
 class IngestionJobResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
     id: uuid.UUID
     document_id: uuid.UUID
     status: str
@@ -21,6 +23,8 @@ class IngestionJobResponse(BaseModel):
 
 
 class DocumentResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
     id: uuid.UUID
     workspace_id: uuid.UUID
     filename: str

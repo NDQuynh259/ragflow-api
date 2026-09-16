@@ -7,21 +7,21 @@ from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 
 from chat_api.modules.documents.application.commands import (
     UploadDocumentCommand,
-    UploadDocumentHandler,
 )
 from chat_api.modules.documents.presentation.dtos import UploadDocumentResponse
+from chat_api.modules.auth.presentation.dependencies import (
+    AuthDep,
+    RequirePermission,
+    auth_openapi,
+)
+from chat_api.shared.application.authorization import Permission
 from chat_api.modules.sessions.application.commands import (
     AttachDocumentCommand,
-    AttachDocumentHandler,
     CreateSessionCommand,
-    CreateSessionHandler,
     DeleteSessionCommand,
-    DeleteSessionHandler,
 )
 from chat_api.modules.sessions.application.queries import (
-    GetSessionHandler,
     GetSessionQuery,
-    ListSessionsHandler,
     ListSessionsQuery,
 )
 from chat_api.modules.sessions.presentation.dtos import (
@@ -29,12 +29,12 @@ from chat_api.modules.sessions.presentation.dtos import (
     CreateSessionRequest,
     SessionResponse,
 )
-from chat_api.shared.domain.uow import UnitOfWork
-from chat_api.shared.infrastructure.database.uow import get_uow
 from chat_api.shared.infrastructure.queue.background import BackgroundQueueAdapter
 from chat_api.shared.infrastructure.queue.port import IngestionQueuePort
 from chat_api.shared.infrastructure.storage.local import LocalStorageAdapter
 from chat_api.shared.infrastructure.storage.port import ObjectStoragePort
+
+from core.exceptions import ForbiddenException
 
 router = APIRouter(prefix="/chat-sessions", tags=["Chat Sessions"])
 
@@ -50,78 +50,125 @@ def get_queue() -> IngestionQueuePort:
     return _queue
 
 
-@router.post("", response_model=SessionResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=SessionResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(RequirePermission(Permission.SESSION_CREATE))],
+    openapi_extra=auth_openapi(Permission.SESSION_CREATE),
+)
 def create_session(
     payload: CreateSessionRequest,
-    uow: UnitOfWork = Depends(get_uow),
+    auth: AuthDep,
 ) -> SessionResponse:
+    target_workspace_id = payload.workspace_id or auth.principal.active_workspace_id or auth.session.active_workspace_id
+    if not target_workspace_id:
+        raise ForbiddenException("Active workspace is not set. Please switch or select an active workspace.")
+
     cmd = CreateSessionCommand(
-        workspace_id=payload.workspace_id,
-        user_id=payload.user_id,
+        workspace_id=target_workspace_id,
+        user_id=auth.principal.user_id,
         title=payload.title,
         rag_config=payload.rag_config,
     )
-    result = CreateSessionHandler(uow).handle(cmd)
+    result = auth.command_bus.execute(cmd)
     return SessionResponse(**result.__dict__)
 
 
-@router.get("", response_model=list[SessionResponse])
+@router.get(
+    "",
+    response_model=list[SessionResponse],
+    dependencies=[Depends(RequirePermission(Permission.SESSION_READ))],
+    openapi_extra=auth_openapi(Permission.SESSION_READ),
+)
 def list_sessions(
-    workspace_id: uuid.UUID = Query(..., description="Workspace ID"),
+    auth: AuthDep,
+    workspace_id: uuid.UUID | None = Query(None, description="Tùy chọn ghi đè Workspace ID, mặc định lấy từ active workspace"),
     user_id: uuid.UUID | None = Query(None, description="Filter by User ID"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    uow: UnitOfWork = Depends(get_uow),
 ) -> list[SessionResponse]:
+    target_workspace_id = workspace_id or auth.principal.active_workspace_id or auth.session.active_workspace_id
+    if not target_workspace_id:
+        raise ForbiddenException("Active workspace is not set. Please switch or select an active workspace.")
+
     query = ListSessionsQuery(
-        workspace_id=workspace_id,
+        workspace_id=target_workspace_id,
         user_id=user_id,
         limit=limit,
         offset=offset,
     )
-    results = ListSessionsHandler(uow).handle(query)
+    results = auth.query_bus.execute(query)
     return [SessionResponse(**r.__dict__) for r in results]
 
 
-@router.get("/{session_id}", response_model=SessionResponse)
+@router.get(
+    "/{session_id}",
+    response_model=SessionResponse,
+    dependencies=[Depends(RequirePermission(Permission.SESSION_READ))],
+    openapi_extra=auth_openapi(Permission.SESSION_READ),
+)
 def get_session(
     session_id: uuid.UUID,
-    uow: UnitOfWork = Depends(get_uow),
+    auth: AuthDep,
 ) -> SessionResponse:
     query = GetSessionQuery(session_id=session_id)
-    result = GetSessionHandler(uow).handle(query)
+    result = auth.query_bus.execute(query)
     return SessionResponse(**result.__dict__)
 
 
-@router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{session_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(RequirePermission(Permission.SESSION_DELETE))],
+    openapi_extra=auth_openapi(Permission.SESSION_DELETE),
+)
 def delete_session(
     session_id: uuid.UUID,
-    uow: UnitOfWork = Depends(get_uow),
+    auth: AuthDep,
 ) -> None:
     cmd = DeleteSessionCommand(session_id=session_id)
-    DeleteSessionHandler(uow).handle(cmd)
+    auth.command_bus.execute(cmd)
 
 
-@router.post("/{session_id}/documents/attach", response_model=SessionResponse)
+@router.post(
+    "/{session_id}/documents/attach",
+    response_model=SessionResponse,
+    dependencies=[Depends(RequirePermission(Permission.SESSION_UPDATE, Permission.DOCUMENT_READ))],
+    openapi_extra=auth_openapi(
+        Permission.SESSION_UPDATE,
+        Permission.DOCUMENT_READ,
+    ),
+)
 def attach_document(
     session_id: uuid.UUID,
     payload: AttachDocumentRequest,
-    uow: UnitOfWork = Depends(get_uow),
+    auth: AuthDep,
 ) -> SessionResponse:
     cmd = AttachDocumentCommand(session_id=session_id, document_id=payload.document_id)
-    result = AttachDocumentHandler(uow).handle(cmd)
+    result = auth.command_bus.execute(cmd)
     return SessionResponse(**result.__dict__)
 
 
-@router.post("/{session_id}/documents", response_model=UploadDocumentResponse)
+@router.post(
+    "/{session_id}/documents",
+    response_model=UploadDocumentResponse,
+    dependencies=[Depends(RequirePermission(Permission.SESSION_UPDATE, Permission.DOCUMENT_CREATE))],
+    openapi_extra=auth_openapi(
+        Permission.SESSION_READ,
+        Permission.DOCUMENT_CREATE,
+        Permission.SESSION_UPDATE,
+        Permission.DOCUMENT_READ,
+    ),
+)
 async def upload_and_attach_document(
     session_id: uuid.UUID,
+    auth: AuthDep,
     file: UploadFile = File(...),
-    uow: UnitOfWork = Depends(get_uow),
     storage: ObjectStoragePort = Depends(get_storage),
     queue: IngestionQueuePort = Depends(get_queue),
 ) -> UploadDocumentResponse:
-    session = GetSessionHandler(uow).handle(GetSessionQuery(session_id=session_id))
+    session = auth.query_bus.execute(GetSessionQuery(session_id=session_id))
     content = await file.read()
     upload_cmd = UploadDocumentCommand(
         workspace_id=session.workspace_id,
@@ -129,11 +176,15 @@ async def upload_and_attach_document(
         content=content,
         mime_type=file.content_type or "application/pdf",
     )
-    doc_dto = UploadDocumentHandler(uow, storage, queue).handle(upload_cmd)
-
-    AttachDocumentHandler(uow).handle(
-        AttachDocumentCommand(session_id=session_id, document_id=doc_dto.id)
+    doc_dto = auth.command_bus.execute(
+        upload_cmd,
+        dependencies={
+            ObjectStoragePort: storage,
+            IngestionQueuePort: queue,
+        },
     )
+
+    auth.command_bus.execute(AttachDocumentCommand(session_id=session_id, document_id=doc_dto.id))
 
     return UploadDocumentResponse(
         document=doc_dto.__dict__,

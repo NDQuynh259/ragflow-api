@@ -27,7 +27,8 @@ class UserSession(Base, UUIDPrimaryKeyMixin):
         nullable=True,
         index=True,
     )
-    token: Mapped[str] = mapped_column(
+    token_hash: Mapped[str] = mapped_column(
+        "token",
         String(64),
         unique=True,
         index=True,

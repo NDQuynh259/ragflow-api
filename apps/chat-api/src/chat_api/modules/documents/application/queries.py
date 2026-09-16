@@ -7,25 +7,42 @@ import uuid
 
 from chat_api.modules.documents.application.dtos import DocumentDTO, IngestionJobDTO
 from chat_api.modules.documents.domain.entity import Document
+from chat_api.shared.application.authorization import (
+    CurrentPrincipal,
+    Permission,
+    require_document_access,
+    require_workspace_permission,
+)
+from chat_api.shared.application.bus import Query, authorization_handler, query_handler
 from chat_api.shared.domain.uow import UnitOfWork
 from chat_api.shared.exceptions import EntityNotFoundException
 
 
 @dataclass(frozen=True)
-class GetDocumentQuery:
+class GetDocumentQuery(Query[DocumentDTO]):
     document_id: uuid.UUID
 
 
+@authorization_handler(GetDocumentQuery)
+class GetDocumentAuthorizer:
+    def __init__(self, uow: UnitOfWork, principal: CurrentPrincipal) -> None:
+        self.uow = uow
+        self.principal = principal
+
+    def handle(self, query: GetDocumentQuery) -> None:
+        require_document_access(self.uow, self.principal, query.document_id)
+
+
+@query_handler(GetDocumentQuery)
 class GetDocumentHandler:
     def __init__(self, uow: UnitOfWork) -> None:
         self.uow = uow
 
     def handle(self, query: GetDocumentQuery) -> DocumentDTO:
-        with self.uow:
-            doc = self.uow.documents.get_by_id(query.document_id)
-            if not doc:
-                raise EntityNotFoundException("Document", query.document_id)
-            return self._to_dto(doc)
+        doc = self.uow.documents.get_by_id(query.document_id)
+        if not doc:
+            raise EntityNotFoundException("Document", query.document_id)
+        return self._to_dto(doc)
 
     def _to_dto(self, doc: Document) -> DocumentDTO:
         return DocumentDTO(
@@ -60,22 +77,37 @@ class GetDocumentHandler:
 
 
 @dataclass(frozen=True)
-class ListDocumentsQuery:
+class ListDocumentsQuery(Query[list[DocumentDTO]]):
     workspace_id: uuid.UUID
     limit: int = 50
     offset: int = 0
 
 
+@authorization_handler(ListDocumentsQuery)
+class ListDocumentsAuthorizer:
+    def __init__(self, uow: UnitOfWork, principal: CurrentPrincipal) -> None:
+        self.uow = uow
+        self.principal = principal
+
+    def handle(self, query: ListDocumentsQuery) -> None:
+        require_workspace_permission(
+            self.uow,
+            self.principal,
+            query.workspace_id,
+            Permission.DOCUMENT_READ,
+        )
+
+
+@query_handler(ListDocumentsQuery)
 class ListDocumentsHandler:
     def __init__(self, uow: UnitOfWork) -> None:
         self.uow = uow
 
     def handle(self, query: ListDocumentsQuery) -> list[DocumentDTO]:
-        with self.uow:
-            docs = self.uow.documents.list_by_workspace(
-                workspace_id=query.workspace_id,
-                limit=query.limit,
-                offset=query.offset,
-            )
-            handler = GetDocumentHandler(self.uow)
-            return [handler._to_dto(d) for d in docs]
+        docs = self.uow.documents.list_by_workspace(
+            workspace_id=query.workspace_id,
+            limit=query.limit,
+            offset=query.offset,
+        )
+        handler = GetDocumentHandler(self.uow)
+        return [handler._to_dto(d) for d in docs]

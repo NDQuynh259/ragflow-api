@@ -83,7 +83,7 @@ def test_domain_entities_eager_uuid7_generation() -> None:
 def test_uuid_primary_key_mixin_dual_generation() -> None:
     """Validate Pattern B: ORM model supports both client-side default and server_default."""
     from chat_api.shared.infrastructure.database.base import UUIDPrimaryKeyMixin
-    from chat_api.modules.workspaces.infrastructure.model import Workspace
+    from chat_api.modules.workspaces.infrastructure.models import Workspace
 
     # Verify column has both Python default and database server_default
     id_col = Workspace.__table__.c.id

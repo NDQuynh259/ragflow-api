@@ -9,8 +9,9 @@ from chat_api.shared.exceptions import (
     DomainException,
     DomainValidationException,
     EntityNotFoundException,
+    ForbiddenException,
     ResourceConflictException,
-    UnauthorizedException,
+    UnauthenticatedException,
 )
 
 
@@ -31,8 +32,16 @@ def register_exception_handlers(app: FastAPI) -> None:
             content={"error": exc.message, "details": exc.details},
         )
 
-    @app.exception_handler(UnauthorizedException)
-    async def unauthorized_handler(request: Request, exc: UnauthorizedException) -> JSONResponse:
+    @app.exception_handler(UnauthenticatedException)
+    async def unauthenticated_handler(request: Request, exc: UnauthenticatedException) -> JSONResponse:
+        return JSONResponse(
+            status_code=401,
+            content={"error": exc.message, "details": exc.details},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    @app.exception_handler(ForbiddenException)
+    async def forbidden_handler(request: Request, exc: ForbiddenException) -> JSONResponse:
         return JSONResponse(
             status_code=403,
             content={"error": exc.message, "details": exc.details},

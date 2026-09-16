@@ -6,7 +6,9 @@ from core.exceptions import (
     DomainException,
     DomainValidationException,
     EntityNotFoundException,
+    ForbiddenException,
     ResourceConflictException,
+    UnauthenticatedException,
     UnauthorizedException,
 )
 
@@ -14,6 +16,8 @@ __all__ = [
     "DomainException",
     "DomainValidationException",
     "EntityNotFoundException",
+    "ForbiddenException",
     "ResourceConflictException",
+    "UnauthenticatedException",
     "UnauthorizedException",
 ]

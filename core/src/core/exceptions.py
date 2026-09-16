@@ -34,6 +34,16 @@ class ResourceConflictException(DomainException):
     pass
 
 
-class UnauthorizedException(DomainException):
-    """Raised when an operation is unauthorized."""
+class UnauthenticatedException(DomainException):
+    """Raised when credentials are missing, invalid, or expired."""
+    pass
+
+
+class ForbiddenException(DomainException):
+    """Raised when an authenticated principal lacks permission."""
+    pass
+
+
+class UnauthorizedException(ForbiddenException):
+    """Deprecated compatibility alias; use a precise auth exception."""
     pass

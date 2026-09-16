@@ -7,7 +7,9 @@ from core.exceptions import (
     DomainException,
     DomainValidationException,
     EntityNotFoundException,
+    ForbiddenException,
     ResourceConflictException,
+    UnauthenticatedException,
     UnauthorizedException,
 )
 from core.logging import setup_logging
@@ -17,8 +19,10 @@ __all__ = [
     "DomainException",
     "DomainValidationException",
     "EntityNotFoundException",
+    "ForbiddenException",
     "ResourceConflictException",
     "Settings",
+    "UnauthenticatedException",
     "UnauthorizedException",
     "settings",
     "setup_logging",

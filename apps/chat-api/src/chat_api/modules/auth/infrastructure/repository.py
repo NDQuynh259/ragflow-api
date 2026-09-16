@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from chat_api.modules.auth.domain.entity import UserSession as DomainSession
 from chat_api.modules.auth.domain.repository import UserSessionRepository
 from chat_api.modules.auth.infrastructure.model import UserSession as ORMSession
+from chat_api.modules.auth.infrastructure.security import hash_session_token
 
 
 class SqlAlchemyUserSessionRepository(UserSessionRepository):
@@ -15,37 +16,39 @@ class SqlAlchemyUserSessionRepository(UserSessionRepository):
         self.session = session
 
     def get_by_token(self, token: str) -> DomainSession | None:
-        orm = self.session.query(ORMSession).filter(ORMSession.token == token).first()
+        token_hash = hash_session_token(token)
+        orm = self.session.query(ORMSession).filter(ORMSession.token_hash == token_hash).first()
         if not orm:
             return None
-        return self._to_domain(orm)
+        return self._to_domain(orm, presented_token=token)
 
-    def save(self, domain_session: DomainSession) -> DomainSession:
-        orm = self.session.query(ORMSession).filter(ORMSession.id == domain_session.id).first()
+    def save(self, session: DomainSession) -> DomainSession:
+        orm = self.session.query(ORMSession).filter(ORMSession.id == session.id).first()
         if not orm:
             orm = ORMSession(
-                id=domain_session.id,
-                user_id=domain_session.user_id,
-                active_workspace_id=domain_session.active_workspace_id,
-                token=domain_session.token,
-                expires_at=domain_session.expires_at,
-                ip_address=domain_session.ip_address,
-                user_agent=domain_session.user_agent,
-                created_at=domain_session.created_at,
+                id=session.id,
+                user_id=session.user_id,
+                active_workspace_id=session.active_workspace_id,
+                token_hash=hash_session_token(session.token),
+                expires_at=session.expires_at,
+                ip_address=session.ip_address,
+                user_agent=session.user_agent,
+                created_at=session.created_at,
             )
             self.session.add(orm)
         else:
-            orm.active_workspace_id = domain_session.active_workspace_id
-            orm.token = domain_session.token
-            orm.expires_at = domain_session.expires_at
-            orm.ip_address = domain_session.ip_address
-            orm.user_agent = domain_session.user_agent
-        return domain_session
+            orm.active_workspace_id = session.active_workspace_id
+            orm.token_hash = hash_session_token(session.token)
+            orm.expires_at = session.expires_at
+            orm.ip_address = session.ip_address
+            orm.user_agent = session.user_agent
+        return session
 
     def delete_by_token(self, token: str) -> bool:
+        token_hash = hash_session_token(token)
         deleted = (
             self.session.query(ORMSession)
-            .filter(ORMSession.token == token)
+            .filter(ORMSession.token_hash == token_hash)
             .delete(synchronize_session=False)
         )
         return deleted > 0
@@ -57,12 +60,12 @@ class SqlAlchemyUserSessionRepository(UserSessionRepository):
             .delete(synchronize_session=False)
         )
 
-    def _to_domain(self, orm: ORMSession) -> DomainSession:
+    def _to_domain(self, orm: ORMSession, presented_token: str) -> DomainSession:
         return DomainSession(
             id=orm.id,
             user_id=orm.user_id,
             active_workspace_id=orm.active_workspace_id,
-            token=orm.token,
+            token=presented_token,
             expires_at=orm.expires_at,
             ip_address=orm.ip_address,
             user_agent=orm.user_agent,

@@ -11,6 +11,7 @@ from chat_api.modules.documents.presentation.router import router as documents_r
 from chat_api.modules.health.presentation.router import router as health_router
 from chat_api.modules.messages.presentation.router import router as messages_router
 from chat_api.modules.sessions.presentation.router import router as sessions_router
+from chat_api.modules.workspaces.presentation import workspaces_router
 from chat_api.shared.config import settings
 from chat_api.shared.logging import setup_logging
 from chat_api.shared.middleware import register_exception_handlers
@@ -57,6 +58,7 @@ module_routers = [
     sessions_router,
     documents_router,
     messages_router,
+    workspaces_router,
 ]
 
 for r in module_routers:

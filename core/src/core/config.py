@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     # Security & CORS
     SECRET_KEY: str
     CORS_ORIGINS: list[str]
+    SESSION_COOKIE_SECURE: bool = True
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

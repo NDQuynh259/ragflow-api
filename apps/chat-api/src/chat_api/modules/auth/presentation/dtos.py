@@ -35,6 +35,7 @@ class WorkspaceInfo(BaseModel):
     name: str
     slug: str
     role: str = "member"
+    permissions: list[str] = Field(default_factory=list)
 
 
 class UserMeResponse(BaseModel):

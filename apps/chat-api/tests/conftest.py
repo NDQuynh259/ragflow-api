@@ -15,6 +15,7 @@ from chat_api.modules.users.domain.entity import User
 from chat_api.modules.users.domain.repository import UserRepository
 from chat_api.modules.workspaces.domain.entity import Workspace
 from chat_api.modules.workspaces.domain.repository import WorkspaceRepository
+from chat_api.shared.application.authorization import Permission, get_permissions_for_role
 from chat_api.shared.domain.uow import UnitOfWork
 from chat_api.shared.infrastructure.queue.port import IngestionQueuePort
 from chat_api.shared.infrastructure.rag.port import RAGEnginePort
@@ -33,6 +34,27 @@ class InMemoryWorkspaceRepo(WorkspaceRepository):
 
     def list_by_user_id(self, user_id: uuid.UUID) -> list[Workspace]:
         return [w for w in self.data.values() if w.is_member(user_id)]
+
+    def get_member_role(self, workspace_id: uuid.UUID, user_id: uuid.UUID) -> str | None:
+        workspace = self.get_by_id(workspace_id)
+        if workspace is None:
+            return None
+        role = workspace.get_member_role(user_id)
+        return role.value if role is not None else None
+
+    def list_permissions(self, workspace_id: uuid.UUID, user_id: uuid.UUID) -> frozenset[str]:
+        permissions = get_permissions_for_role(self.get_member_role(workspace_id, user_id))
+        if "*" in permissions:
+            return frozenset(permission.value for permission in Permission)
+        return permissions
+
+    def has_permission(
+        self,
+        workspace_id: uuid.UUID,
+        user_id: uuid.UUID,
+        permission_code: str,
+    ) -> bool:
+        return permission_code in self.list_permissions(workspace_id, user_id)
 
     def save(self, workspace: Workspace) -> Workspace:
         self.data[workspace.id] = workspace
@@ -156,12 +178,15 @@ class FakeUnitOfWork(UnitOfWork):
         self.users = InMemoryUserRepo()
         self.user_sessions = InMemoryUserSessionRepo()
         self.committed = False
+        self.commit_count = 0
+        self.rollback_count = 0
 
     def commit(self) -> None:
         self.committed = True
+        self.commit_count += 1
 
     def rollback(self) -> None:
-        pass
+        self.rollback_count += 1
 
 
 class FakeStorage(ObjectStoragePort):

@@ -1,0 +1,100 @@
+"""Login Command and Handler."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+import uuid
+
+from chat_api.modules.auth.domain.entity import UserSession
+from chat_api.modules.auth.infrastructure.security import (
+    generate_session_token,
+    verify_password,
+)
+from chat_api.modules.users.domain.entity import User
+from chat_api.modules.workspaces.domain.entity import (
+    Workspace,
+    WorkspaceMember,
+    WorkspaceRole,
+)
+from chat_api.shared.application.bus import Command, command_handler
+from chat_api.shared.domain.uow import UnitOfWork
+from core.exceptions import UnauthenticatedException
+
+DEFAULT_SESSION_DURATION_DAYS = 7
+
+
+@dataclass(frozen=True)
+class LoginResult:
+    user: User
+    session: UserSession
+
+
+@dataclass(frozen=True)
+class LoginCommand(Command[LoginResult]):
+    email: str
+    password: str
+    ip_address: str | None = None
+    user_agent: str | None = None
+
+
+@command_handler(LoginCommand)
+class LoginHandler:
+    def __init__(self, uow: UnitOfWork) -> None:
+        self.uow = uow
+
+    def handle(self, command: LoginCommand) -> LoginResult:
+        clean_email = command.email.strip().lower()
+        user = self._authenticate(clean_email, command.password)
+        active_workspace_id = self._resolve_active_workspace_id(user)
+        session = self._create_session(user.id, active_workspace_id, command)
+
+        self.uow.user_sessions.save(session)
+        self.uow.track(user, session)
+        return LoginResult(user=user, session=session)
+
+    def _authenticate(self, email: str, raw_password: str) -> User:
+        user = self.uow.users.get_by_email(email)
+        if not user or not verify_password(raw_password, user.hashed_password):
+            raise UnauthenticatedException("Invalid email or password.")
+        if not user.is_active:
+            raise UnauthenticatedException("User account is inactive.")
+        return user
+
+    def _resolve_active_workspace_id(self, user: User) -> uuid.UUID:
+        user_workspaces = self.uow.workspaces.list_by_user_id(user.id)
+        if user_workspaces:
+            return user_workspaces[0].id
+
+        clean_name = user.full_name or user.email.split("@")[0]
+        ws = Workspace(
+            name=f"{clean_name}'s Workspace",
+            slug=f"workspace-{user.id.hex[:8]}",
+            members=[],
+        )
+        ws.members.append(
+            WorkspaceMember(
+                workspace_id=ws.id,
+                user_id=user.id,
+                role=WorkspaceRole.OWNER,
+            )
+        )
+        self.uow.workspaces.save(ws)
+        return ws.id
+
+    def _create_session(
+        self,
+        user_id: uuid.UUID,
+        active_workspace_id: uuid.UUID,
+        command: LoginCommand,
+    ) -> UserSession:
+        token = generate_session_token()
+        expires_at = datetime.now(timezone.utc) + timedelta(days=DEFAULT_SESSION_DURATION_DAYS)
+        return UserSession(
+            user_id=user_id,
+            active_workspace_id=active_workspace_id,
+            token=token,
+            expires_at=expires_at,
+            ip_address=command.ip_address,
+            user_agent=command.user_agent,
+        )

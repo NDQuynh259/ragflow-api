@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import secrets
 import bcrypt
 
@@ -26,3 +27,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def generate_session_token() -> str:
     """Generate a cryptographically secure URL-safe session token (32 bytes entropy)."""
     return secrets.token_urlsafe(32)
+
+
+def hash_session_token(token: str) -> str:
+    """Return the stable digest stored for an opaque session credential."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()

@@ -1,6 +1,7 @@
 """Unit tests for Auth CQRS Handlers."""
 
 from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock
 import uuid
 import pytest
 
@@ -13,15 +14,20 @@ from chat_api.modules.auth.application.commands import (
     RegisterHandler,
 )
 from chat_api.modules.auth.application.queries import (
+    GetAuthenticationContextHandler,
+    GetAuthenticationContextQuery,
     GetCurrentUserHandler,
     GetCurrentUserQuery,
 )
 from chat_api.modules.auth.domain.entity import UserSession
-from chat_api.modules.auth.infrastructure.security import verify_password
+from chat_api.modules.auth.infrastructure.repository import SqlAlchemyUserSessionRepository
+from chat_api.modules.auth.infrastructure.security import hash_session_token, verify_password
+from chat_api.shared.application.authorization import Permission
 from core.exceptions import (
     DomainValidationException,
+    ForbiddenException,
     ResourceConflictException,
-    UnauthorizedException,
+    UnauthenticatedException,
 )
 
 
@@ -38,7 +44,45 @@ def test_register_success(fake_uow):
     assert user.email == "testuser@example.com"
     assert user.full_name == "Test User"
     assert verify_password("secretpassword123", user.hashed_password)
-    assert fake_uow.committed is True
+    assert fake_uow.committed is False
+
+
+def test_session_token_hash_is_stable_and_not_plaintext():
+    token = "a-sensitive-session-token"
+
+    assert hash_session_token(token) == hash_session_token(token)
+    assert hash_session_token(token) != token
+    assert len(hash_session_token(token)) == 64
+
+
+def test_session_repository_only_persists_token_hash():
+    database_session = MagicMock()
+    database_session.query.return_value.filter.return_value.first.return_value = None
+    repository = SqlAlchemyUserSessionRepository(database_session)
+    raw_token = "raw-session-credential"
+    session = UserSession(
+        user_id=uuid.uuid4(),
+        token=raw_token,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+
+    repository.save(session)
+
+    persisted = database_session.add.call_args.args[0]
+    assert persisted.token_hash == hash_session_token(raw_token)
+    assert persisted.token_hash != raw_token
+
+
+def test_session_repository_hashes_token_before_lookup():
+    database_session = MagicMock()
+    database_session.query.return_value.filter.return_value.first.return_value = None
+    repository = SqlAlchemyUserSessionRepository(database_session)
+    raw_token = "raw-session-credential"
+
+    assert repository.get_by_token(raw_token) is None
+
+    predicate = database_session.query.return_value.filter.call_args.args[0]
+    assert predicate.right.value == hash_session_token(raw_token)
 
 
 def test_register_duplicate_email_fails(fake_uow):
@@ -85,11 +129,19 @@ def test_login_and_get_current_user_flow(fake_uow):
     assert fetched_user.id == user.id
     assert fetched_user.email == "alice@test.com"
 
+    authentication = GetAuthenticationContextHandler(fake_uow).handle(
+        GetAuthenticationContextQuery(token=token)
+    )
+    assert authentication.session.id == login_result.session.id
+    assert authentication.user.id == user.id
+    assert authentication.principal.role == "owner"
+    assert authentication.principal.has_permission(Permission.DOCUMENT_CREATE)
+
 
 def test_login_wrong_password_fails(fake_uow):
     RegisterHandler(fake_uow).handle(RegisterCommand(email="bob@test.com", password="correctpassword"))
 
-    with pytest.raises(UnauthorizedException):
+    with pytest.raises(UnauthenticatedException):
         LoginHandler(fake_uow).handle(LoginCommand(email="bob@test.com", password="wrongpassword"))
 
 
@@ -104,7 +156,7 @@ def test_logout_invalidates_session(fake_uow):
 
     # Subsequent check fails
     query_handler = GetCurrentUserHandler(fake_uow)
-    with pytest.raises(UnauthorizedException):
+    with pytest.raises(UnauthenticatedException):
         query_handler.handle(GetCurrentUserQuery(token=token))
 
 
@@ -118,7 +170,7 @@ def test_expired_session_fails(fake_uow):
     )
     fake_uow.user_sessions.save(expired_session)
 
-    with pytest.raises(UnauthorizedException):
+    with pytest.raises(UnauthenticatedException):
         GetCurrentUserHandler(fake_uow).handle(GetCurrentUserQuery(token="expired_token_123"))
 
 
@@ -192,10 +244,72 @@ def test_register_creates_default_workspace_and_login_sets_active(fake_uow):
     )
     fake_uow.workspaces.save(unauthorized_ws)
 
-    with pytest.raises(UnauthorizedException):
+    with pytest.raises(ForbiddenException):
         switch_handler.handle(
             SwitchWorkspaceCommand(
                 token=login_result.session.token,
                 workspace_id=unauthorized_ws.id,
             )
         )
+
+
+def test_auth_submodule_imports():
+    from chat_api.modules.auth.application.commands.login_command import LoginCommand, LoginHandler
+    from chat_api.modules.auth.application.commands.logout_command import LogoutCommand, LogoutHandler
+    from chat_api.modules.auth.application.commands.register_command import RegisterCommand, RegisterHandler
+    from chat_api.modules.auth.application.commands.switch_workspace_command import SwitchWorkspaceCommand, SwitchWorkspaceHandler
+    from chat_api.modules.auth.application.queries.get_current_user_query import GetCurrentUserHandler, GetCurrentUserQuery
+
+    assert LoginCommand and LoginHandler
+    assert LogoutCommand and LogoutHandler
+    assert RegisterCommand and RegisterHandler
+    assert SwitchWorkspaceCommand and SwitchWorkspaceHandler
+    assert GetCurrentUserQuery and GetCurrentUserHandler
+
+
+def test_command_bus_and_query_bus_flow(fake_uow):
+    from chat_api.shared.application.bus import Command, CommandBus, QueryBus
+    from chat_api.modules.auth.application.commands import (
+        LoginCommand,
+        LogoutCommand,
+        RegisterCommand,
+    )
+    from chat_api.modules.auth.application.queries import GetCurrentUserQuery
+
+    cmd_bus = CommandBus(fake_uow)
+    query_bus = QueryBus(fake_uow)
+
+    # 1. Register via CommandBus
+    user = cmd_bus.execute(
+        RegisterCommand(
+            email="bus_user@test.com",
+            password="secretpassword123",
+            full_name="Bus User",
+        )
+    )
+    assert user.email == "bus_user@test.com"
+
+    # 2. Login via CommandBus
+    login_result = cmd_bus.execute(
+        LoginCommand(
+            email="bus_user@test.com",
+            password="secretpassword123",
+        )
+    )
+    assert login_result.user.id == user.id
+    assert login_result.session.token is not None
+
+    # 3. Get Current User via QueryBus
+    current_user = query_bus.execute(GetCurrentUserQuery(token=login_result.session.token))
+    assert current_user.id == user.id
+
+    # 4. Logout via CommandBus
+    logged_out = cmd_bus.execute(LogoutCommand(token=login_result.session.token))
+    assert logged_out is True
+
+    # 5. Unregistered command raises RuntimeError
+    class UnknownCommand(Command[str]):
+        pass
+
+    with pytest.raises(RuntimeError, match="No handler registered"):
+        cmd_bus.execute(UnknownCommand())

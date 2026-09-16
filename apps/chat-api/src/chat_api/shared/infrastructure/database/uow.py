@@ -55,13 +55,6 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
         self.user_sessions = SqlAlchemyUserSessionRepository(self.session)
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        try:
-            super().__exit__(exc_type, exc_val, exc_tb)
-        finally:
-            if self._external_session is None and self.session is not None:
-                self.session.close()
-
     def commit(self) -> None:
         if self.session:
             self.session.commit()
@@ -69,6 +62,10 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
     def rollback(self) -> None:
         if self.session:
             self.session.rollback()
+
+    def close(self) -> None:
+        if self._external_session is None and self.session is not None:
+            self.session.close()
 
 
 def get_uow(db: Session = Depends(get_db)) -> Generator[UnitOfWork, None, None]:

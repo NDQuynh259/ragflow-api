@@ -11,7 +11,7 @@ from chat_api.modules.auth.domain.entity import UserSession
 class UserSessionRepository(ABC):
     @abstractmethod
     def get_by_token(self, token: str) -> UserSession | None:
-        """Fetch active session by session token."""
+        """Fetch an active session using the presented raw token."""
         pass
 
     @abstractmethod

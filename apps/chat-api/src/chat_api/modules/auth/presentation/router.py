@@ -2,23 +2,18 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Request, Response, status
 
 from chat_api.modules.auth.application.commands import (
     LoginCommand,
-    LoginHandler,
     LogoutCommand,
-    LogoutHandler,
     RegisterCommand,
-    RegisterHandler,
     SwitchWorkspaceCommand,
-    SwitchWorkspaceHandler,
 )
-from chat_api.modules.auth.domain.entity import UserSession
 from chat_api.modules.auth.presentation.dependencies import (
+    AuthDep,
+    auth_openapi,
     extract_session_token,
-    get_current_session,
-    get_current_user,
 )
 from chat_api.modules.auth.presentation.dtos import (
     AuthResponse,
@@ -31,9 +26,8 @@ from chat_api.modules.auth.presentation.dtos import (
     UserResponse,
     WorkspaceInfo,
 )
-from chat_api.modules.users.domain.entity import User
-from chat_api.shared.domain.uow import UnitOfWork
-from chat_api.shared.infrastructure.database.uow import get_uow
+from chat_api.shared.application.dependencies import CommandBusDep
+from chat_api.shared.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -49,10 +43,9 @@ COOKIE_MAX_AGE_SECONDS = 7 * 24 * 3600  # 7 days
 )
 def register(
     req: RegisterRequest,
-    uow: UnitOfWork = Depends(get_uow),
+    bus: CommandBusDep,
 ) -> UserResponse:
-    handler = RegisterHandler(uow)
-    user = handler.handle(
+    user = bus.execute(
         RegisterCommand(
             email=req.email,
             password=req.password,
@@ -77,13 +70,12 @@ def login(
     req: LoginRequest,
     request: Request,
     response: Response,
-    uow: UnitOfWork = Depends(get_uow),
+    bus: CommandBusDep,
 ) -> AuthResponse:
     client_ip = request.client.host if request.client else None
     user_agent = request.headers.get("User-Agent")
 
-    handler = LoginHandler(uow)
-    result = handler.handle(
+    result = bus.execute(
         LoginCommand(
             email=req.email,
             password=req.password,
@@ -98,6 +90,7 @@ def login(
         value=result.session.token,
         max_age=COOKIE_MAX_AGE_SECONDS,
         httponly=True,
+        secure=settings.SESSION_COOKIE_SECURE,
         samesite="lax",
         path="/",
     )
@@ -120,16 +113,15 @@ def login(
     "/switch-workspace",
     response_model=SwitchWorkspaceResponse,
     summary="Switch active workspace context for the current session",
+    openapi_extra=auth_openapi(),
 )
 def switch_workspace(
     req: SwitchWorkspaceRequest,
-    session: UserSession = Depends(get_current_session),
-    uow: UnitOfWork = Depends(get_uow),
+    auth: AuthDep,
 ) -> SwitchWorkspaceResponse:
-    handler = SwitchWorkspaceHandler(uow)
-    updated_session = handler.handle(
+    updated_session = auth.command_bus.execute(
         SwitchWorkspaceCommand(
-            token=session.token,
+            token=auth.session.token,
             workspace_id=req.workspace_id,
         )
     )
@@ -147,12 +139,11 @@ def switch_workspace(
 def logout(
     request: Request,
     response: Response,
-    uow: UnitOfWork = Depends(get_uow),
+    bus: CommandBusDep,
 ) -> MessageResponse:
     token = extract_session_token(request)
     if token:
-        handler = LogoutHandler(uow)
-        handler.handle(LogoutCommand(token=token))
+        bus.execute(LogoutCommand(token=token))
 
     # Delete HTTP-only cookie
     response.delete_cookie(key=COOKIE_NAME, path="/")
@@ -163,28 +154,28 @@ def logout(
     "/me",
     response_model=UserMeResponse,
     summary="Get profile of currently logged-in user with active workspace and workspace list",
+    openapi_extra=auth_openapi(),
 )
 def get_me(
-    session: UserSession = Depends(get_current_session),
-    uow: UnitOfWork = Depends(get_uow),
+    auth: AuthDep,
 ) -> UserMeResponse:
-    with uow:
-        user = uow.users.get_by_id(session.user_id)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found.",
+    user = auth.user
+    with auth.uow.read_only():
+        workspaces = auth.uow.workspaces.list_by_user_id(user.id)
+        workspace_infos: list[WorkspaceInfo] = []
+        for w in workspaces:
+            member_role = w.get_member_role(user.id)
+            workspace_infos.append(
+                WorkspaceInfo(
+                    id=w.id,
+                    name=w.name,
+                    slug=w.slug,
+                    role=member_role.value if member_role is not None else "member",
+                    permissions=sorted(
+                        auth.uow.workspaces.list_permissions(w.id, user.id)
+                    ),
+                )
             )
-        workspaces = uow.workspaces.list_by_user_id(user.id)
-        workspace_infos = [
-            WorkspaceInfo(
-                id=w.id,
-                name=w.name,
-                slug=w.slug,
-                role=w.get_member_role(user.id).value if w.get_member_role(user.id) else "member",
-            )
-            for w in workspaces
-        ]
 
     return UserMeResponse(
         id=user.id,
@@ -192,6 +183,6 @@ def get_me(
         full_name=user.full_name,
         is_active=user.is_active,
         created_at=user.created_at,
-        active_workspace_id=session.active_workspace_id,
+        active_workspace_id=auth.session.active_workspace_id,
         workspaces=workspace_infos,
     )

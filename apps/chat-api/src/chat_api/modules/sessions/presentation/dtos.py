@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 
 class CreateSessionRequest(BaseModel):
-    workspace_id: uuid.UUID
+    workspace_id: uuid.UUID | None = None
     user_id: uuid.UUID | None = None
     title: str = Field(default="New Chat", max_length=255)
     rag_config: dict[str, Any] = Field(

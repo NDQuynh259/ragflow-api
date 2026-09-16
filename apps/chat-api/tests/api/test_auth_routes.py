@@ -8,7 +8,7 @@ from chat_api.shared.infrastructure.database.uow import get_uow
 
 def test_auth_full_session_flow(fake_uow):
     app.dependency_overrides[get_uow] = lambda: fake_uow
-    client = TestClient(app)
+    client = TestClient(app, base_url="https://testserver")
 
     try:
         # 1. Register
@@ -53,9 +53,10 @@ def test_auth_full_session_flow(fake_uow):
         assert me_data["active_workspace_id"] == initial_ws_id
         assert len(me_data["workspaces"]) == 1
         assert me_data["workspaces"][0]["role"] == "owner"
+        assert "documents:create" in me_data["workspaces"][0]["permissions"]
 
         # 4. GET /me via Bearer Token header (Scalar / Postman style)
-        clean_client = TestClient(app)  # Clean client without cookie jar
+        clean_client = TestClient(app, base_url="https://testserver")
         unauth_res = clean_client.get("/api/v1/auth/me")
         assert unauth_res.status_code == 401
 
