@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from chat_api.composition.reports.presentation.router import router as reports_router
 from chat_api.modules.auth.presentation.router import router as auth_router
 from chat_api.modules.documents.presentation.router import router as documents_router
 from chat_api.modules.health.presentation.router import router as health_router
@@ -59,6 +60,7 @@ module_routers = [
     documents_router,
     messages_router,
     workspaces_router,
+    reports_router,
 ]
 
 for r in module_routers:

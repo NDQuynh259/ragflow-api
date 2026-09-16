@@ -7,6 +7,7 @@ from enum import Enum
 import uuid
 
 from chat_api.shared.domain.uow import UnitOfWork
+from core.auth import CurrentPrincipal, ExecutionContext
 from core.exceptions import ForbiddenException
 
 
@@ -30,6 +31,9 @@ class Permission(str, Enum):
     SESSION_UPDATE = "sessions:update"
     SESSION_DELETE = "sessions:delete"
     MESSAGE_SEND = "messages:send"
+
+    # Reports & Analytics (Composition)
+    REPORT_READ = "reports:read"
 
 
 @dataclass(frozen=True)
@@ -116,6 +120,12 @@ PERMISSION_CATALOG: tuple[PermissionItem, ...] = (
         description="Đặt câu hỏi và nhận câu trả lời RAG từ AI",
         module="messages",
     ),
+    PermissionItem(
+        code=Permission.REPORT_READ.value,
+        name="Xem báo cáo và thống kê",
+        description="Xem số liệu tổng hợp, phân tích đa bảng của không gian làm việc",
+        module="reports",
+    ),
 )
 
 ALL_PERMISSION_CODES: frozenset[str] = frozenset(item.code for item in PERMISSION_CATALOG)
@@ -135,6 +145,7 @@ BUILTIN_ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             Permission.SESSION_UPDATE.value,
             Permission.SESSION_DELETE.value,
             Permission.MESSAGE_SEND.value,
+            Permission.REPORT_READ.value,
         }
     ),
     "member": frozenset(
@@ -146,6 +157,7 @@ BUILTIN_ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             Permission.SESSION_UPDATE.value,
             Permission.SESSION_DELETE.value,
             Permission.MESSAGE_SEND.value,
+            Permission.REPORT_READ.value,
         }
     ),
 }
@@ -181,81 +193,22 @@ def effective_permissions(
     return base
 
 
-@dataclass(frozen=True)
-class CurrentPrincipal:
-    """Security principal representing the authenticated caller and their granted capabilities."""
-
-    user_id: uuid.UUID
-    session_id: uuid.UUID
-    active_workspace_id: uuid.UUID | None = None
-    token: str = ""
-    role: str | None = None
-    permissions: frozenset[str] = field(default_factory=frozenset)
-
-    @property
-    def is_owner(self) -> bool:
-        """Check if principal is the workspace owner."""
-        return self.role == "owner"
-
-    def has_permission(self, permission: str | Permission) -> bool:
-        """Check if principal possesses a specific permission or wildcard access."""
-        if self.is_owner:
-            return True
-        perm_key = permission.value if isinstance(permission, Permission) else str(permission)
-        return "*" in self.permissions or perm_key in self.permissions
-
-    def has_any_permission(self, *permissions: str | Permission) -> bool:
-        """Check if principal possesses at least one of the specified permissions (OR check)."""
-        if self.is_owner:
-            return True
-        return any(self.has_permission(p) for p in permissions)
-
-    def has_all_permissions(self, *permissions: str | Permission) -> bool:
-        """Check if principal possesses all of the specified permissions (AND check)."""
-        if self.is_owner:
-            return True
-        return all(self.has_permission(p) for p in permissions)
-
-    def has_role(self, *roles: str) -> bool:
-        """Check if principal matches any of the specified roles."""
-        return self.role in roles
-
-    def require_permission(self, *permissions: str | Permission) -> None:
-        """Assert that caller possesses ALL listed permissions (AND check).
-
-        Raises ForbiddenException (403) if any permission is missing.
-        """
-        if self.is_owner:
-            return
-        for perm in permissions:
-            if not self.has_permission(perm):
-                perm_key = perm.value if isinstance(perm, Permission) else str(perm)
-                raise ForbiddenException(f"Missing required permission: '{perm_key}'")
-
-    def require_any_permission(self, *permissions: str | Permission) -> None:
-        """Assert that caller possesses AT LEAST ONE of the listed permissions (OR check).
-
-        Raises ForbiddenException (403) if none of the permissions are granted.
-        """
-        if self.is_owner:
-            return
-        if not self.has_any_permission(*permissions):
-            keys = ", ".join(p.value if isinstance(p, Permission) else str(p) for p in permissions)
-            raise ForbiddenException(f"Missing required permission. Requires at least one of: [{keys}]")
-
-    def require_role(self, *roles: str) -> None:
-        """Assert that caller has one of the specified roles.
-
-        Raises ForbiddenException (403) if role does not match.
-        """
-        if not self.has_role(*roles):
-            raise ForbiddenException(f"User requires one of roles: {roles}, but has '{self.role}'")
-
-
-@dataclass(frozen=True)
-class ExecutionContext:
-    principal: CurrentPrincipal | None = None
-    request_id: str | None = None
+__all__ = [
+    "Permission",
+    "PermissionItem",
+    "PERMISSION_CATALOG",
+    "ALL_PERMISSION_CODES",
+    "BUILTIN_ROLE_PERMISSIONS",
+    "ROLE_PERMISSIONS",
+    "get_permissions_for_role",
+    "effective_permissions",
+    "CurrentPrincipal",
+    "ExecutionContext",
+    "require_workspace_member",
+    "require_document_access",
+    "require_session_access",
+    "require_workspace_permission",
+]
 
 
 def require_workspace_member(
