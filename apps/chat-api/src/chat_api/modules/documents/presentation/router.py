@@ -17,20 +17,23 @@ from chat_api.modules.documents.presentation.dtos import (
     DocumentResponse,
     UploadDocumentResponse,
 )
-from chat_api.modules.auth.presentation.dependencies import (
-    AuthDep,
+from chat_api.shared.auth import (
+    CurrentAuth,
+    Permission,
+    RequireAuth,
     RequirePermission,
     auth_openapi,
 )
-from chat_api.shared.application.authorization import Permission
-from chat_api.shared.infrastructure.queue.background import BackgroundQueueAdapter
-from chat_api.shared.infrastructure.queue.port import IngestionQueuePort
-from chat_api.shared.infrastructure.storage.local import LocalStorageAdapter
-from chat_api.shared.infrastructure.storage.port import ObjectStoragePort
+from core.queue import BackgroundQueueAdapter, IngestionQueuePort
+from core.storage import LocalStorageAdapter, ObjectStoragePort
 
 from core.exceptions import ForbiddenException
 
-router = APIRouter(prefix="/documents", tags=["Documents"])
+router = APIRouter(
+    prefix="/documents",
+    tags=["Documents"],
+    dependencies=[Depends(RequireAuth())],
+)
 
 _storage = LocalStorageAdapter()
 _queue = BackgroundQueueAdapter()
@@ -52,7 +55,7 @@ def get_queue() -> IngestionQueuePort:
     openapi_extra=auth_openapi(Permission.DOCUMENT_CREATE),
 )
 async def upload_document(
-    auth: AuthDep,
+    auth: CurrentAuth,
     file: UploadFile = File(...),
     workspace_id: uuid.UUID | None = Query(None, description="Tùy chọn ghi đè Workspace ID, mặc định lấy từ active workspace"),
     storage: ObjectStoragePort = Depends(get_storage),
@@ -86,7 +89,7 @@ async def upload_document(
     openapi_extra=auth_openapi(Permission.DOCUMENT_READ),
 )
 def list_documents(
-    auth: AuthDep,
+    auth: CurrentAuth,
     workspace_id: uuid.UUID | None = Query(None, description="Tùy chọn ghi đè Workspace ID, mặc định lấy từ active workspace"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -108,7 +111,7 @@ def list_documents(
 )
 def get_document(
     document_id: uuid.UUID,
-    auth: AuthDep,
+    auth: CurrentAuth,
 ) -> DocumentResponse:
     query = GetDocumentQuery(document_id=document_id)
     result = auth.query_bus.execute(query)
@@ -123,7 +126,7 @@ def get_document(
 )
 def delete_document(
     document_id: uuid.UUID,
-    auth: AuthDep,
+    auth: CurrentAuth,
     storage: ObjectStoragePort = Depends(get_storage),
 ) -> None:
     cmd = DeleteDocumentCommand(document_id=document_id)

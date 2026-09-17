@@ -7,9 +7,9 @@ import uuid
 
 from chat_api.modules.messages.application.dtos import CitationDTO, MessageDTO
 from chat_api.modules.messages.domain.entity import Message
-from chat_api.shared.application.authorization import CurrentPrincipal, require_session_access
-from chat_api.shared.application.bus import Query, authorization_handler, query_handler
-from chat_api.shared.domain.uow import UnitOfWork
+from chat_api.shared.auth import CurrentPrincipal, require_session_access
+from chat_api.shared.bus import Query, authorization_handler, query_handler
+from chat_api.shared.database import UnitOfWork
 from chat_api.shared.exceptions import EntityNotFoundException
 
 

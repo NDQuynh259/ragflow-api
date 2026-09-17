@@ -10,7 +10,7 @@ from sqlalchemy import DateTime, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from chat_api.shared.infrastructure.database.base import Base, UUIDPrimaryKeyMixin
+from core.database import Base, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from chat_api.modules.workspaces.infrastructure.models.workspace import Workspace

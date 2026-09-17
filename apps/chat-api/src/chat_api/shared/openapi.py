@@ -125,6 +125,27 @@ def setup_openapi_3_0(app: FastAPI) -> None:
         # Force OpenAPI 3.0.0 specification header
         schema["openapi"] = "3.0.0"
 
+        # Register security schemes (Session Cookie & Bearer Token)
+        components = schema.setdefault("components", {})
+        security_schemes = components.setdefault("securitySchemes", {})
+        security_schemes["cookieAuth"] = {
+            "type": "apiKey",
+            "in": "cookie",
+            "name": "session_token",
+            "description": "Session token stored in HTTP-only cookie",
+        }
+        security_schemes["session"] = {
+            "type": "apiKey",
+            "in": "cookie",
+            "name": "session_token",
+            "description": "Session token cookie matching ViShop's @ApiCookieAuth('session')",
+        }
+        security_schemes["bearerAuth"] = {
+            "type": "http",
+            "scheme": "bearer",
+            "description": "Session token passed in Authorization: Bearer <token>",
+        }
+
         # Downgrade schema definitions to strict 3.0.0
         downgrade_to_openapi_3_0(schema)
 

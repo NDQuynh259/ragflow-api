@@ -7,7 +7,7 @@ from sqlalchemy import String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from chat_api.shared.infrastructure.database.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from core.database import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from chat_api.modules.workspaces.infrastructure.models.workspace_member import WorkspaceMember

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from chat_api.shared.infrastructure.rag.port import RAGEnginePort
+from chat_api.shared.rag.port import RAGEnginePort
 
 logger = logging.getLogger(__name__)
 
@@ -49,3 +49,6 @@ class RAGEngineAdapter(RAGEnginePort):
             [],
             {"prompt_tokens": 0, "completion_tokens": 0},
         )
+
+
+__all__ = ["RAGEngineAdapter"]

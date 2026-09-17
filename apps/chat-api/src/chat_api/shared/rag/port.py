@@ -18,3 +18,6 @@ class RAGEnginePort(ABC):
     ) -> tuple[str, list[dict[str, Any]], dict[str, int]]:
         """Query RAG engine, returning (answer, citations, usage)."""
         pass
+
+
+__all__ = ["RAGEnginePort"]

@@ -7,7 +7,10 @@ from chat_api.modules.messages.infrastructure.model import (
     MessageCitation,
     MessageFeedback,
 )
-from chat_api.modules.sessions.infrastructure.model import ChatSession, SessionDocument
+from chat_api.modules.chat_sessions.infrastructure.model import (
+    ChatSession,
+    SessionDocument,
+)
 from chat_api.modules.users.infrastructure.model import User
 from chat_api.modules.workspaces.infrastructure.models import (
     Permission,
@@ -16,7 +19,7 @@ from chat_api.modules.workspaces.infrastructure.models import (
     Workspace,
     WorkspaceMember,
 )
-from chat_api.shared.infrastructure.database.base import Base
+from core.database import Base
 
 __all__ = [
     "Base",

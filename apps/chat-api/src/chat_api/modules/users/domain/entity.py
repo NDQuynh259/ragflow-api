@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import uuid
 
-from chat_api.shared.domain.base_entity import AggregateRoot
-from chat_api.shared.domain.uuid7 import uuid7
+from core.domain import AggregateRoot
+from core.uuid7 import uuid7
 
 
 @dataclass(kw_only=True)

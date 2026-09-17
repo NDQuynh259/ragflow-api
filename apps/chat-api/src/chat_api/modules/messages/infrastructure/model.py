@@ -20,7 +20,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from chat_api.shared.infrastructure.database.base import Base, UUIDPrimaryKeyMixin
+from core.database import Base, UUIDPrimaryKeyMixin
 
 
 class Message(Base, UUIDPrimaryKeyMixin):

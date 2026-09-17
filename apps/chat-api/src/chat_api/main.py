@@ -11,7 +11,9 @@ from chat_api.modules.auth.presentation.router import router as auth_router
 from chat_api.modules.documents.presentation.router import router as documents_router
 from chat_api.modules.health.presentation.router import router as health_router
 from chat_api.modules.messages.presentation.router import router as messages_router
-from chat_api.modules.sessions.presentation.router import router as sessions_router
+from chat_api.modules.chat_sessions.presentation.router import (
+    router as chat_sessions_router,
+)
 from chat_api.modules.workspaces.presentation import workspaces_router
 from chat_api.shared.config import settings
 from chat_api.shared.logging import setup_logging
@@ -35,7 +37,7 @@ app = FastAPI(
     redoc_url=None,
 )
 
-# Configure OpenAPI 3.0.0 and Scalar Documentation
+# Configure OpenAPI 3.0.0 and Swagger UI
 setup_openapi_3_0(app)
 
 # CORS
@@ -56,7 +58,7 @@ app.include_router(health_router)
 module_routers = [
     health_router,
     auth_router,
-    sessions_router,
+    chat_sessions_router,
     documents_router,
     messages_router,
     workspaces_router,

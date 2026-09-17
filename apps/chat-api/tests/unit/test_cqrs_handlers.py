@@ -15,24 +15,24 @@ from chat_api.modules.messages.application.commands import (
     SendMessageCommand,
     SendMessageHandler,
 )
-from chat_api.modules.sessions.application.commands import (
+from chat_api.modules.chat_sessions.application.commands import (
     AttachDocumentCommand,
     AttachDocumentHandler,
     CreateSessionCommand,
     CreateSessionHandler,
 )
-from chat_api.modules.sessions.application.queries import (
+from chat_api.modules.chat_sessions.application.queries import (
     GetSessionHandler,
     GetSessionQuery,
 )
 from chat_api.modules.workspaces.domain.entity import Workspace
 from chat_api.modules.users.domain.entity import User
 from chat_api.modules.workspaces.domain.entity import WorkspaceMember, WorkspaceRole
-from chat_api.shared.application.authorization import CurrentPrincipal, ExecutionContext
-from chat_api.shared.application.bus import CommandBus
+from chat_api.shared.auth import CurrentPrincipal, ExecutionContext
+from chat_api.shared.bus import CommandBus
 from core.exceptions import ForbiddenException
-from chat_api.shared.infrastructure.queue.port import IngestionQueuePort
-from chat_api.shared.infrastructure.storage.port import ObjectStoragePort
+from core.queue import IngestionQueuePort
+from core.storage import ObjectStoragePort
 
 
 def test_create_and_get_session(fake_uow):
@@ -173,7 +173,7 @@ def test_send_message_flow(fake_uow, fake_rag):
 
 
 def test_principal_permissions_and_roles():
-    from chat_api.shared.application.authorization import (
+    from chat_api.shared.auth import (
         CurrentPrincipal,
         Permission,
         get_permissions_for_role,

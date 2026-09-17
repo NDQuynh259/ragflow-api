@@ -3,7 +3,7 @@
 import time
 import uuid
 
-from chat_api.shared.domain.uuid7 import uuid7, uuid7_str
+from chat_api.shared.uuid7 import uuid7, uuid7_str
 
 
 def test_uuid7_properties() -> None:
@@ -52,7 +52,7 @@ def test_domain_entities_eager_uuid7_generation() -> None:
     from chat_api.modules.workspaces.domain.entity import Workspace
     from chat_api.modules.users.domain.entity import User
     from chat_api.modules.documents.domain.entity import Document
-    from chat_api.modules.sessions.domain.entity import ChatSession
+    from chat_api.modules.chat_sessions.domain.entity import ChatSession
     from chat_api.modules.messages.domain.entity import Message, MessageRole
 
     ws = Workspace(name="AI Lab", slug="ai-lab")
@@ -82,7 +82,7 @@ def test_domain_entities_eager_uuid7_generation() -> None:
 
 def test_uuid_primary_key_mixin_dual_generation() -> None:
     """Validate Pattern B: ORM model supports both client-side default and server_default."""
-    from chat_api.shared.infrastructure.database.base import UUIDPrimaryKeyMixin
+    from core.database import UUIDPrimaryKeyMixin
     from chat_api.modules.workspaces.infrastructure.models import Workspace
 
     # Verify column has both Python default and database server_default

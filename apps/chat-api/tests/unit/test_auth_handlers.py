@@ -22,7 +22,7 @@ from chat_api.modules.auth.application.queries import (
 from chat_api.modules.auth.domain.entity import UserSession
 from chat_api.modules.auth.infrastructure.repository import SqlAlchemyUserSessionRepository
 from chat_api.modules.auth.infrastructure.security import hash_session_token, verify_password
-from chat_api.shared.application.authorization import Permission
+from chat_api.shared.auth import Permission
 from core.exceptions import (
     DomainValidationException,
     ForbiddenException,
@@ -268,7 +268,7 @@ def test_auth_submodule_imports():
 
 
 def test_command_bus_and_query_bus_flow(fake_uow):
-    from chat_api.shared.application.bus import Command, CommandBus, QueryBus
+    from chat_api.shared.bus import Command, CommandBus, QueryBus
     from chat_api.modules.auth.application.commands import (
         LoginCommand,
         LogoutCommand,

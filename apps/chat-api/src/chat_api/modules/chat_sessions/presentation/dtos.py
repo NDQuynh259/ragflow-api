@@ -7,6 +7,8 @@ from typing import Any
 import uuid
 from pydantic import BaseModel, Field
 
+from chat_api.shared.dtos import ApiResponse, PaginatedResponse
+
 
 class CreateSessionRequest(BaseModel):
     workspace_id: uuid.UUID | None = None
@@ -30,3 +32,9 @@ class SessionResponse(BaseModel):
     attached_document_ids: list[uuid.UUID] = Field(default_factory=list)
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+
+# Standardized API response DTO wrappers for chat sessions
+SessionApiResponse = ApiResponse[SessionResponse]
+SessionListApiResponse = ApiResponse[list[SessionResponse]]
+PaginatedSessionResponse = PaginatedResponse[SessionResponse]

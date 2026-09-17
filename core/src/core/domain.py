@@ -1,4 +1,4 @@
-"""Shared base classes for DDD Entities, Aggregates, and Value Objects."""
+"""Core Domain-Driven Design (DDD) primitives: Entity, AggregateRoot, and ValueObject."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ TId = TypeVar("TId")
 
 @dataclass(kw_only=True)
 class Entity(Generic[TId]):
-    """Base Domain Entity."""
+    """Base Domain Entity with identifier and audit timestamps."""
 
     id: TId
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -33,9 +33,11 @@ class AggregateRoot(Entity[TId]):
     _domain_events: list[Any] = field(default_factory=list, init=False, repr=False)
 
     def record_event(self, event: Any) -> None:
+        """Record a domain event to be dispatched when aggregate is persisted."""
         self._domain_events.append(event)
 
     def poll_events(self) -> list[Any]:
+        """Collect and clear all recorded domain events."""
         events = list(self._domain_events)
         self._domain_events.clear()
         return events
@@ -43,5 +45,8 @@ class AggregateRoot(Entity[TId]):
 
 @dataclass(frozen=True)
 class ValueObject:
-    """Base immutable Value Object."""
+    """Base immutable Value Object compared by structural value."""
     pass
+
+
+__all__ = ["Entity", "AggregateRoot", "ValueObject"]

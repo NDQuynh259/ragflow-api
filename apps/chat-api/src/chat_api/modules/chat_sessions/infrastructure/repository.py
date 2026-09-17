@@ -6,9 +6,9 @@ from datetime import datetime, timezone
 import uuid
 from sqlalchemy.orm import Session
 
-from chat_api.modules.sessions.domain.entity import ChatSession as DomainSession
-from chat_api.modules.sessions.domain.repository import ChatSessionRepository
-from chat_api.modules.sessions.infrastructure.model import (
+from chat_api.modules.chat_sessions.domain.entity import ChatSession as DomainSession
+from chat_api.modules.chat_sessions.domain.repository import ChatSessionRepository
+from chat_api.modules.chat_sessions.infrastructure.model import (
     ChatSession as ORMSession,
     SessionDocument as ORMSessionDoc,
 )

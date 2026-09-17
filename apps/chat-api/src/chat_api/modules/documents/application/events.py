@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 import uuid
 
-from chat_api.shared.application.bus import event_handler
-from chat_api.shared.infrastructure.queue.port import IngestionQueuePort
+from chat_api.shared.bus import event_handler
+from core.queue import IngestionQueuePort
 
 
 @dataclass(frozen=True)

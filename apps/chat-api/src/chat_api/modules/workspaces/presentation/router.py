@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-from chat_api.modules.auth.presentation.dependencies import AuthDep, auth_openapi
 from chat_api.modules.workspaces.presentation.dtos import (
     PermissionCatalogResponse,
     PermissionGroupResponse,
     PermissionItemResponse,
 )
-from chat_api.shared.application.authorization import PERMISSION_CATALOG
+from chat_api.shared.auth import CurrentAuth, PERMISSION_CATALOG, RequireAuth, auth_openapi
 
 router = APIRouter(tags=["workspaces"])
 
@@ -19,14 +18,16 @@ router = APIRouter(tags=["workspaces"])
 @router.get(
     "/workspaces/permissions/catalog",
     response_model=PermissionCatalogResponse,
+    dependencies=[Depends(RequireAuth())],
     openapi_extra=auth_openapi(),
 )
 @router.get(
     "/permissions/catalog",
     response_model=PermissionCatalogResponse,
+    dependencies=[Depends(RequireAuth())],
     openapi_extra=auth_openapi(),
 )
-def get_permission_catalog(auth: AuthDep) -> PermissionCatalogResponse:
+def get_permission_catalog(auth: CurrentAuth) -> PermissionCatalogResponse:
     """Return the entire permission catalog grouped by module.
 
     Any authenticated user session can retrieve this catalog to render

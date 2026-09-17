@@ -15,7 +15,7 @@ from chat_api.modules.messages.infrastructure.model import (
     MessageCitation,
     MessageFeedback,
 )
-from chat_api.modules.sessions.infrastructure.model import ChatSession
+from chat_api.modules.chat_sessions.infrastructure.model import ChatSession
 from chat_api.modules.workspaces.infrastructure.models import (
     Workspace,
     WorkspaceMember,

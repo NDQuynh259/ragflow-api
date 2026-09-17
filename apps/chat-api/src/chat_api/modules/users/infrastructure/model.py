@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import Boolean, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from chat_api.shared.infrastructure.database.base import (
+from core.database import (
     Base,
     TimestampMixin,
     UUIDPrimaryKeyMixin,

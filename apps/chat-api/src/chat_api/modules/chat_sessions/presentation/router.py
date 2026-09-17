@@ -9,34 +9,37 @@ from chat_api.modules.documents.application.commands import (
     UploadDocumentCommand,
 )
 from chat_api.modules.documents.presentation.dtos import UploadDocumentResponse
-from chat_api.modules.auth.presentation.dependencies import (
-    AuthDep,
+from chat_api.shared.auth import (
+    CurrentAuth,
+    Permission,
+    RequireAuth,
     RequirePermission,
     auth_openapi,
 )
-from chat_api.shared.application.authorization import Permission
-from chat_api.modules.sessions.application.commands import (
+from chat_api.modules.chat_sessions.application.commands import (
     AttachDocumentCommand,
     CreateSessionCommand,
     DeleteSessionCommand,
 )
-from chat_api.modules.sessions.application.queries import (
+from chat_api.modules.chat_sessions.application.queries import (
     GetSessionQuery,
     ListSessionsQuery,
 )
-from chat_api.modules.sessions.presentation.dtos import (
+from chat_api.modules.chat_sessions.presentation.dtos import (
     AttachDocumentRequest,
     CreateSessionRequest,
     SessionResponse,
 )
-from chat_api.shared.infrastructure.queue.background import BackgroundQueueAdapter
-from chat_api.shared.infrastructure.queue.port import IngestionQueuePort
-from chat_api.shared.infrastructure.storage.local import LocalStorageAdapter
-from chat_api.shared.infrastructure.storage.port import ObjectStoragePort
+from core.queue import BackgroundQueueAdapter, IngestionQueuePort
+from core.storage import LocalStorageAdapter, ObjectStoragePort
 
 from core.exceptions import ForbiddenException
 
-router = APIRouter(prefix="/chat-sessions", tags=["Chat Sessions"])
+router = APIRouter(
+    prefix="/chat-sessions",
+    tags=["Chat Sessions"],
+    dependencies=[Depends(RequireAuth())],
+)
 
 _storage = LocalStorageAdapter()
 _queue = BackgroundQueueAdapter()
@@ -59,7 +62,7 @@ def get_queue() -> IngestionQueuePort:
 )
 def create_session(
     payload: CreateSessionRequest,
-    auth: AuthDep,
+    auth: CurrentAuth,
 ) -> SessionResponse:
     target_workspace_id = payload.workspace_id or auth.principal.active_workspace_id or auth.session.active_workspace_id
     if not target_workspace_id:
@@ -82,7 +85,7 @@ def create_session(
     openapi_extra=auth_openapi(Permission.SESSION_READ),
 )
 def list_sessions(
-    auth: AuthDep,
+    auth: CurrentAuth,
     workspace_id: uuid.UUID | None = Query(None, description="Tùy chọn ghi đè Workspace ID, mặc định lấy từ active workspace"),
     user_id: uuid.UUID | None = Query(None, description="Filter by User ID"),
     limit: int = Query(50, ge=1, le=100),
@@ -110,7 +113,7 @@ def list_sessions(
 )
 def get_session(
     session_id: uuid.UUID,
-    auth: AuthDep,
+    auth: CurrentAuth,
 ) -> SessionResponse:
     query = GetSessionQuery(session_id=session_id)
     result = auth.query_bus.execute(query)
@@ -125,7 +128,7 @@ def get_session(
 )
 def delete_session(
     session_id: uuid.UUID,
-    auth: AuthDep,
+    auth: CurrentAuth,
 ) -> None:
     cmd = DeleteSessionCommand(session_id=session_id)
     auth.command_bus.execute(cmd)
@@ -143,7 +146,7 @@ def delete_session(
 def attach_document(
     session_id: uuid.UUID,
     payload: AttachDocumentRequest,
-    auth: AuthDep,
+    auth: CurrentAuth,
 ) -> SessionResponse:
     cmd = AttachDocumentCommand(session_id=session_id, document_id=payload.document_id)
     result = auth.command_bus.execute(cmd)
@@ -163,7 +166,7 @@ def attach_document(
 )
 async def upload_and_attach_document(
     session_id: uuid.UUID,
-    auth: AuthDep,
+    auth: CurrentAuth,
     file: UploadFile = File(...),
     storage: ObjectStoragePort = Depends(get_storage),
     queue: IngestionQueuePort = Depends(get_queue),

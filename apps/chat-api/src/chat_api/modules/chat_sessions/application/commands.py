@@ -6,18 +6,18 @@ from dataclasses import dataclass
 from typing import Any
 import uuid
 
-from chat_api.modules.sessions.application.dtos import SessionDTO
-from chat_api.modules.sessions.domain.entity import ChatSession
-from chat_api.shared.application.authorization import (
+from chat_api.modules.chat_sessions.application.dtos import SessionDTO
+from chat_api.modules.chat_sessions.domain.entity import ChatSession
+from chat_api.shared.auth import (
     CurrentPrincipal,
     Permission,
     require_document_access,
     require_session_access,
     require_workspace_permission,
 )
-from chat_api.shared.application.bus import Command, authorization_handler, command_handler
-from chat_api.shared.domain.uuid7 import uuid7
-from chat_api.shared.domain.uow import UnitOfWork
+from chat_api.shared.bus import Command, authorization_handler, command_handler
+from chat_api.shared.database import UnitOfWork
+from chat_api.shared.uuid7 import uuid7
 from chat_api.shared.exceptions import EntityNotFoundException
 
 

@@ -8,12 +8,11 @@ import uuid
 
 from chat_api.modules.messages.application.dtos import CitationDTO, MessageDTO
 from chat_api.modules.messages.domain.entity import Message, MessageRole
-from chat_api.shared.application.authorization import CurrentPrincipal, Permission, require_session_access
-from chat_api.shared.application.bus import Command, authorization_handler, command_handler
-from chat_api.shared.domain.uuid7 import uuid7
-from chat_api.shared.domain.uow import UnitOfWork
-from chat_api.shared.exceptions import EntityNotFoundException
-from chat_api.shared.infrastructure.rag.port import RAGEnginePort
+from chat_api.shared.auth import CurrentPrincipal, Permission, require_session_access
+from chat_api.shared.bus import Command, authorization_handler, command_handler
+from chat_api.shared.database import UnitOfWork
+from chat_api.shared.rag import RAGEnginePort
+from chat_api.shared.uuid7 import uuid7
 
 
 @dataclass(frozen=True)

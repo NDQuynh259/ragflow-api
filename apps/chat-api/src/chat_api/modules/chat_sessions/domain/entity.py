@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 from typing import Any
 import uuid
 
-from chat_api.shared.domain.base_entity import AggregateRoot
-from chat_api.shared.domain.uuid7 import uuid7
+from core.domain import AggregateRoot
+from core.uuid7 import uuid7
 
 
 @dataclass(kw_only=True)

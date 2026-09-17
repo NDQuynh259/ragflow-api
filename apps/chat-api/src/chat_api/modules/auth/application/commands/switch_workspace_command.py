@@ -6,8 +6,8 @@ from dataclasses import dataclass
 import uuid
 
 from chat_api.modules.auth.domain.entity import UserSession
-from chat_api.shared.application.bus import Command, command_handler
-from chat_api.shared.domain.uow import UnitOfWork
+from chat_api.shared.bus import Command, command_handler
+from chat_api.shared.database import UnitOfWork
 from core.exceptions import (
     EntityNotFoundException,
     ForbiddenException,

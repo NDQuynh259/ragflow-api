@@ -11,16 +11,21 @@ from chat_api.composition.reports.application.dtos import (
     WorkspaceOverviewReportResponse,
 )
 from chat_api.composition.reports.application.services import ReportService
-from chat_api.modules.auth.presentation.dependencies import (
-    AuthDep,
+from chat_api.shared.auth import (
+    CurrentAuth,
+    Permission,
+    RequireAuth,
     RequirePermission,
     auth_openapi,
 )
-from chat_api.shared.application.authorization import Permission
-from chat_api.shared.infrastructure.database.session import get_db
+from core.database import get_db
 from core.exceptions import ForbiddenException
 
-router = APIRouter(prefix="/reports", tags=["Reports & Analytics (Composition)"])
+router = APIRouter(
+    prefix="/reports",
+    tags=["Reports & Analytics (Composition)"],
+    dependencies=[Depends(RequireAuth())],
+)
 
 
 def get_report_service(db: Session = Depends(get_db)) -> ReportService:
@@ -37,7 +42,7 @@ def get_report_service(db: Session = Depends(get_db)) -> ReportService:
     openapi_extra=auth_openapi(Permission.REPORT_READ),
 )
 def get_workspace_overview_report(
-    auth: AuthDep,
+    auth: CurrentAuth,
     workspace_id: uuid.UUID | None = Query(
         None,
         description="Tùy chọn Workspace ID cần xem báo cáo. Mặc định là active workspace của phiên làm việc.",
@@ -64,7 +69,7 @@ def get_workspace_overview_report(
     openapi_extra=auth_openapi(Permission.REPORT_READ),
 )
 def get_workspace_daily_activity_report(
-    auth: AuthDep,
+    auth: CurrentAuth,
     workspace_id: uuid.UUID | None = Query(
         None,
         description="Tùy chọn Workspace ID cần xem báo cáo. Mặc định là active workspace của phiên làm việc.",

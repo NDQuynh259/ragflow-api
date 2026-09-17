@@ -9,17 +9,17 @@ import uuid
 from chat_api.modules.documents.application.dtos import DocumentDTO, IngestionJobDTO
 from chat_api.modules.documents.application.events import DocumentIngestionRequested
 from chat_api.modules.documents.domain.entity import Document, DocumentStatus
-from chat_api.shared.application.authorization import (
+from chat_api.shared.auth import (
     CurrentPrincipal,
     Permission,
     require_document_access,
     require_workspace_permission,
 )
-from chat_api.shared.application.bus import Command, authorization_handler, command_handler
-from chat_api.shared.domain.uuid7 import uuid7
-from chat_api.shared.domain.uow import UnitOfWork
+from chat_api.shared.bus import Command, authorization_handler, command_handler
+from chat_api.shared.database import UnitOfWork
+from chat_api.shared.uuid7 import uuid7
 from chat_api.shared.exceptions import EntityNotFoundException
-from chat_api.shared.infrastructure.storage.port import ObjectStoragePort
+from core.storage import ObjectStoragePort
 
 
 @dataclass(frozen=True)

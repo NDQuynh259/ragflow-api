@@ -12,16 +12,20 @@ from chat_api.modules.messages.presentation.dtos import (
     MessageResponse,
     SendMessageRequest,
 )
-from chat_api.modules.auth.presentation.dependencies import (
-    AuthDep,
+from chat_api.shared.auth import (
+    CurrentAuth,
+    Permission,
+    RequireAuth,
     RequirePermission,
     auth_openapi,
 )
-from chat_api.shared.application.authorization import Permission
-from chat_api.shared.infrastructure.rag.adapter import RAGEngineAdapter
-from chat_api.shared.infrastructure.rag.port import RAGEnginePort
+from chat_api.shared.rag import RAGEngineAdapter, RAGEnginePort
 
-router = APIRouter(prefix="/chat-sessions/{session_id}/messages", tags=["Messages"])
+router = APIRouter(
+    prefix="/chat-sessions/{session_id}/messages",
+    tags=["Messages"],
+    dependencies=[Depends(RequireAuth())],
+)
 
 _rag_engine = RAGEngineAdapter()
 
@@ -39,7 +43,7 @@ def get_rag_engine() -> RAGEnginePort:
 def send_message(
     session_id: uuid.UUID,
     payload: SendMessageRequest,
-    auth: AuthDep,
+    auth: CurrentAuth,
     rag_engine: RAGEnginePort = Depends(get_rag_engine),
 ) -> MessageResponse:
     cmd = SendMessageCommand(session_id=session_id, content=payload.content)
@@ -69,7 +73,7 @@ def send_message(
 )
 def get_session_messages(
     session_id: uuid.UUID,
-    auth: AuthDep,
+    auth: CurrentAuth,
     limit: int = Query(100, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ) -> list[MessageResponse]:

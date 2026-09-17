@@ -6,8 +6,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 import uuid
 
-from chat_api.shared.domain.base_entity import AggregateRoot, Entity
-from chat_api.shared.domain.uuid7 import uuid7
+from core.domain import AggregateRoot, Entity
+from core.uuid7 import uuid7
 
 
 class WorkspaceRole(str, Enum):

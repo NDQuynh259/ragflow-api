@@ -15,22 +15,22 @@ import uuid
 import pytest
 
 from chat_api.modules.auth.domain.entity import UserSession
-from chat_api.modules.auth.presentation.dependencies import (
-    AuthContext,
-    RequireAnyPermission,
-    RequirePermission,
-    RequireRole,
-)
-from chat_api.modules.users.domain.entity import User
-from chat_api.shared.application.authorization import (
+from chat_api.shared.auth import (
     ALL_PERMISSION_CODES,
     BUILTIN_ROLE_PERMISSIONS,
+    AuthContext,
     CurrentPrincipal,
     Permission,
+    RequireAnyPermission,
+    RequireAuth,
+    RequirePermission,
+    RequireRole,
     effective_permissions,
+    require_auth,
 )
-from chat_api.shared.application.bus import CommandBus, QueryBus
-from core.exceptions import ForbiddenException
+from chat_api.modules.users.domain.entity import User
+from chat_api.shared.bus import CommandBus, QueryBus
+from core.exceptions import ForbiddenException, UnauthenticatedException
 
 
 def test_effective_permissions_owner_bypass():
@@ -51,13 +51,18 @@ def test_effective_permissions_builtin_merging():
     assert Permission.DOCUMENT_READ.value in member_perms
     assert Permission.WORKSPACE_DELETE.value not in member_perms
 
-    # Merging custom permission
+    # Merging custom permission (set, Sequence, or tuple)
     custom_stored = {"custom:analytics", Permission.DOCUMENT_DELETE.value}
     merged = effective_permissions("member", stored_permissions=custom_stored)
     assert Permission.DOCUMENT_READ.value in merged
     assert Permission.DOCUMENT_DELETE.value in merged
     assert "custom:analytics" in merged
     assert Permission.WORKSPACE_DELETE.value not in merged
+
+    # Verify Sequence/list input works identically
+    sequence_stored = ["custom:analytics", Permission.DOCUMENT_DELETE.value]
+    merged_seq = effective_permissions("member", stored_permissions=sequence_stored)
+    assert merged_seq == merged
 
 
 def test_effective_permissions_unknown_or_none():
@@ -182,6 +187,17 @@ async def test_fastapi_dependency_guards():
     role_fail_guard = RequireRole("owner", "superadmin")
     with pytest.raises(ForbiddenException):
         await role_fail_guard(auth_ctx)
+
+    # RequireAuth
+    auth_guard = RequireAuth()
+    assert await auth_guard(auth_ctx) == auth_ctx
+    assert await require_auth(auth_ctx) == auth_ctx
+
+    with pytest.raises(UnauthenticatedException):
+        await auth_guard(None)
+
+    with pytest.raises(UnauthenticatedException):
+        await require_auth(None)
 
 
 def test_sqlalchemy_workspace_repository_effective_permissions():

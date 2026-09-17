@@ -7,10 +7,12 @@ from dataclasses import dataclass
 import inspect
 import logging
 import time
-from typing import Any, Generic, Protocol, TypeVar, get_type_hints
+from typing import Annotated, Any, Generic, Protocol, TypeVar, get_type_hints
 
-from chat_api.shared.application.authorization import CurrentPrincipal, ExecutionContext
-from chat_api.shared.domain.uow import UnitOfWork
+from fastapi import Depends
+
+from chat_api.shared.database.uow import UnitOfWork, get_uow
+from core.auth import CurrentPrincipal, ExecutionContext
 
 R = TypeVar("R")
 M = TypeVar("M")
@@ -24,6 +26,10 @@ class Command(Generic[R]):
 
 class Query(Generic[R]):
     """Marker base class for queries returning ``R``."""
+
+
+class Event:
+    """Marker base class for in-process domain events."""
 
 
 class CommandHandler(Protocol[M, R]):
@@ -336,3 +342,36 @@ class QueryBus(_RequestBus):
         dependencies: DependencyMap | None = None,
     ) -> R:
         return self._execute(query, dependencies)
+
+
+def get_command_bus(uow: UnitOfWork = Depends(get_uow)) -> CommandBus:
+    return CommandBus(uow=uow)
+
+
+def get_query_bus(uow: UnitOfWork = Depends(get_uow)) -> QueryBus:
+    return QueryBus(uow=uow)
+
+
+CommandBusDep = Annotated[CommandBus, Depends(get_command_bus)]
+QueryBusDep = Annotated[QueryBus, Depends(get_query_bus)]
+
+
+__all__ = [
+    "Command",
+    "Query",
+    "Event",
+    "CommandHandler",
+    "BusBehavior",
+    "BusContext",
+    "CommandBus",
+    "QueryBus",
+    "EventBus",
+    "command_handler",
+    "query_handler",
+    "event_handler",
+    "authorization_handler",
+    "get_command_bus",
+    "get_query_bus",
+    "CommandBusDep",
+    "QueryBusDep",
+]

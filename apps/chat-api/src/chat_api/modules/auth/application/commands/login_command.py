@@ -17,8 +17,8 @@ from chat_api.modules.workspaces.domain.entity import (
     WorkspaceMember,
     WorkspaceRole,
 )
-from chat_api.shared.application.bus import Command, command_handler
-from chat_api.shared.domain.uow import UnitOfWork
+from chat_api.shared.bus import Command, command_handler
+from chat_api.shared.database import UnitOfWork
 from core.exceptions import UnauthenticatedException
 
 DEFAULT_SESSION_DURATION_DAYS = 7

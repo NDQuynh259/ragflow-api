@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from enum import Enum
 import uuid
 
-from chat_api.shared.domain.uow import UnitOfWork
+from chat_api.shared.database.uow import UnitOfWork
 from core.auth import CurrentPrincipal, ExecutionContext
 from core.exceptions import ForbiddenException
 
@@ -173,7 +174,7 @@ def get_permissions_for_role(role: str | None) -> frozenset[str]:
 
 def effective_permissions(
     role: str | None,
-    stored_permissions: set[str] | frozenset[str] | None = None,
+    stored_permissions: Iterable[str] | None = None,
 ) -> frozenset[str]:
     """Compute effective permissions at read time (Vishop architecture).
 
@@ -191,24 +192,6 @@ def effective_permissions(
     if stored_permissions:
         return frozenset(base | set(stored_permissions))
     return base
-
-
-__all__ = [
-    "Permission",
-    "PermissionItem",
-    "PERMISSION_CATALOG",
-    "ALL_PERMISSION_CODES",
-    "BUILTIN_ROLE_PERMISSIONS",
-    "ROLE_PERMISSIONS",
-    "get_permissions_for_role",
-    "effective_permissions",
-    "CurrentPrincipal",
-    "ExecutionContext",
-    "require_workspace_member",
-    "require_document_access",
-    "require_session_access",
-    "require_workspace_permission",
-]
 
 
 def require_workspace_member(
@@ -241,7 +224,7 @@ def require_session_access(
     session_id: uuid.UUID,
     permission: str | Permission | None = None,
 ) -> None:
-    session = uow.sessions.get_by_id(session_id)
+    session = uow.chat_sessions.get_by_id(session_id)
     if session is None:
         raise ForbiddenException("User cannot access this chat session.")
     require_workspace_member(uow, principal, session.workspace_id)
@@ -273,3 +256,20 @@ def require_workspace_permission(
     if not uow.workspaces.has_permission(workspace_id, principal.user_id, perm_key):
         raise ForbiddenException(f"Missing required permission: '{perm_key}' in workspace.")
 
+
+__all__ = [
+    "Permission",
+    "PermissionItem",
+    "PERMISSION_CATALOG",
+    "ALL_PERMISSION_CODES",
+    "BUILTIN_ROLE_PERMISSIONS",
+    "ROLE_PERMISSIONS",
+    "get_permissions_for_role",
+    "effective_permissions",
+    "CurrentPrincipal",
+    "ExecutionContext",
+    "require_workspace_member",
+    "require_document_access",
+    "require_session_access",
+    "require_workspace_permission",
+]

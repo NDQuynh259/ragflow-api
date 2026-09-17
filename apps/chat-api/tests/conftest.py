@@ -9,17 +9,17 @@ from chat_api.modules.documents.domain.entity import Document, DocumentStatus
 from chat_api.modules.documents.domain.repository import DocumentRepository
 from chat_api.modules.messages.domain.entity import Message
 from chat_api.modules.messages.domain.repository import MessageRepository
-from chat_api.modules.sessions.domain.entity import ChatSession
-from chat_api.modules.sessions.domain.repository import ChatSessionRepository
+from chat_api.modules.chat_sessions.domain.entity import ChatSession
+from chat_api.modules.chat_sessions.domain.repository import ChatSessionRepository
 from chat_api.modules.users.domain.entity import User
 from chat_api.modules.users.domain.repository import UserRepository
 from chat_api.modules.workspaces.domain.entity import Workspace
 from chat_api.modules.workspaces.domain.repository import WorkspaceRepository
-from chat_api.shared.application.authorization import Permission, get_permissions_for_role
-from chat_api.shared.domain.uow import UnitOfWork
-from chat_api.shared.infrastructure.queue.port import IngestionQueuePort
-from chat_api.shared.infrastructure.rag.port import RAGEnginePort
-from chat_api.shared.infrastructure.storage.port import ObjectStoragePort
+from chat_api.shared.auth import Permission, get_permissions_for_role
+from chat_api.shared.database import UnitOfWork
+from chat_api.shared.rag import RAGEnginePort
+from core.queue import IngestionQueuePort
+from core.storage import ObjectStoragePort
 
 
 class InMemoryWorkspaceRepo(WorkspaceRepository):
@@ -173,7 +173,8 @@ class FakeUnitOfWork(UnitOfWork):
     def __init__(self):
         self.workspaces = InMemoryWorkspaceRepo()
         self.documents = InMemoryDocRepo()
-        self.sessions = InMemorySessionRepo()
+        self.chat_sessions = InMemorySessionRepo()
+        self.sessions = self.chat_sessions
         self.messages = InMemoryMessageRepo()
         self.users = InMemoryUserRepo()
         self.user_sessions = InMemoryUserSessionRepo()

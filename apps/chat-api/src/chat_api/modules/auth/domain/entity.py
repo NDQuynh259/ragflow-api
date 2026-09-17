@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import uuid
 
-from chat_api.shared.domain.base_entity import AggregateRoot
+from core.domain import AggregateRoot
 from core.uuid7 import uuid7
 
 

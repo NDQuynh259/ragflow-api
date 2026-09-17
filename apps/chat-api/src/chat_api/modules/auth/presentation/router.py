@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 
 from chat_api.modules.auth.application.commands import (
     LoginCommand,
@@ -10,8 +10,9 @@ from chat_api.modules.auth.application.commands import (
     RegisterCommand,
     SwitchWorkspaceCommand,
 )
-from chat_api.modules.auth.presentation.dependencies import (
-    AuthDep,
+from chat_api.shared.auth import (
+    CurrentAuth,
+    RequireAuth,
     auth_openapi,
     extract_session_token,
 )
@@ -26,7 +27,7 @@ from chat_api.modules.auth.presentation.dtos import (
     UserResponse,
     WorkspaceInfo,
 )
-from chat_api.shared.application.dependencies import CommandBusDep
+from chat_api.shared.bus import CommandBusDep
 from chat_api.shared.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -113,11 +114,12 @@ def login(
     "/switch-workspace",
     response_model=SwitchWorkspaceResponse,
     summary="Switch active workspace context for the current session",
+    dependencies=[Depends(RequireAuth())],
     openapi_extra=auth_openapi(),
 )
 def switch_workspace(
     req: SwitchWorkspaceRequest,
-    auth: AuthDep,
+    auth: CurrentAuth,
 ) -> SwitchWorkspaceResponse:
     updated_session = auth.command_bus.execute(
         SwitchWorkspaceCommand(
@@ -154,10 +156,11 @@ def logout(
     "/me",
     response_model=UserMeResponse,
     summary="Get profile of currently logged-in user with active workspace and workspace list",
+    dependencies=[Depends(RequireAuth())],
     openapi_extra=auth_openapi(),
 )
 def get_me(
-    auth: AuthDep,
+    auth: CurrentAuth,
 ) -> UserMeResponse:
     user = auth.user
     with auth.uow.read_only():

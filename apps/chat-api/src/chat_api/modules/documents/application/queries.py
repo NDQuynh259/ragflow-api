@@ -7,14 +7,14 @@ import uuid
 
 from chat_api.modules.documents.application.dtos import DocumentDTO, IngestionJobDTO
 from chat_api.modules.documents.domain.entity import Document
-from chat_api.shared.application.authorization import (
+from chat_api.shared.auth import (
     CurrentPrincipal,
     Permission,
     require_document_access,
     require_workspace_permission,
 )
-from chat_api.shared.application.bus import Query, authorization_handler, query_handler
-from chat_api.shared.domain.uow import UnitOfWork
+from chat_api.shared.bus import Query, authorization_handler, query_handler
+from chat_api.shared.database import UnitOfWork
 from chat_api.shared.exceptions import EntityNotFoundException
 
 

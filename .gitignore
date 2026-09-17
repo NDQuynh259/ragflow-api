@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 .venv/
@@ -20,3 +20,4 @@ dist/
 
 # Generated parser outputs
 outputs/
+output/

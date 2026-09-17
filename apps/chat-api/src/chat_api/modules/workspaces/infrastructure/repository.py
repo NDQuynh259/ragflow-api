@@ -18,7 +18,7 @@ from chat_api.modules.workspaces.infrastructure.models import (
     Workspace as ORMWorkspace,
     WorkspaceMember as ORMMember,
 )
-from chat_api.shared.application.authorization import effective_permissions
+from chat_api.shared.auth import effective_permissions
 
 
 class SqlAlchemyWorkspaceRepository(WorkspaceRepository):

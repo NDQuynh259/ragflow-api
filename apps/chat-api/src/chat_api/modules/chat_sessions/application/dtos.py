@@ -18,3 +18,7 @@ class SessionDTO:
     attached_document_ids: list[uuid.UUID] = field(default_factory=list)
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+
+# Semantic alias
+ChatSessionDTO = SessionDTO

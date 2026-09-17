@@ -1,33 +1,56 @@
-"""FastAPI authentication dependencies and request-scoped bus aliases."""
+"""FastAPI authentication dependencies and request-scoped security guards."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
+import uuid
 
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from chat_api.modules.auth.application.queries import GetAuthenticationContextQuery
-from chat_api.modules.auth.domain.entity import UserSession
-from chat_api.modules.users.domain.entity import User
-from chat_api.shared.application.authorization import (
+if TYPE_CHECKING:
+    from chat_api.modules.auth.domain.entity import UserSession
+    from chat_api.modules.users.domain.entity import User
+
+from chat_api.shared.auth.permissions import (
     CurrentPrincipal,
     ExecutionContext,
     Permission,
 )
-from chat_api.shared.application.bus import CommandBus, QueryBus
-from chat_api.shared.domain.uow import UnitOfWork
-from chat_api.shared.infrastructure.database.uow import get_uow
-import uuid
+from chat_api.shared.bus import CommandBus, QueryBus
+from chat_api.shared.database.uow import UnitOfWork, get_uow
 from core.exceptions import ForbiddenException, UnauthenticatedException
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
-def auth_openapi(*permissions: str | Permission) -> dict[str, object]:
-    """Describe authentication and permission requirements in OpenAPI."""
+def api_cookie_auth(name: str = "session") -> dict[str, object]:
+    """Describe Cookie authentication in OpenAPI matching ViShop's @ApiCookieAuth('session')."""
     return {
+        "security": [{name: []}, {"bearerAuth": []}],
+    }
+
+
+def api_workspace_header() -> dict[str, object]:
+    """Describe X-Workspace-Id header in OpenAPI matching ViShop's @ApiTenantHeader()."""
+    return {
+        "parameters": [
+            {
+                "name": "X-Workspace-Id",
+                "in": "header",
+                "required": False,
+                "schema": {"type": "string", "format": "uuid"},
+                "description": "Workspace ID (tương đương X-Tenant-Id bên ViShop)",
+            }
+        ]
+    }
+
+
+def auth_openapi(*permissions: str | Permission, cookie_scheme: str = "session") -> dict[str, object]:
+    """Describe authentication, cookie session, and permission requirements in OpenAPI."""
+    return {
+        "security": [{cookie_scheme: []}, {"bearerAuth": []}],
         "x-authentication-required": True,
         "x-permission-mode": "all",
         "x-required-permissions": [
@@ -77,6 +100,8 @@ def get_auth_context(
     token = extract_session_token(request, bearer_auth)
     if not token:
         raise UnauthenticatedException("Authentication credentials were not provided.")
+    from chat_api.modules.auth.application.queries import GetAuthenticationContextQuery
+
     authentication = QueryBus(uow).execute(GetAuthenticationContextQuery(token=token))
     execution = ExecutionContext(principal=authentication.principal)
     return AuthContext(
@@ -94,8 +119,12 @@ def get_current_principal(auth: AuthContext = Depends(get_auth_context)) -> Curr
     return auth.principal
 
 
-AuthDep = Annotated[AuthContext, Depends(get_auth_context)]
+# Clean, expressive authentication dependencies
+CurrentAuth = Annotated[AuthContext, Depends(get_auth_context)]
 CurrentPrincipalDep = Annotated[CurrentPrincipal, Depends(get_current_principal)]
+
+# Backward compatibility alias
+AuthDep = CurrentAuth
 
 
 async def resolve_target_workspace_id(
@@ -114,8 +143,8 @@ async def resolve_target_workspace_id(
         except ValueError:
             pass
 
-    # 2. Workspace / Tenant header (ViShop standard X-Workspace-Id or X-Tenant-Id)
-    ws_header = request.headers.get("X-Workspace-Id") or request.headers.get("X-Tenant-Id")
+    # 2. Workspace ID in header (X-Workspace-Id)
+    ws_header = request.headers.get("X-Workspace-Id")
     if ws_header:
         try:
             return uuid.UUID(ws_header.strip())
@@ -144,7 +173,7 @@ async def resolve_target_workspace_id(
     session_param = request.path_params.get("session_id")
     if session_param and auth.uow:
         try:
-            s = auth.uow.sessions.get_by_id(uuid.UUID(str(session_param)))
+            s = auth.uow.chat_sessions.get_by_id(uuid.UUID(str(session_param)))
             if s:
                 return s.workspace_id
         except (ValueError, AttributeError):
@@ -164,6 +193,45 @@ async def resolve_target_workspace_id(
 
     # 7. Fall back to current active workspace in session
     return auth.principal.active_workspace_id or auth.session.active_workspace_id
+
+
+class RequireAuth:
+    """Dependency enforcing that caller is authenticated with a valid session (HTTP 401 if missing).
+
+    Inspired by ViShop's @UseGuards(BetterAuthGuard) / @RequireAuth().
+
+    Usage:
+    - Route-level guard:
+        @router.get("/me", dependencies=[Depends(RequireAuth())])
+        # or
+        @router.get("/me", dependencies=[require_auth])
+    - Router-level guard (protect all routes in router):
+        router = APIRouter(dependencies=[Depends(RequireAuth())])
+    - Parameter dependency:
+        def get_me(auth: AuthContext = Depends(RequireAuth())): ...
+        # or
+        def get_me(auth: CurrentAuth): ...
+    """
+
+    def __init__(self, cookie_scheme: str = "session") -> None:
+        self.cookie_scheme = cookie_scheme
+
+    async def __call__(
+        self,
+        auth: AuthContext = Depends(get_auth_context),
+    ) -> AuthContext:
+        if auth is None:
+            raise UnauthenticatedException("Authentication credentials were not provided.")
+        return auth
+
+    @staticmethod
+    def openapi(cookie_scheme: str = "session") -> dict[str, object]:
+        """Convenience helper to attach OpenAPI security specs matching RequireAuth."""
+        return auth_openapi(cookie_scheme=cookie_scheme)
+
+
+require_auth = RequireAuth()
+RequireAuthDep = Annotated[AuthContext, Depends(require_auth)]
 
 
 class RequirePermission:
@@ -282,13 +350,21 @@ class RequireRole:
 
 __all__ = [
     "AuthContext",
+    "CurrentAuth",
     "AuthDep",
     "CurrentPrincipalDep",
+    "RequireAuth",
+    "RequireAuthDep",
+    "require_auth",
     "RequireAnyPermission",
     "RequirePermission",
     "RequireRole",
+    "api_cookie_auth",
+    "api_workspace_header",
     "auth_openapi",
+    "bearer_scheme",
     "extract_session_token",
     "get_auth_context",
     "get_current_principal",
+    "resolve_target_workspace_id",
 ]

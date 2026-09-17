@@ -5,15 +5,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 import uuid
 
-from chat_api.modules.sessions.application.dtos import SessionDTO
-from chat_api.shared.application.authorization import (
+from chat_api.modules.chat_sessions.application.dtos import SessionDTO
+from chat_api.shared.auth import (
     CurrentPrincipal,
     Permission,
     require_session_access,
     require_workspace_permission,
 )
-from chat_api.shared.application.bus import Query, authorization_handler, query_handler
-from chat_api.shared.domain.uow import UnitOfWork
+from chat_api.shared.bus import Query, authorization_handler, query_handler
+from chat_api.shared.database import UnitOfWork
 from chat_api.shared.exceptions import EntityNotFoundException
 
 
