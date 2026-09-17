@@ -10,12 +10,14 @@ from chat_api.modules.documents.application.dtos import DocumentDTO
 from chat_api.modules.documents.application.mapper import DocumentMapper
 from chat_api.modules.documents.domain.entity import Document, DocumentStatus
 from chat_api.modules.documents.domain.events import DocumentIngestionRequested
+from chat_api.modules.documents.domain.repository import DocumentRepository
 from chat_api.modules.documents.domain.value_objects import (
     ContentHash,
     Filename,
     MimeType,
     StorageUri,
 )
+from chat_api.modules.workspaces.domain.repository import WorkspaceRepository
 from chat_api.shared.auth import (
     CurrentPrincipal,
     Permission,
@@ -67,11 +69,14 @@ class UploadDocumentHandler:
     def handle(self, cmd: UploadDocumentCommand) -> DocumentDTO:
         content_hash = ContentHash(hashlib.sha256(cmd.content).hexdigest())
 
-        workspace = self.uow.workspaces.get_by_id(cmd.workspace_id)
+        workspace_repo = self.uow.get_repo(WorkspaceRepository)
+        doc_repo = self.uow.get_repo(DocumentRepository)
+
+        workspace = workspace_repo.get_by_id(cmd.workspace_id)
         if not workspace:
             raise EntityNotFoundException("Workspace", cmd.workspace_id)
 
-        existing = self.uow.documents.get_by_content_hash(cmd.workspace_id, content_hash)
+        existing = doc_repo.get_by_content_hash(cmd.workspace_id, content_hash)
         if existing:
             return DocumentMapper.to_dto(existing)
 
@@ -91,7 +96,7 @@ class UploadDocumentHandler:
             chunker_name=cmd.chunker_name,
         )
 
-        self.uow.documents.save(document)
+        doc_repo.save(document)
         document.record_event(
             DocumentIngestionRequested(
                 document_id=document.id,
@@ -131,9 +136,10 @@ class DeleteDocumentHandler:
         self.storage = storage
 
     def handle(self, cmd: DeleteDocumentCommand) -> bool:
-        doc = self.uow.documents.get_by_id(cmd.document_id)
+        doc_repo = self.uow.get_repo(DocumentRepository)
+        doc = doc_repo.get_by_id(cmd.document_id)
         if not doc:
             raise EntityNotFoundException("Document", cmd.document_id)
 
         self.storage.delete(str(doc.storage_uri))
-        return self.uow.documents.delete(cmd.document_id)
+        return doc_repo.delete(cmd.document_id)

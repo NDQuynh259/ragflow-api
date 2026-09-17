@@ -7,6 +7,7 @@ import uuid
 
 from chat_api.modules.documents.application.dtos import DocumentDTO
 from chat_api.modules.documents.application.mapper import DocumentMapper
+from chat_api.modules.documents.domain.repository import DocumentRepository
 from chat_api.shared.auth import (
     CurrentPrincipal,
     Permission,
@@ -39,7 +40,8 @@ class GetDocumentHandler:
         self.uow = uow
 
     def handle(self, query: GetDocumentQuery) -> DocumentDTO:
-        doc = self.uow.documents.get_by_id(query.document_id)
+        doc_repo = self.uow.get_repo(DocumentRepository)
+        doc = doc_repo.get_by_id(query.document_id)
         if not doc:
             raise EntityNotFoundException("Document", query.document_id)
         return DocumentMapper.to_dto(doc)
@@ -73,7 +75,8 @@ class ListDocumentsHandler:
         self.uow = uow
 
     def handle(self, query: ListDocumentsQuery) -> list[DocumentDTO]:
-        docs = self.uow.documents.list_by_workspace(
+        doc_repo = self.uow.get_repo(DocumentRepository)
+        docs = doc_repo.list_by_workspace(
             workspace_id=query.workspace_id,
             limit=query.limit,
             offset=query.offset,

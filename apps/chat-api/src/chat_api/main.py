@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+import chat_api.composition.dependencies  # noqa: F401  # Wire DI adapters and UoW repo registries
 from chat_api.composition.reports.presentation.router import router as reports_router
 from chat_api.modules.auth.presentation.router import router as auth_router
 from chat_api.modules.documents.presentation.router import router as documents_router

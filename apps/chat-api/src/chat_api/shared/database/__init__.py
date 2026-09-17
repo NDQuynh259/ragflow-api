@@ -11,7 +11,12 @@ from core.database import (
     engine,
     get_db,
 )
-from chat_api.shared.database.uow import SqlAlchemyUnitOfWork, UnitOfWork, get_uow
+from chat_api.shared.database.uow import (
+    SqlAlchemyUnitOfWork,
+    UnitOfWork,
+    get_uow,
+    register_repository,
+)
 
 __all__ = [
     "Base",
@@ -24,4 +29,5 @@ __all__ = [
     "UnitOfWork",
     "SqlAlchemyUnitOfWork",
     "get_uow",
+    "register_repository",
 ]

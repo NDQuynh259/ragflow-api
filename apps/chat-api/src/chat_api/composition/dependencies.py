@@ -1,12 +1,37 @@
 """Composition Root — centralised dependency providers.
 
-All concrete adapter instantiation happens here so that presentation routers
-only depend on abstract *ports*, never on concrete implementations.  This is
-the single place that wires adapters to ports for the entire application.
+All concrete adapter instantiation and UnitOfWork repository registrations happen
+here so that presentation routers and application handlers only depend on abstract
+ports and interfaces, never on concrete implementations.
 """
 
 from __future__ import annotations
 
+from chat_api.modules.auth.domain.repository import UserSessionRepository
+from chat_api.modules.auth.infrastructure.repository import (
+    SqlAlchemyUserSessionRepository,
+)
+from chat_api.modules.chat_sessions.domain.repository import ChatSessionRepository
+from chat_api.modules.chat_sessions.infrastructure.repository import (
+    SqlAlchemyChatSessionRepository,
+)
+from chat_api.modules.documents.domain.repository import DocumentRepository
+from chat_api.modules.documents.infrastructure.repository import (
+    SqlAlchemyDocumentRepository,
+)
+from chat_api.modules.messages.domain.repository import MessageRepository
+from chat_api.modules.messages.infrastructure.repository import (
+    SqlAlchemyMessageRepository,
+)
+from chat_api.modules.users.domain.repository import UserRepository
+from chat_api.modules.users.infrastructure.repository import (
+    SqlAlchemyUserRepository,
+)
+from chat_api.modules.workspaces.domain.repository import WorkspaceRepository
+from chat_api.modules.workspaces.infrastructure.repository import (
+    SqlAlchemyWorkspaceRepository,
+)
+from chat_api.shared.database.uow import register_repository
 from chat_api.shared.rag.adapter import RAGEngineAdapter
 from chat_api.shared.rag.port import RAGEnginePort
 from core.queue.background import BackgroundQueueAdapter
@@ -20,6 +45,42 @@ from core.storage.port import ObjectStoragePort
 _storage = LocalStorageAdapter()
 _queue = BackgroundQueueAdapter()
 _rag_engine = RAGEngineAdapter()
+
+
+# ---------------------------------------------------------------------------
+# UnitOfWork Repository Registrations
+# Composition Root binds abstract interfaces to concrete SQLAlchemy implementations
+# ---------------------------------------------------------------------------
+register_repository(
+    DocumentRepository,
+    SqlAlchemyDocumentRepository,
+    aliases="documents",
+)
+register_repository(
+    ChatSessionRepository,
+    SqlAlchemyChatSessionRepository,
+    aliases=["chat_sessions", "sessions"],
+)
+register_repository(
+    MessageRepository,
+    SqlAlchemyMessageRepository,
+    aliases="messages",
+)
+register_repository(
+    UserRepository,
+    SqlAlchemyUserRepository,
+    aliases="users",
+)
+register_repository(
+    WorkspaceRepository,
+    SqlAlchemyWorkspaceRepository,
+    aliases="workspaces",
+)
+register_repository(
+    UserSessionRepository,
+    SqlAlchemyUserSessionRepository,
+    aliases="user_sessions",
+)
 
 
 # ---------------------------------------------------------------------------
