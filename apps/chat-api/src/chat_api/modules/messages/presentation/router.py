@@ -19,7 +19,8 @@ from chat_api.shared.auth import (
     RequirePermission,
     auth_openapi,
 )
-from chat_api.shared.rag import RAGEngineAdapter, RAGEnginePort
+from chat_api.composition.dependencies import get_rag_engine
+from chat_api.shared.rag.port import RAGEnginePort
 
 router = APIRouter(
     prefix="/chat-sessions/{session_id}/messages",
@@ -27,11 +28,6 @@ router = APIRouter(
     dependencies=[Depends(RequireAuth())],
 )
 
-_rag_engine = RAGEngineAdapter()
-
-
-def get_rag_engine() -> RAGEnginePort:
-    return _rag_engine
 
 
 @router.post(

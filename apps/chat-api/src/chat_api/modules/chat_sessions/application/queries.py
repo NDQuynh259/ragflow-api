@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import uuid
 
 from chat_api.modules.chat_sessions.application.dtos import SessionDTO
+from chat_api.modules.chat_sessions.application.mapper import SessionMapper
 from chat_api.shared.auth import (
     CurrentPrincipal,
     Permission,
@@ -42,16 +43,7 @@ class GetSessionHandler:
         if not session:
             raise EntityNotFoundException("ChatSession", query.session_id)
 
-        return SessionDTO(
-            id=session.id,
-            workspace_id=session.workspace_id,
-            user_id=session.user_id,
-            title=session.title,
-            rag_config=session.rag_config,
-            attached_document_ids=session.attached_document_ids,
-            created_at=session.created_at,
-            updated_at=session.updated_at,
-        )
+        return SessionMapper.to_dto(session)
 
 
 @dataclass(frozen=True)
@@ -89,16 +81,4 @@ class ListSessionsHandler:
             limit=query.limit,
             offset=query.offset,
         )
-        return [
-            SessionDTO(
-                id=s.id,
-                workspace_id=s.workspace_id,
-                user_id=s.user_id,
-                title=s.title,
-                rag_config=s.rag_config,
-                attached_document_ids=s.attached_document_ids,
-                created_at=s.created_at,
-                updated_at=s.updated_at,
-            )
-            for s in sessions
-        ]
+        return [SessionMapper.to_dto(s) for s in sessions]

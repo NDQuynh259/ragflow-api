@@ -30,8 +30,9 @@ from chat_api.modules.chat_sessions.presentation.dtos import (
     CreateSessionRequest,
     SessionResponse,
 )
-from core.queue import BackgroundQueueAdapter, IngestionQueuePort
-from core.storage import LocalStorageAdapter, ObjectStoragePort
+from chat_api.composition.dependencies import get_queue, get_storage
+from core.queue.port import IngestionQueuePort
+from core.storage.port import ObjectStoragePort
 
 from core.exceptions import ForbiddenException
 
@@ -41,16 +42,6 @@ router = APIRouter(
     dependencies=[Depends(RequireAuth())],
 )
 
-_storage = LocalStorageAdapter()
-_queue = BackgroundQueueAdapter()
-
-
-def get_storage() -> ObjectStoragePort:
-    return _storage
-
-
-def get_queue() -> IngestionQueuePort:
-    return _queue
 
 
 @router.post(

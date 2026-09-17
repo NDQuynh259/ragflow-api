@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 import uuid
 
-from chat_api.modules.messages.application.dtos import CitationDTO, MessageDTO
-from chat_api.modules.messages.domain.entity import Message
+from chat_api.modules.messages.application.dtos import MessageDTO
+from chat_api.modules.messages.application.mapper import MessageMapper
 from chat_api.shared.auth import CurrentPrincipal, require_session_access
 from chat_api.shared.bus import Query, authorization_handler, query_handler
 from chat_api.shared.database import UnitOfWork
@@ -45,29 +45,4 @@ class GetSessionMessagesHandler:
             limit=query.limit,
             offset=query.offset,
         )
-        return [self._to_dto(m) for m in messages]
-
-    def _to_dto(self, m: Message) -> MessageDTO:
-        return MessageDTO(
-            id=m.id,
-            session_id=m.session_id,
-            role=m.role.value if hasattr(m.role, "value") else str(m.role),
-            content=m.content,
-            prompt_tokens=m.prompt_tokens,
-            completion_tokens=m.completion_tokens,
-            latency_ms=m.latency_ms,
-            citations=[
-                CitationDTO(
-                    id=cit.id,
-                    message_id=cit.message_id,
-                    chunk_id=cit.chunk_id,
-                    document_id=cit.document_id,
-                    page_number=cit.page_number,
-                    bbox=cit.bbox,
-                    quote=cit.quote,
-                    relevance_score=cit.relevance_score,
-                )
-                for cit in m.citations
-            ],
-            created_at=m.created_at,
-        )
+        return [MessageMapper.to_dto(m) for m in messages]

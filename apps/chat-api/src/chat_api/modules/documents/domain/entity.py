@@ -10,6 +10,13 @@ import uuid
 from core.domain import AggregateRoot, Entity
 from core.uuid7 import uuid7
 
+from chat_api.modules.documents.domain.value_objects import (
+    ContentHash,
+    Filename,
+    MimeType,
+    StorageUri,
+)
+
 
 class DocumentStatus(str, Enum):
     UPLOADED = "uploaded"
@@ -44,10 +51,10 @@ class IngestionJob(Entity[uuid.UUID]):
 class Document(AggregateRoot[uuid.UUID]):
     id: uuid.UUID = field(default_factory=uuid7)
     workspace_id: uuid.UUID
-    filename: str
-    storage_uri: str
-    content_hash: str
-    mime_type: str = "application/pdf"
+    filename: Filename
+    storage_uri: StorageUri
+    content_hash: ContentHash
+    mime_type: MimeType = field(default_factory=lambda: MimeType("application/pdf"))
     file_size: int = 0
     status: DocumentStatus = DocumentStatus.QUEUED
     error_code: str | None = None

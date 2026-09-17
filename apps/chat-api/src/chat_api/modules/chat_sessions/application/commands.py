@@ -7,6 +7,7 @@ from typing import Any
 import uuid
 
 from chat_api.modules.chat_sessions.application.dtos import SessionDTO
+from chat_api.modules.chat_sessions.application.mapper import SessionMapper
 from chat_api.modules.chat_sessions.domain.entity import ChatSession
 from chat_api.shared.auth import (
     CurrentPrincipal,
@@ -64,16 +65,7 @@ class CreateSessionHandler:
         self.uow.sessions.save(session)
         self.uow.track(session)
 
-        return SessionDTO(
-            id=session.id,
-            workspace_id=session.workspace_id,
-            user_id=session.user_id,
-            title=session.title,
-            rag_config=session.rag_config,
-            attached_document_ids=session.attached_document_ids,
-            created_at=session.created_at,
-            updated_at=session.updated_at,
-        )
+        return SessionMapper.to_dto(session)
 
 
 @dataclass(frozen=True)
@@ -121,16 +113,7 @@ class AttachDocumentHandler:
         self.uow.sessions.save(session)
         self.uow.track(session)
 
-        return SessionDTO(
-            id=session.id,
-            workspace_id=session.workspace_id,
-            user_id=session.user_id,
-            title=session.title,
-            rag_config=session.rag_config,
-            attached_document_ids=session.attached_document_ids,
-            created_at=session.created_at,
-            updated_at=session.updated_at,
-        )
+        return SessionMapper.to_dto(session)
 
 
 @dataclass(frozen=True)

@@ -1,20 +1,15 @@
-"""Document application events and their in-process handlers."""
+"""Document application event handlers.
+
+Handlers react to domain events and orchestrate side-effects such as
+enqueueing background jobs.  The domain events themselves are defined in
+``documents.domain.events``.
+"""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-import uuid
-
+from chat_api.modules.documents.domain.events import DocumentIngestionRequested
 from chat_api.shared.bus import event_handler
 from core.queue import IngestionQueuePort
-
-
-@dataclass(frozen=True)
-class DocumentIngestionRequested:
-    document_id: uuid.UUID
-    job_id: uuid.UUID
-    storage_uri: str
-    workspace_id: uuid.UUID
 
 
 @event_handler(DocumentIngestionRequested)

@@ -13,6 +13,12 @@ from chat_api.modules.documents.domain.entity import (
     IngestionStatus,
 )
 from chat_api.modules.documents.domain.repository import DocumentRepository
+from chat_api.modules.documents.domain.value_objects import (
+    ContentHash,
+    Filename,
+    MimeType,
+    StorageUri,
+)
 from chat_api.modules.documents.infrastructure.model import (
     Document as ORMDocument,
     IngestionJob as ORMJob,
@@ -33,12 +39,12 @@ class SqlAlchemyDocumentRepository(DocumentRepository):
             return None
         return self._to_domain(orm)
 
-    def get_by_content_hash(self, workspace_id: uuid.UUID, content_hash: str) -> DomainDocument | None:
+    def get_by_content_hash(self, workspace_id: uuid.UUID, content_hash: ContentHash) -> DomainDocument | None:
         orm = (
             self.session.query(ORMDocument)
             .filter(
                 ORMDocument.workspace_id == workspace_id,
-                ORMDocument.content_hash == content_hash,
+                ORMDocument.content_hash == str(content_hash),
                 ORMDocument.deleted_at.is_(None),
             )
             .first()
@@ -90,10 +96,10 @@ class SqlAlchemyDocumentRepository(DocumentRepository):
             orm = ORMDocument(
                 id=document.id,
                 workspace_id=document.workspace_id,
-                filename=document.filename,
-                storage_uri=document.storage_uri,
-                content_hash=document.content_hash,
-                mime_type=document.mime_type,
+                filename=str(document.filename),
+                storage_uri=str(document.storage_uri),
+                content_hash=str(document.content_hash),
+                mime_type=str(document.mime_type),
                 file_size=document.file_size,
                 status=status_val,
                 error_code=document.error_code,
@@ -104,7 +110,7 @@ class SqlAlchemyDocumentRepository(DocumentRepository):
             )
             self.session.add(orm)
         else:
-            orm.filename = document.filename
+            orm.filename = str(document.filename)
             orm.status = status_val
             orm.error_code = document.error_code
             orm.error_message = document.error_message
@@ -169,10 +175,10 @@ class SqlAlchemyDocumentRepository(DocumentRepository):
         return DomainDocument(
             id=orm.id,
             workspace_id=orm.workspace_id,
-            filename=orm.filename,
-            storage_uri=orm.storage_uri,
-            content_hash=orm.content_hash,
-            mime_type=orm.mime_type,
+            filename=Filename(orm.filename),
+            storage_uri=StorageUri(orm.storage_uri),
+            content_hash=ContentHash(orm.content_hash),
+            mime_type=MimeType(orm.mime_type),
             file_size=orm.file_size,
             status=status,
             error_code=orm.error_code,

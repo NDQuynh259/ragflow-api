@@ -6,11 +6,13 @@ from dataclasses import dataclass
 import time
 import uuid
 
-from chat_api.modules.messages.application.dtos import CitationDTO, MessageDTO
+from chat_api.modules.messages.application.dtos import MessageDTO
+from chat_api.modules.messages.application.mapper import MessageMapper
 from chat_api.modules.messages.domain.entity import Message, MessageRole
 from chat_api.shared.auth import CurrentPrincipal, Permission, require_session_access
 from chat_api.shared.bus import Command, authorization_handler, command_handler
 from chat_api.shared.database import UnitOfWork
+from chat_api.shared.exceptions import EntityNotFoundException
 from chat_api.shared.rag import RAGEnginePort
 from chat_api.shared.uuid7 import uuid7
 
@@ -103,26 +105,4 @@ class SendMessageHandler:
         self.uow.messages.save(assistant_msg)
         self.uow.track(user_msg, assistant_msg)
 
-        return MessageDTO(
-            id=assistant_msg.id,
-            session_id=assistant_msg.session_id,
-            role=assistant_msg.role.value,
-            content=assistant_msg.content,
-            prompt_tokens=assistant_msg.prompt_tokens,
-            completion_tokens=assistant_msg.completion_tokens,
-            latency_ms=assistant_msg.latency_ms,
-            citations=[
-                CitationDTO(
-                    id=cit.id,
-                    message_id=cit.message_id,
-                    chunk_id=cit.chunk_id,
-                    document_id=cit.document_id,
-                    page_number=cit.page_number,
-                    bbox=cit.bbox,
-                    quote=cit.quote,
-                    relevance_score=cit.relevance_score,
-                )
-                for cit in assistant_msg.citations
-            ],
-            created_at=assistant_msg.created_at,
-        )
+        return MessageMapper.to_dto(assistant_msg)
