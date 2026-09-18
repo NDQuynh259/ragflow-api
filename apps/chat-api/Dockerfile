@@ -14,14 +14,14 @@ COPY packages/rag-contracts/pyproject.toml ./packages/rag-contracts/
 COPY packages/rag-core/pyproject.toml ./packages/rag-core/
 COPY packages/rag-document-pipeline/pyproject.toml ./packages/rag-document-pipeline/
 COPY apps/chat-api/pyproject.toml ./apps/chat-api/
-COPY workers/document-worker/pyproject.toml ./workers/document-worker/
+COPY apps/worker/pyproject.toml ./apps/worker/
 
 RUN uv sync --frozen --no-install-project --no-dev
 
 COPY core/ ./core/
 COPY packages/ ./packages/
 COPY apps/chat-api/ ./apps/chat-api/
-COPY workers/document-worker/ ./workers/document-worker/
+COPY apps/worker/ ./apps/worker/
 COPY migrations/ ./migrations/
 COPY alembic.ini ./
 

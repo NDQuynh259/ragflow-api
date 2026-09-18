@@ -1,0 +1,355 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradients -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090d16"/>
+      <stop offset="50%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#0a0f1d"/>
+    </linearGradient>
+
+    <!-- Card Gradients -->
+    <linearGradient id="producerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0f2b48" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#0b1b2d" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="brokerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3b200b" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#1f1107" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="workerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0d3326" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#071e16" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="storageGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#241442" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#130b24" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="dlqGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3d141e" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#210a10" stop-opacity="0.95"/>
+    </linearGradient>
+
+    <!-- Inner Node Gradients -->
+    <linearGradient id="nodeBlue" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+    <linearGradient id="nodeOrange" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+    <linearGradient id="nodeGreen" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="nodePurple" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#6d28d9"/>
+    </linearGradient>
+
+    <!-- Filters & Shadows -->
+    <filter id="glowBlue" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0ea5e9" flood-opacity="0.3"/>
+    </filter>
+    <filter id="glowOrange" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#f97316" flood-opacity="0.35"/>
+    </filter>
+    <filter id="glowGreen" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#10b981" flood-opacity="0.3"/>
+    </filter>
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+
+    <!-- Arrow Markers -->
+    <marker id="arrowBlue" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#38bdf8"/>
+    </marker>
+    <marker id="arrowOrange" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#fb923c"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#34d399"/>
+    </marker>
+    <marker id="arrowRed" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#f87171"/>
+    </marker>
+    <marker id="arrowPurple" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#a78bfa"/>
+    </marker>
+  </defs>
+
+  <style>
+    .title-text { font-family: 'Segoe UI', Inter, -apple-system, sans-serif; font-size: 22px; font-weight: 700; fill: #ffffff; letter-spacing: 0.5px; }
+    .subtitle-text { font-family: 'Segoe UI', Inter, -apple-system, sans-serif; font-size: 13px; fill: #94a3b8; }
+    .card-title { font-family: 'Segoe UI', Inter, -apple-system, sans-serif; font-size: 15px; font-weight: 700; }
+    .card-subtitle { font-family: 'Segoe UI', Inter, -apple-system, sans-serif; font-size: 11px; fill: #94a3b8; }
+    .node-title { font-family: 'Segoe UI', Inter, -apple-system, sans-serif; font-size: 13px; font-weight: 600; fill: #ffffff; }
+    .node-detail { font-family: 'Segoe UI', Inter, -apple-system, sans-serif; font-size: 11px; fill: #cbd5e1; }
+    .badge-text { font-family: 'Segoe UI', Inter, -apple-system, sans-serif; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .path-label { font-family: 'Segoe UI', Inter, -apple-system, sans-serif; font-size: 11px; font-weight: 600; fill: #e2e8f0; }
+    .code-text { font-family: 'Fira Code', Consolas, monospace; font-size: 10px; }
+  </style>
+
+  <!-- Background Canvas -->
+  <rect width="1280" height="720" rx="16" fill="url(#bgGrad)"/>
+  
+  <!-- Subtle Grid Pattern -->
+  <g opacity="0.08">
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#ffffff" stroke-width="1"/>
+    </pattern>
+    <rect width="1280" height="720" fill="url(#grid)"/>
+  </g>
+
+  <!-- ==================== HEADER BAR ==================== -->
+  <g transform="translate(40, 24)">
+    <!-- Main Title -->
+    <text class="title-text" x="0" y="24">RAG Platform • RabbitMQ Asynchronous Architecture</text>
+    <text class="subtitle-text" x="0" y="44">Kiến trúc hàng đợi phân tán cho Document Pipeline: Tách rời Web API &amp; Worker bất đồng bộ</text>
+
+    <!-- Header Badges -->
+    <g transform="translate(740, 6)">
+      <!-- Badge 1: AMQP -->
+      <rect x="0" y="0" width="105" height="24" rx="12" fill="#0369a1" fill-opacity="0.3" stroke="#0ea5e9" stroke-width="1"/>
+      <text class="badge-text" x="52" y="16" text-anchor="middle" fill="#38bdf8">AMQP 0-9-1</text>
+
+      <!-- Badge 2: Prefetch -->
+      <rect x="115" y="0" width="115" height="24" rx="12" fill="#15803d" fill-opacity="0.3" stroke="#22c55e" stroke-width="1"/>
+      <text class="badge-text" x="172" y="16" text-anchor="middle" fill="#4ade80">PREFETCH = 1</text>
+
+      <!-- Badge 3: Durability -->
+      <rect x="240" y="0" width="115" height="24" rx="12" fill="#b45309" fill-opacity="0.3" stroke="#f59e0b" stroke-width="1"/>
+      <text class="badge-text" x="297" y="16" text-anchor="middle" fill="#fcd34d">PERSISTENT</text>
+
+      <!-- Badge 4: DLQ Protected -->
+      <rect x="365" y="0" width="95" height="24" rx="12" fill="#be123c" fill-opacity="0.3" stroke="#f43f5e" stroke-width="1"/>
+      <text class="badge-text" x="412" y="16" text-anchor="middle" fill="#fda4af">DLQ READY</text>
+    </g>
+  </g>
+
+  <!-- ==================== ZONE 1: PRODUCER (chat-api) ==================== -->
+  <g transform="translate(40, 95)" filter="url(#cardShadow)">
+    <rect width="280" height="420" rx="14" fill="url(#producerGrad)" stroke="#0284c7" stroke-width="1.5"/>
+    
+    <!-- Card Header -->
+    <rect x="16" y="16" width="34" height="34" rx="8" fill="#0284c7" fill-opacity="0.3"/>
+    <text x="33" y="38" text-anchor="middle" font-size="18">🌐</text>
+    <text class="card-title" x="60" y="32" fill="#38bdf8">PRODUCER</text>
+    <text class="card-subtitle" x="60" y="48">apps/chat-api (FastAPI)</text>
+
+    <!-- Client Request Badge -->
+    <g transform="translate(20, 68)">
+      <rect width="240" height="60" rx="8" fill="#0b1b2d" stroke="#1e3a5f" stroke-width="1"/>
+      <text class="node-title" x="14" y="24">Client Upload Request</text>
+      <text class="code-text" x="14" y="44" fill="#38bdf8">POST /api/v1/documents</text>
+    </g>
+
+    <!-- Handlers Inside API -->
+    <g transform="translate(20, 142)">
+      <rect width="240" height="76" rx="8" fill="#0b1b2d" stroke="#1e3a5f" stroke-width="1"/>
+      <text class="node-title" x="14" y="22">Command Handler</text>
+      <text class="node-detail" x="14" y="40">1. Lưu file qua LocalStorage</text>
+      <text class="node-detail" x="14" y="58">2. Tạo IngestionJob (status: queued)</text>
+    </g>
+
+    <!-- Publisher Adapter -->
+    <g transform="translate(20, 234)">
+      <rect width="240" height="96" rx="8" fill="url(#nodeBlue)" filter="url(#glowBlue)"/>
+      <text class="node-title" x="14" y="24">RabbitMQQueueAdapter</text>
+      <text class="node-detail" x="14" y="44" fill="#e0f2fe">• Thư viện: pika (AMQP client)</text>
+      <text class="node-detail" x="14" y="62" fill="#e0f2fe">• Delivery Mode: 2 (Persistent)</text>
+      <text class="node-detail" x="14" y="80" fill="#e0f2fe">• Exchange: rag.direct</text>
+    </g>
+
+    <!-- Immediate Response -->
+    <g transform="translate(20, 346)">
+      <rect width="240" height="52" rx="8" fill="#047857" fill-opacity="0.25" stroke="#10b981" stroke-width="1"/>
+      <text class="node-title" x="14" y="22" fill="#34d399">⚡ Fast HTTP Response</text>
+      <text class="node-detail" x="14" y="40" fill="#a7f3d0">HTTP 201 Created (&lt; 50ms)</text>
+    </g>
+  </g>
+
+  <!-- ==================== ZONE 2: RABBITMQ BROKER ==================== -->
+  <g transform="translate(360, 95)" filter="url(#cardShadow)">
+    <rect width="400" height="590" rx="14" fill="url(#brokerGrad)" stroke="#ea580c" stroke-width="1.5"/>
+    
+    <!-- Card Header -->
+    <rect x="16" y="16" width="34" height="34" rx="8" fill="#f97316" fill-opacity="0.3"/>
+    <text x="33" y="39" text-anchor="middle" font-size="18">🐰</text>
+    <text class="card-title" x="60" y="32" fill="#fb923c">RABBITMQ BROKER</text>
+    <text class="card-subtitle" x="60" y="48">rabbitmq:3.13-management (Docker :5672/:15672)</text>
+
+    <!-- 1. Direct Exchange -->
+    <g transform="translate(30, 68)">
+      <rect width="340" height="76" rx="10" fill="url(#nodeOrange)" filter="url(#glowOrange)"/>
+      <text class="node-title" x="20" y="28">Direct Exchange: rag.direct</text>
+      <text class="node-detail" x="20" y="48" fill="#ffedd5">Type: direct  |  Durable: True</text>
+      <text class="code-text" x="20" y="64" fill="#fef3c7">Routing Key: document.ingestion</text>
+    </g>
+
+    <!-- Arrow Down from Exchange to Primary Queue -->
+    <path d="M 200 144 L 200 178" stroke="#fb923c" stroke-width="2.5" stroke-dasharray="4,3" marker-end="url(#arrowOrange)"/>
+    <rect x="135" y="152" width="130" height="18" rx="9" fill="#1f1107" stroke="#ea580c" stroke-width="0.8"/>
+    <text class="code-text" x="200" y="165" text-anchor="middle" fill="#fed7aa">document.ingestion</text>
+
+    <!-- 2. Primary Queue -->
+    <g transform="translate(30, 180)">
+      <rect width="340" height="110" rx="10" fill="#2a1408" stroke="#f97316" stroke-width="1.5"/>
+      <text class="node-title" x="20" y="28" fill="#fdba74">Primary Queue: rag.document.ingestion</text>
+      <text class="node-detail" x="20" y="48" fill="#cbd5e1">• Durable: True (Ghi đĩa an toàn)</text>
+      <text class="node-detail" x="20" y="66" fill="#cbd5e1">• Consumer Prefetch: 1 (Fair Dispatch)</text>
+      <text class="code-text" x="20" y="86" fill="#f87171">x-dead-letter-exchange: rag.direct.dlx</text>
+      <text class="code-text" x="20" y="100" fill="#f87171">x-dead-letter-routing-key: document.ingestion.dlq</text>
+    </g>
+
+    <!-- Divider to Dead Letter Area -->
+    <line x1="30" y1="316" x2="370" y2="316" stroke="#4a2210" stroke-width="1" stroke-dasharray="6,4"/>
+    <text class="badge-text" x="200" y="332" text-anchor="middle" fill="#f87171">DEAD LETTER MECHANISM (KHI LỖI / NACK)</text>
+
+    <!-- Arrow from Primary Queue to DLX -->
+    <path d="M 200 290 L 200 348" stroke="#f43f5e" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#arrowRed)"/>
+
+    <!-- 3. Dead Letter Exchange (DLX) -->
+    <g transform="translate(30, 350)">
+      <rect width="340" height="74" rx="10" fill="#4c0519" stroke="#f43f5e" stroke-width="1.5"/>
+      <text class="node-title" x="20" y="28" fill="#fda4af">DLX: rag.direct.dlx</text>
+      <text class="node-detail" x="20" y="48" fill="#fecdd3">Type: direct  |  Durable: True</text>
+      <text class="code-text" x="20" y="64" fill="#ffe4e6">Routing Key: document.ingestion.dlq</text>
+    </g>
+
+    <!-- Arrow Down from DLX to DLQ -->
+    <path d="M 200 424 L 200 458" stroke="#f43f5e" stroke-width="2.5" stroke-dasharray="4,3" marker-end="url(#arrowRed)"/>
+
+    <!-- 4. Dead Letter Queue (DLQ) -->
+    <g transform="translate(30, 460)">
+      <rect width="340" height="106" rx="10" fill="url(#dlqGrad)" stroke="#f43f5e" stroke-width="1.5"/>
+      <text class="node-title" x="20" y="28" fill="#fca5a5">DLQ: rag.document.ingestion.dlq</text>
+      <text class="node-detail" x="20" y="48" fill="#fecaca">• Lưu trữ toàn bộ payload job bị lỗi</text>
+      <text class="node-detail" x="20" y="66" fill="#fecaca">• Giữ nguyên bản để Replay / Audit</text>
+      <text class="node-detail" x="20" y="86" fill="#fca5a5">• Quản trị qua Web UI: http://localhost:15672</text>
+    </g>
+  </g>
+
+  <!-- ==================== ZONE 3: CONSUMER (document-worker) ==================== -->
+  <g transform="translate(800, 95)" filter="url(#cardShadow)">
+    <rect width="440" height="420" rx="14" fill="url(#workerGrad)" stroke="#10b981" stroke-width="1.5"/>
+    
+    <!-- Card Header -->
+    <rect x="16" y="16" width="34" height="34" rx="8" fill="#10b981" fill-opacity="0.3"/>
+    <text x="33" y="38" text-anchor="middle" font-size="18">⚙️</text>
+    <text class="card-title" x="60" y="32" fill="#34d399">CONSUMER WORKER</text>
+    <text class="card-subtitle" x="60" y="48">apps/worker (Python 3.13)</text>
+
+    <!-- aio-pika Async Consumer Node -->
+    <g transform="translate(20, 68)">
+      <rect width="400" height="74" rx="8" fill="url(#nodeGreen)" filter="url(#glowGreen)"/>
+      <text class="node-title" x="16" y="26">aio-pika Robust Async Consumer</text>
+      <text class="node-detail" x="16" y="46" fill="#d1fae5">• connect_robust() (Tự động kết nối lại khi rớt mạng)</text>
+      <text class="node-detail" x="16" y="64" fill="#d1fae5">• channel.set_qos(prefetch_count=1) (Không quá tải RAM)</text>
+    </g>
+
+    <!-- Pipeline Executor -->
+    <g transform="translate(20, 154)">
+      <rect width="400" height="128" rx="8" fill="#062319" stroke="#059669" stroke-width="1"/>
+      <text class="node-title" x="16" y="24" fill="#6ee7b7">process_index_document (Thread Offload)</text>
+      
+      <!-- Steps -->
+      <g transform="translate(16, 36)">
+        <rect x="0" y="0" width="18" height="18" rx="4" fill="#047857"/>
+        <text class="badge-text" x="9" y="13" text-anchor="middle" fill="#ffffff">1</text>
+        <text class="node-detail" x="26" y="14">LocalStorageAdapter.get() (Đọc file PDF / Docx)</text>
+
+        <rect x="0" y="24" width="18" height="18" rx="4" fill="#047857"/>
+        <text class="badge-text" x="9" y="37" text-anchor="middle" fill="#ffffff">2</text>
+        <text class="node-detail" x="26" y="38">DocumentPipeline (OpenDataLoader + HeadingChunker)</text>
+
+        <rect x="0" y="48" width="18" height="18" rx="4" fill="#047857"/>
+        <text class="badge-text" x="9" y="61" text-anchor="middle" fill="#ffffff">3</text>
+        <text class="node-detail" x="26" y="62">RAGEngine (Gemini Embeddings + PgVector Store)</text>
+
+        <rect x="0" y="72" width="18" height="18" rx="4" fill="#047857"/>
+        <text class="badge-text" x="9" y="85" text-anchor="middle" fill="#ffffff">4</text>
+        <text class="node-detail" x="26" y="86">Update Status DB: document = ready, job = completed</text>
+      </g>
+    </g>
+
+    <!-- Ack & Nack Resolution Badges -->
+    <g transform="translate(20, 296)">
+      <!-- Happy Path ACK -->
+      <g transform="translate(0, 0)">
+        <rect width="192" height="106" rx="8" fill="#064e3b" stroke="#10b981" stroke-width="1.5"/>
+        <text class="node-title" x="14" y="26" fill="#6ee7b7">✅ Thành công: ACK</text>
+        <text class="code-text" x="14" y="46" fill="#a7f3d0">await message.ack()</text>
+        <text class="node-detail" x="14" y="68">• Xóa message khỏi Queue</text>
+        <text class="node-detail" x="14" y="86">• Sẵn sàng nhận job kế</text>
+      </g>
+
+      <!-- Failure Path NACK -->
+      <g transform="translate(208, 0)">
+        <rect width="192" height="106" rx="8" fill="#4c0519" stroke="#f43f5e" stroke-width="1.5"/>
+        <text class="node-title" x="14" y="26" fill="#fda4af">❌ Thất bại: NACK</text>
+        <text class="code-text" x="14" y="46" fill="#fecdd3">message.nack(requeue=F)</text>
+        <text class="node-detail" x="14" y="68">• RabbitMQ đẩy sang DLQ</text>
+        <text class="node-detail" x="14" y="86">• Ghi error_details vào DB</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== ZONE 4: STORAGE & DATABASE ==================== -->
+  <g transform="translate(800, 532)" filter="url(#cardShadow)">
+    <rect width="440" height="153" rx="14" fill="url(#storageGrad)" stroke="#8b5cf6" stroke-width="1.5"/>
+    
+    <rect x="16" y="16" width="34" height="34" rx="8" fill="#8b5cf6" fill-opacity="0.3"/>
+    <text x="33" y="38" text-anchor="middle" font-size="18">🗄️</text>
+    <text class="card-title" x="60" y="32" fill="#c4b5fd">PERSISTENCE STORAGE</text>
+    <text class="card-subtitle" x="60" y="48">PostgreSQL 16 (pgvector) &amp; Local Storage Adapter</text>
+
+    <!-- Sub boxes -->
+    <g transform="translate(20, 68)">
+      <rect width="192" height="66" rx="8" fill="#180d2e" stroke="#6d28d9" stroke-width="1"/>
+      <text class="node-title" x="12" y="24" fill="#a78bfa">PostgreSQL + pgvector</text>
+      <text class="node-detail" x="12" y="42">• Tables: documents, jobs</text>
+      <text class="node-detail" x="12" y="58">• Schema: vector_store_v2</text>
+    </g>
+
+    <g transform="translate(228, 68)">
+      <rect width="192" height="66" rx="8" fill="#180d2e" stroke="#6d28d9" stroke-width="1"/>
+      <text class="node-title" x="12" y="24" fill="#a78bfa">LocalStorageAdapter</text>
+      <text class="node-detail" x="12" y="42">• Đường dẫn: ./storage/</text>
+      <text class="node-detail" x="12" y="58">• Tách biệt URI tài liệu</text>
+    </g>
+  </g>
+
+  <!-- ==================== INTER-ZONE CONNECTION PATHS ==================== -->
+
+  <!-- Path 1: Producer to Broker (Publish) -->
+  <g>
+    <path d="M 320 376 L 390 376 L 390 170" fill="none" stroke="#38bdf8" stroke-width="2.5" marker-end="url(#arrowOrange)"/>
+    <rect x="312" y="295" width="80" height="36" rx="6" fill="#0b1b2d" stroke="#0ea5e9" stroke-width="1"/>
+    <text class="badge-text" x="352" y="310" text-anchor="middle" fill="#38bdf8">PUBLISH</text>
+    <text class="code-text" x="352" y="324" text-anchor="middle" fill="#93c5fd">mode=2</text>
+  </g>
+
+  <!-- Path 2: Queue to Worker (Dispatch) -->
+  <g>
+    <path d="M 730 235 L 800 235" fill="none" stroke="#34d399" stroke-width="2.5" marker-end="url(#arrowGreen)"/>
+    <rect x="735" y="205" width="70" height="24" rx="6" fill="#071e16" stroke="#10b981" stroke-width="1"/>
+    <text class="badge-text" x="770" y="221" text-anchor="middle" fill="#34d399">DISPATCH</text>
+  </g>
+
+  <!-- Path 3: Worker ACK back to Queue -->
+  <g>
+    <path d="M 820 402 L 770 402 L 770 270 L 730 270" fill="none" stroke="#34d399" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#arrowGreen)"/>
+    <rect x="740" y="330" width="60" height="20" rx="4" fill="#064e3b" stroke="#10b981" stroke-width="0.8"/>
+    <text class="code-text" x="770" y="344" text-anchor="middle" fill="#a7f3d0">ack()</text>
+  </g>
+
+  <!-- Path 4: Worker NACK back to RabbitMQ DLX -->
+  <g>
+    <path d="M 1008 402 L 1008 445 L 730 445" fill="none" stroke="#f43f5e" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#arrowRed)"/>
+    <rect x="850" y="435" width="110" height="20" rx="4" fill="#4c0519" stroke="#f43f5e" stroke-width="0.8"/>
+    <text class="code-text" x="905" y="449" text-anchor="middle" fill="#fecdd3">nack(requeue=F)</text>
+  </g>
+
+</svg>

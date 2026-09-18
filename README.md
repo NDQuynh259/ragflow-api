@@ -15,9 +15,8 @@ RAG/
 │   ├── rag-document-pipeline/      # Parsing & Chunking (OpenDataLoader, Docling, Heading-aware)
 │   └── rag-core/                   # Embeddings (Gemini, Cohere, OpenAI), Vector Indexing, Hybrid Retrieval
 ├── apps/
-│   └── chat-api/                   # FastAPI Web API (Auth, Sessions, Workspaces, Documents, Chat)
-├── workers/
-│   └── document-worker/            # Async background processing worker
+│   ├── chat-api/                   # FastAPI Web API (Auth, Sessions, Workspaces, Documents, Chat)
+│   └── worker/                     # Async background processing worker
 ├── migrations/                     # Alembic database schema migrations
 ├── deploy/                         # Production & Development Docker Compose configurations
 ├── docs/                           # Architecture docs, specifications, openapi.json
@@ -67,25 +66,28 @@ cp .env.example .env
 
 ### 3. Start Database & Run Migrations
 ```bash
-# Start PostgreSQL pgvector container
-docker compose -f deploy/docker-compose.yml up -d postgres
+# Start PostgreSQL pgvector & RabbitMQ containers
+docker compose -f deploy/docker-compose.yml up -d postgres rabbitmq
 
 # Apply database migrations
 uv run poe migrate
 ```
 
-### 4. Start Development Server
+### 4. Start Development Server & Background Worker
 ```bash
-# Option A: Using Poe task runner
+# Start Web API:
 uv run poe dev
+# or: .\scripts\dev.ps1 -WithDb
 
-# Option B: Using Windows PowerShell convenience script (auto starts DB if needed)
-.\scripts\dev.ps1 -WithDb
+# Start Document Ingestion Worker:
+uv run poe worker
+# or: .\scripts\dev.ps1 -Worker
 ```
 
 - **API Base URL**: `http://127.0.0.1:8000`
 - **Interactive Swagger UI**: `http://127.0.0.1:8000/docs`
 - **Health Endpoint**: `http://127.0.0.1:8000/api/v1/health`
+- **RabbitMQ Web UI**: `http://127.0.0.1:15672` (Username: `guest`, Password: `guest`)
 
 ---
 
@@ -106,6 +108,7 @@ Use `uv run poe <command>` (or activate `.venv` and run `poe <command>`):
 | `poe typecheck` | Run Pyright static type checker across core and apps |
 | `poe migrate` | Apply latest Alembic database migrations |
 | `poe openapi` | Export OpenAPI specification to `docs/openapi.json` |
+| `poe worker` | Start RabbitMQ background document ingestion worker |
 
 ---
 

@@ -1,5 +1,5 @@
-# Multi-stage Dockerfile for Document Worker Service
-# Context must be root of repository: docker build -f workers/document-worker/Dockerfile .
+# Multi-stage Dockerfile for Worker Service
+# Context must be root of repository: docker build -f apps/worker/Dockerfile .
 
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS builder
 
@@ -14,13 +14,13 @@ COPY packages/rag-contracts/pyproject.toml ./packages/rag-contracts/
 COPY packages/rag-core/pyproject.toml ./packages/rag-core/
 COPY packages/rag-document-pipeline/pyproject.toml ./packages/rag-document-pipeline/
 COPY apps/chat-api/pyproject.toml ./apps/chat-api/
-COPY workers/document-worker/pyproject.toml ./workers/document-worker/
+COPY apps/worker/pyproject.toml ./apps/worker/
 
 RUN uv sync --frozen --no-install-project --no-dev
 
 COPY core/ ./core/
 COPY packages/ ./packages/
-COPY workers/document-worker/ ./workers/document-worker/
+COPY apps/worker/ ./apps/worker/
 
 RUN uv sync --frozen --no-dev
 
@@ -38,4 +38,4 @@ ENV PATH="/app/.venv/bin:$PATH" \
 
 USER appuser
 
-CMD ["python", "-m", "document_worker.main"]
+CMD ["python", "-m", "worker.main"]

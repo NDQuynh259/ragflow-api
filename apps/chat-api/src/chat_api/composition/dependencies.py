@@ -9,6 +9,7 @@ from __future__ import annotations
 
 # Ensure domain event handlers are registered to EventBus
 import chat_api.modules.documents.application.event_handlers  # noqa: F401
+from chat_api.config import settings
 from chat_api.modules.auth.domain.repository import UserSessionRepository
 from chat_api.modules.auth.infrastructure.repository import (
     SqlAlchemyUserSessionRepository,
@@ -35,8 +36,7 @@ from chat_api.modules.workspaces.infrastructure.repository import (
 )
 from chat_api.shared.infrastructure.database.uow import register_repository
 from chat_api.shared.infrastructure.rag import RAGEngineAdapter, RAGEnginePort
-from core.queue.background import BackgroundQueueAdapter
-from core.queue.port import IngestionQueuePort
+from core.queue import BackgroundQueueAdapter, IngestionQueuePort, RabbitMQQueueAdapter
 from core.storage.local import LocalStorageAdapter
 from core.storage.port import ObjectStoragePort
 
@@ -44,7 +44,9 @@ from core.storage.port import ObjectStoragePort
 # Singleton adapter instances (created once at import time)
 # ---------------------------------------------------------------------------
 _storage = LocalStorageAdapter()
-_queue = BackgroundQueueAdapter()
+_queue: IngestionQueuePort = (
+    RabbitMQQueueAdapter() if getattr(settings, "RABBITMQ_URL", None) else BackgroundQueueAdapter()
+)
 _rag_engine = RAGEngineAdapter()
 
 

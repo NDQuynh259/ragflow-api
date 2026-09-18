@@ -39,6 +39,26 @@ services:
       - rag_prod_net
     restart: "no"
 
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: rag_rabbitmq_prod
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    volumes:
+      - rabbitmq_data_prod:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rag_prod_net
+
   chat-api:
     build:
       context: ..
@@ -51,11 +71,14 @@ services:
       - ../.env
     environment:
       - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgrespassword}@postgres:5432/${POSTGRES_DB:-rag_db}
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672/
       - STORAGE_DIR=/app/output/storage
     volumes:
       - rag_storage_prod:/app/output/storage
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       migration:
         condition: service_completed_successfully
@@ -73,9 +96,40 @@ services:
           cpus: "2.0"
           memory: 2G
 
+  worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: rag_worker_prod
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgrespassword}@postgres:5432/${POSTGRES_DB:-rag_db}
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672/
+      - STORAGE_DIR=/app/output/storage
+    volumes:
+      - rag_storage_prod:/app/output/storage
+    command: ["python", "-m", "worker.main"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      migration:
+        condition: service_completed_successfully
+    networks:
+      - rag_prod_net
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 3G
+
 volumes:
   pgdata_prod:
   rag_storage_prod:
+  rabbitmq_data_prod:
 
 networks:
   rag_prod_net:

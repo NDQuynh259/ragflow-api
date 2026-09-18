@@ -29,6 +29,12 @@ class CoreSettings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     DEBUG: bool = False
 
+    # RabbitMQ Message Broker
+    RABBITMQ_URL: str = "amqp://guest:guest@localhost:5672/"
+    RABBITMQ_INGESTION_QUEUE: str = "rag.document.ingestion"
+    RABBITMQ_EXCHANGE: str = "rag.direct"
+    RABBITMQ_ROUTING_KEY: str = "document.ingestion"
+
 
 # Backward-compatible alias
 Settings = CoreSettings

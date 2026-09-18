@@ -8,19 +8,26 @@
 .PARAMETER Hostname
     Host binding for the server (default: 127.0.0.1).
 .PARAMETER WithDb
-    Automatically starts the PostgreSQL pgvector container if not running.
+    Automatically starts the PostgreSQL pgvector and RabbitMQ containers if not running.
+.PARAMETER Worker
+    Starts the document ingestion worker instead of the Web API.
 #>
 param(
     [int]$Port = 8000,
     [string]$Hostname = "127.0.0.1",
-    [switch]$WithDb
+    [switch]$WithDb,
+    [switch]$Worker
 )
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 
 Write-Host "====================================================" -ForegroundColor Cyan
-Write-Host "  RAG Platform - Local Development Server Startup  " -ForegroundColor Cyan
+if ($Worker) {
+    Write-Host "  RAG Platform - Background Worker Startup          " -ForegroundColor Cyan
+} else {
+    Write-Host "  RAG Platform - Local Development Server Startup  " -ForegroundColor Cyan
+}
 Write-Host "====================================================" -ForegroundColor Cyan
 
 # 1. Check & Copy .env if missing
@@ -41,19 +48,28 @@ if (-not (Test-Path $VenvPython)) {
     uv sync
 }
 
-# 3. Optional DB Container Check
+# 3. Optional DB & RabbitMQ Container Check
 if ($WithDb) {
-    Write-Host "[INFO] Checking PostgreSQL pgvector container..." -ForegroundColor Yellow
+    Write-Host "[INFO] Starting PostgreSQL pgvector & RabbitMQ containers..." -ForegroundColor Yellow
     $composeFile = Join-Path $RepoRoot "deploy\docker-compose.yml"
-    docker compose -f $composeFile up -d postgres
+    docker compose -f $composeFile up -d postgres rabbitmq
+    Write-Host "[INFO] RabbitMQ Web UI: http://localhost:15672 (user: guest / pass: guest)" -ForegroundColor Yellow
 }
 
-# 4. Start Development Server
-Write-Host "[INFO] Starting Chat API on http://${Hostname}:${Port}..." -ForegroundColor Green
-Write-Host "[INFO] Swagger Docs: http://${Hostname}:${Port}/docs" -ForegroundColor Green
-Write-Host "[INFO] Press Ctrl+C to stop the server." -ForegroundColor Gray
-Write-Host "----------------------------------------------------" -ForegroundColor Gray
-
 Set-Location $RepoRoot
-$Uvicorn = Join-Path $RepoRoot ".venv\Scripts\uvicorn.exe"
-& $Uvicorn "chat_api.main:app" --reload --host $Hostname --port $Port
+
+# 4. Start Worker or API
+if ($Worker) {
+    Write-Host "[INFO] Starting Background Worker..." -ForegroundColor Green
+    Write-Host "[INFO] Press Ctrl+C to stop the worker." -ForegroundColor Gray
+    Write-Host "----------------------------------------------------" -ForegroundColor Gray
+    $Poe = Join-Path $RepoRoot ".venv\Scripts\poe.exe"
+    & $Poe worker
+} else {
+    Write-Host "[INFO] Starting Chat API on http://${Hostname}:${Port}..." -ForegroundColor Green
+    Write-Host "[INFO] Swagger Docs: http://${Hostname}:${Port}/docs" -ForegroundColor Green
+    Write-Host "[INFO] Press Ctrl+C to stop the server." -ForegroundColor Gray
+    Write-Host "----------------------------------------------------" -ForegroundColor Gray
+    $Uvicorn = Join-Path $RepoRoot ".venv\Scripts\uvicorn.exe"
+    & $Uvicorn "chat_api.main:app" --reload --host $Hostname --port $Port
+}

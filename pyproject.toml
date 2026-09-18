@@ -10,7 +10,7 @@ members = [
     "packages/rag-document-pipeline",
     "packages/rag-core",
     "apps/chat-api",
-    "workers/document-worker",
+    "apps/worker",
     "core",
 ]
 
@@ -37,7 +37,7 @@ dev = [
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
-testpaths = ["packages", "tests", "apps", "workers", "core"]
+testpaths = ["packages", "tests", "apps", "core"]
 norecursedirs = ["scripts", "output", "outputs", "deploy", "docs", "migrations"]
 
 # ---------------------------------------------------------------------------
@@ -93,7 +93,7 @@ extraPaths = [
     "packages/rag-contracts/src",
     "packages/rag-core/src",
     "packages/rag-document-pipeline/src",
-    "workers/document-worker/src",
+    "apps/worker/src",
 ]
 typeCheckingMode = "basic"
 reportMissingImports = true
@@ -107,12 +107,13 @@ lint = "ruff check ."
 "lint:fix" = "ruff check --fix ."
 format = "ruff format ."
 "format:check" = "ruff format --check ."
-typecheck = "pyright core/src apps/chat-api/src packages/rag-contracts/src"
+typecheck = "pyright core/src apps/chat-api/src packages/rag-contracts/src apps/worker/src"
 test = "pytest"
 "test:cov" = "pytest --cov=apps/chat-api/src --cov=core/src --cov-report=term-missing"
 dev = "uvicorn chat_api.main:app --reload --port 8000"
 migrate = "alembic upgrade head"
 openapi = "python scripts/export_openapi.py"
+worker = "python -m worker.main"
 
 [tool.poe.tasks.check]
 sequence = ["lint", "format:check", "typecheck", "test"]

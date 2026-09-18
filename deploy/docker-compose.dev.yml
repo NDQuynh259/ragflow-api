@@ -18,6 +18,25 @@ services:
     networks:
       - rag_dev_net
 
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: rag_rabbitmq_dev
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data_dev:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rag_dev_net
+
   chat-api:
     build:
       context: ..
@@ -27,6 +46,7 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql+psycopg://postgres:postgrespassword@postgres:5432/rag_db
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
       - DEBUG=true
       - STORAGE_DIR=/app/output/storage
     volumes:
@@ -38,11 +58,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - rag_dev_net
 
 volumes:
   pgdata_dev:
+  rabbitmq_data_dev:
 
 networks:
   rag_dev_net:

@@ -7,7 +7,7 @@
     "packages/rag-core/src",
     "packages/rag-document-pipeline/src",
     "apps/chat-api/src",
-    "workers/document-worker/src"
+    "apps/worker/src"
   ],
   "exclude": [
     ".venv",
