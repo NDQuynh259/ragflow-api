@@ -18,7 +18,7 @@ from chat_api.shared.auth import (
 )
 from chat_api.modules.users.domain.entity import User
 from chat_api.shared.bus import CommandBus, QueryBus
-from chat_api.shared.database import get_uow
+from chat_api.shared.infrastructure.database import get_uow
 
 
 @pytest.fixture

@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import uuid
 
-from chat_api.shared.database.uow import UnitOfWork
+from chat_api.shared.infrastructure.database import UnitOfWork
 from core.auth import CurrentPrincipal, ExecutionContext
 from core.exceptions import ForbiddenException
 

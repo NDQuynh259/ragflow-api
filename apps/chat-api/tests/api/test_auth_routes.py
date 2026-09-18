@@ -2,7 +2,7 @@
 
 from fastapi.testclient import TestClient
 from chat_api.main import app
-from chat_api.shared.database import UnitOfWork, get_uow
+from chat_api.shared.infrastructure.database import UnitOfWork, get_uow
 
 
 def test_auth_full_session_flow(fake_uow):

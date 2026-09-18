@@ -1,10 +1,16 @@
-"""Shared presentation, application, and infrastructure components for chat-api."""
+"""Standardized Presentation DTOs, API Response envelopes, and Pagination."""
 
 from __future__ import annotations
 
-from chat_api.shared.presentation import (
+from chat_api.shared.presentation.dtos.api_response import (
     ApiResponse,
     ApiResponseDTO,
+    ResponseAPI,
+    ResponseAPIDTO,
+    json_api_error,
+    json_api_response,
+)
+from chat_api.shared.presentation.dtos.pagination import (
     CursorPaginatedData,
     CursorPaginatedResponse,
     CursorPaginationDTO,
@@ -18,16 +24,12 @@ from chat_api.shared.presentation import (
     PaginatedResponse,
     PaginationMeta,
     PaginationRequest,
-    ResponseAPI,
-    ResponseAPIDTO,
-    json_api_error,
-    json_api_response,
 )
 
 __all__ = [
     "ApiResponse",
-    "ApiResponseDTO",
     "ResponseAPI",
+    "ApiResponseDTO",
     "ResponseAPIDTO",
     "OffsetPaginationRequest",
     "OffsetPaginationParams",
@@ -36,9 +38,9 @@ __all__ = [
     "CursorPaginationRequest",
     "CursorPaginationParams",
     "CursorPaginationDTO",
+    "PaginationMeta",
     "PaginatedData",
     "PaginatedResponse",
-    "PaginationMeta",
     "CursorPaginationMeta",
     "CursorPaginatedData",
     "CursorPaginatedResponse",

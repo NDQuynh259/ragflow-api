@@ -5,7 +5,7 @@ from alembic import context
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
-from chat_api.shared.database.models import Base
+from chat_api.shared.infrastructure.database.models import Base
 
 # Load environment variables
 load_dotenv()

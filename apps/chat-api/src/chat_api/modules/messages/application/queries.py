@@ -7,10 +7,11 @@ import uuid
 
 from chat_api.modules.messages.application.dtos import MessageDTO
 from chat_api.modules.messages.application.mapper import MessageMapper
-from chat_api.shared.auth import CurrentPrincipal, require_session_access
+from chat_api.shared.auth import require_session_access
 from chat_api.shared.bus import Query, authorization_handler, query_handler
-from chat_api.shared.database import UnitOfWork
-from chat_api.shared.exceptions import EntityNotFoundException
+from chat_api.shared.infrastructure.database import UnitOfWork
+from core.auth import CurrentPrincipal
+from core.exceptions import EntityNotFoundException
 
 
 @dataclass(frozen=True)

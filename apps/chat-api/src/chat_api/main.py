@@ -16,10 +16,12 @@ from chat_api.modules.chat_sessions.presentation.router import (
     router as chat_sessions_router,
 )
 from chat_api.modules.workspaces.presentation import workspaces_router
-from chat_api.shared.config import settings
-from chat_api.shared.logging import setup_logging
-from chat_api.shared.middleware import register_exception_handlers
-from chat_api.shared.openapi import setup_openapi_3_0
+from chat_api.config import settings
+from core.logging import setup_logging
+from chat_api.shared.presentation import (
+    register_exception_handlers,
+    setup_openapi_3_0,
+)
 
 
 @asynccontextmanager

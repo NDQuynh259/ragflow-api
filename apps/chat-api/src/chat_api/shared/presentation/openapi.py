@@ -157,10 +157,11 @@ def setup_openapi_3_0(app: FastAPI) -> None:
     # Mount modern Scalar API Reference at /api/docs, /docs, and /scalar
 
     @app.get("/docs", include_in_schema=False)
-
     async def scalar_docs() -> HTMLResponse:
         return get_scalar_html(
             openapi_url=app.openapi_url or "/openapi.json",
             title=f"{app.title} - API Reference",
         )
 
+
+__all__ = ["downgrade_to_openapi_3_0", "get_scalar_html", "setup_openapi_3_0"]

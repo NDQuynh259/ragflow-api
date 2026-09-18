@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from chat_api.shared.exceptions import (
+from core.exceptions import (
     DomainException,
     DomainValidationException,
     EntityNotFoundException,
@@ -60,3 +60,6 @@ def register_exception_handlers(app: FastAPI) -> None:
             status_code=400,
             content={"error": exc.message, "details": exc.details},
         )
+
+
+__all__ = ["register_exception_handlers"]

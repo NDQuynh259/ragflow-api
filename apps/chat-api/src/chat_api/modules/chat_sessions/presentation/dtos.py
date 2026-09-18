@@ -7,7 +7,7 @@ from typing import Any
 import uuid
 from pydantic import BaseModel, Field
 
-from chat_api.shared.dtos import ApiResponse, PaginatedResponse
+from chat_api.shared.presentation import ApiResponse, PaginatedResponse
 
 
 class CreateSessionRequest(BaseModel):

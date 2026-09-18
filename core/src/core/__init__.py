@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from core.config import Settings, settings
+from core.config import CoreSettings, Settings, settings
 from core.exceptions import (
     DomainException,
     DomainValidationException,
@@ -25,6 +25,7 @@ __all__ = [
     "EntityNotFoundException",
     "ForbiddenException",
     "ResourceConflictException",
+    "CoreSettings",
     "Settings",
     "UnauthenticatedException",
     "UnauthorizedException",

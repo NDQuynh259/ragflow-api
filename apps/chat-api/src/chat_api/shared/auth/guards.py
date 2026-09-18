@@ -19,7 +19,7 @@ from chat_api.shared.auth.permissions import (
     Permission,
 )
 from chat_api.shared.bus import CommandBus, QueryBus
-from chat_api.shared.database.uow import UnitOfWork, get_uow
+from chat_api.shared.infrastructure.database import UnitOfWork, get_uow
 from core.exceptions import ForbiddenException, UnauthenticatedException
 
 bearer_scheme = HTTPBearer(auto_error=False)

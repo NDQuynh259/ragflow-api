@@ -124,10 +124,14 @@ class UnitOfWork(ABC):
         """Rollback the current transaction."""
         pass
 
-    @abstractmethod
     def get_repo(self, repo_cls: type[T]) -> T:
         """Dynamically resolve and return a repository bound to this transaction."""
-        pass
+        for alias, registered_cls in _REPO_ALIASES.items():
+            if registered_cls is repo_cls and hasattr(self, alias):
+                return getattr(self, alias)
+        raise NotImplementedError(
+            f"'{type(self).__name__}' does not implement 'get_repo' for '{repo_cls.__name__}'."
+        )
 
     def __getattr__(self, name: str) -> Any:
         """Fallback dynamic resolution for registered aliases (e.g. uow.documents)."""
@@ -169,7 +173,8 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
             elif callable(repo_cls):
                 # Fallback: if repo_cls can be directly instantiated with session
                 try:
-                    instance = repo_cls(self.session)
+                    repo_factory: Any = repo_cls
+                    instance = repo_factory(self.session)
                 except TypeError as err:
                     raise KeyError(
                         f"Repository '{repo_cls.__name__}' is not registered in the UnitOfWork registry "

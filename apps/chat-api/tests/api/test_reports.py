@@ -20,9 +20,10 @@ from chat_api.composition.reports.presentation.router import get_report_service
 from chat_api.main import app
 from chat_api.modules.auth.domain.entity import UserSession
 from chat_api.modules.users.domain.entity import User
-from chat_api.shared.auth import AuthContext, CurrentPrincipal, ExecutionContext, Permission, get_auth_context
+from core.auth import CurrentPrincipal, ExecutionContext
+from chat_api.shared.auth import AuthContext, Permission, get_auth_context
 from chat_api.shared.bus import CommandBus, QueryBus
-from chat_api.shared.database import get_uow
+from chat_api.shared.infrastructure.database import get_uow
 
 
 class MockReportService:

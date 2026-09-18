@@ -16,10 +16,13 @@ from chat_api.modules.users.domain.repository import UserRepository
 from chat_api.modules.workspaces.domain.entity import Workspace
 from chat_api.modules.workspaces.domain.repository import WorkspaceRepository
 from chat_api.shared.auth import Permission, get_permissions_for_role
-from chat_api.shared.database import UnitOfWork
-from chat_api.shared.rag import RAGEnginePort
+from chat_api.shared.infrastructure.database import UnitOfWork
+from chat_api.shared.infrastructure.rag import RAGEnginePort
 from core.queue import IngestionQueuePort
 from core.storage import ObjectStoragePort
+
+# Ensure domain event handlers are registered to EventBus
+import chat_api.modules.documents.application.event_handlers  # noqa: F401
 
 
 class InMemoryWorkspaceRepo(WorkspaceRepository):
@@ -188,6 +191,26 @@ class FakeUnitOfWork(UnitOfWork):
 
     def rollback(self) -> None:
         self.rollback_count += 1
+
+    def get_repo(self, repo_cls):
+        from chat_api.modules.documents.domain.repository import DocumentRepository
+        from chat_api.modules.chat_sessions.domain.repository import ChatSessionRepository
+        from chat_api.modules.messages.domain.repository import MessageRepository
+        from chat_api.modules.users.domain.repository import UserRepository
+        from chat_api.modules.workspaces.domain.repository import WorkspaceRepository
+        from chat_api.modules.auth.domain.repository import UserSessionRepository
+
+        mapping = {
+            DocumentRepository: self.documents,
+            ChatSessionRepository: self.chat_sessions,
+            MessageRepository: self.messages,
+            UserRepository: self.users,
+            WorkspaceRepository: self.workspaces,
+            UserSessionRepository: self.user_sessions,
+        }
+        if repo_cls in mapping:
+            return mapping[repo_cls]
+        return super().get_repo(repo_cls)
 
 
 class FakeStorage(ObjectStoragePort):

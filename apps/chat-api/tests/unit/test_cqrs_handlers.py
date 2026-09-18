@@ -25,10 +25,9 @@ from chat_api.modules.chat_sessions.application.queries import (
     GetSessionHandler,
     GetSessionQuery,
 )
-from chat_api.modules.workspaces.domain.entity import Workspace
+from chat_api.modules.workspaces.domain.entity import Workspace, WorkspaceMember, WorkspaceRole
 from chat_api.modules.users.domain.entity import User
-from chat_api.modules.workspaces.domain.entity import WorkspaceMember, WorkspaceRole
-from chat_api.shared.auth import CurrentPrincipal, ExecutionContext
+from core.auth import CurrentPrincipal, ExecutionContext
 from chat_api.shared.bus import CommandBus
 from core.exceptions import ForbiddenException
 from core.queue import IngestionQueuePort

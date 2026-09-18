@@ -7,13 +7,14 @@ from fastapi.testclient import TestClient
 
 from chat_api.main import app
 from chat_api.modules.auth.domain.entity import UserSession
-from chat_api.shared.auth import AuthContext, CurrentPrincipal, ExecutionContext, get_auth_context
+from core.auth import CurrentPrincipal, ExecutionContext
+from chat_api.shared.auth import AuthContext, get_auth_context
 from chat_api.modules.documents.presentation.router import get_queue, get_storage
 from chat_api.modules.messages.presentation.router import get_rag_engine
 from chat_api.modules.users.domain.entity import User
 from chat_api.modules.workspaces.domain.entity import Workspace, WorkspaceMember, WorkspaceRole
 from chat_api.shared.bus import CommandBus, QueryBus
-from chat_api.shared.database import get_uow
+from chat_api.shared.infrastructure.database import get_uow
 
 
 TEST_USER = User(email="api-user@test.com")

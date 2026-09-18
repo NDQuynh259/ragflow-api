@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 import uuid
 
 from chat_api.modules.auth.domain.entity import UserSession
-from chat_api.modules.auth.infrastructure.security import (
+from core.auth import (
     generate_session_token,
     verify_password,
 )
@@ -18,7 +18,7 @@ from chat_api.modules.workspaces.domain.entity import (
     WorkspaceRole,
 )
 from chat_api.shared.bus import Command, command_handler
-from chat_api.shared.database import UnitOfWork
+from chat_api.shared.infrastructure.database import UnitOfWork
 from core.exceptions import UnauthenticatedException
 
 DEFAULT_SESSION_DURATION_DAYS = 7

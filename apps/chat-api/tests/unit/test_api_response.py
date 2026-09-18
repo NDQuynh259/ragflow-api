@@ -104,8 +104,8 @@ def test_json_api_response_helpers():
     assert err_resp.status_code == 404
 
 
-def test_direct_shared_dtos_import():
-    from chat_api.shared.dtos import (
+def test_direct_shared_presentation_dtos_import():
+    from chat_api.shared.presentation.dtos import (
         ApiResponse as DirectApiResponse,
         ResponseAPI as DirectResponseAPI,
         PaginatedResponse as DirectPaginatedResponse,
@@ -122,7 +122,7 @@ def test_direct_shared_dtos_import():
 
 
 def test_offset_pagination_request_logic():
-    from chat_api.shared.dtos import OffsetPaginationRequest
+    from chat_api.shared.presentation.dtos import OffsetPaginationRequest
 
     # Default
     req_default = OffsetPaginationRequest()
@@ -144,7 +144,7 @@ def test_offset_pagination_request_logic():
 
 
 def test_cursor_pagination_request_and_response():
-    from chat_api.shared.dtos import (
+    from chat_api.shared.presentation.dtos import (
         CursorPaginationRequest,
         CursorPaginatedResponse,
     )

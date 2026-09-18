@@ -31,13 +31,15 @@ from chat_api.modules.workspaces.domain.repository import WorkspaceRepository
 from chat_api.modules.workspaces.infrastructure.repository import (
     SqlAlchemyWorkspaceRepository,
 )
-from chat_api.shared.database.uow import register_repository
-from chat_api.shared.rag.adapter import RAGEngineAdapter
-from chat_api.shared.rag.port import RAGEnginePort
+from chat_api.shared.infrastructure.database.uow import register_repository
+from chat_api.shared.infrastructure.rag import RAGEngineAdapter, RAGEnginePort
 from core.queue.background import BackgroundQueueAdapter
 from core.queue.port import IngestionQueuePort
 from core.storage.local import LocalStorageAdapter
 from core.storage.port import ObjectStoragePort
+
+# Ensure domain event handlers are registered to EventBus
+import chat_api.modules.documents.application.event_handlers  # noqa: F401
 
 # ---------------------------------------------------------------------------
 # Singleton adapter instances (created once at import time)

@@ -20,7 +20,7 @@ from chat_api.shared.auth import (
     auth_openapi,
 )
 from chat_api.composition.dependencies import get_rag_engine
-from chat_api.shared.rag.port import RAGEnginePort
+from chat_api.shared.infrastructure.rag.port import RAGEnginePort
 
 router = APIRouter(
     prefix="/chat-sessions/{session_id}/messages",

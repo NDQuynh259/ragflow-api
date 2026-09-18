@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from chat_api.shared.bus import Command, command_handler
-from chat_api.shared.database import UnitOfWork
+from chat_api.shared.infrastructure.database import UnitOfWork
 
 
 @dataclass(frozen=True)

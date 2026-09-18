@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from chat_api.modules.auth.infrastructure.security import hash_password
+from core.auth import hash_password
 from chat_api.modules.users.domain.entity import User
 from chat_api.modules.workspaces.domain.entity import (
     Workspace,
@@ -12,7 +12,7 @@ from chat_api.modules.workspaces.domain.entity import (
     WorkspaceRole,
 )
 from chat_api.shared.bus import Command, command_handler
-from chat_api.shared.database import UnitOfWork
+from chat_api.shared.infrastructure.database import UnitOfWork
 from core.exceptions import (
     DomainValidationException,
     ResourceConflictException,

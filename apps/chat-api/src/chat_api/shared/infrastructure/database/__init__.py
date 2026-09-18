@@ -11,7 +11,7 @@ from core.database import (
     engine,
     get_db,
 )
-from chat_api.shared.database.uow import (
+from chat_api.shared.infrastructure.database.uow import (
     SqlAlchemyUnitOfWork,
     UnitOfWork,
     get_uow,

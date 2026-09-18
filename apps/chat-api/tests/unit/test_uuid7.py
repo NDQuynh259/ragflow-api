@@ -3,7 +3,7 @@
 import time
 import uuid
 
-from chat_api.shared.uuid7 import uuid7, uuid7_str
+from core.uuid7 import uuid7, uuid7_str
 
 
 def test_uuid7_properties() -> None:

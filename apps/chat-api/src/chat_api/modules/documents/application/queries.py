@@ -15,8 +15,8 @@ from chat_api.shared.auth import (
     require_workspace_permission,
 )
 from chat_api.shared.bus import Query, authorization_handler, query_handler
-from chat_api.shared.database import UnitOfWork
-from chat_api.shared.exceptions import EntityNotFoundException
+from chat_api.shared.infrastructure.database import UnitOfWork
+from core.exceptions import EntityNotFoundException
 
 
 @dataclass(frozen=True)

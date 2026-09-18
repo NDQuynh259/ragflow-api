@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Generic, TypeVar
 from pydantic import BaseModel, ConfigDict, Field
 
-from chat_api.shared.dtos.api_response import ApiResponse
+from chat_api.shared.presentation.dtos.api_response import ApiResponse
 
 T = TypeVar("T")
 
@@ -192,3 +192,20 @@ class CursorPaginatedResponse(ApiResponse[CursorPaginatedData[T]], Generic[T]):
             ),
             error=None,
         )
+
+
+__all__ = [
+    "OffsetPaginationRequest",
+    "OffsetPaginationParams",
+    "OffsetPaginationDTO",
+    "PaginationRequest",
+    "PaginationMeta",
+    "PaginatedData",
+    "PaginatedResponse",
+    "CursorPaginationRequest",
+    "CursorPaginationParams",
+    "CursorPaginationDTO",
+    "CursorPaginationMeta",
+    "CursorPaginatedData",
+    "CursorPaginatedResponse",
+]

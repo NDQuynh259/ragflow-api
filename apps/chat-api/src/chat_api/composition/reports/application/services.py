@@ -11,7 +11,7 @@ from chat_api.composition.reports.application.dtos import (
     WorkspaceOverviewReportResponse,
 )
 from chat_api.composition.reports.infrastructure.queries import ReportQueryRepository
-from chat_api.shared.exceptions import EntityNotFoundException
+from core.exceptions import EntityNotFoundException
 
 
 class ReportService:

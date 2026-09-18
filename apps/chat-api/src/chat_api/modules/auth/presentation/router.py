@@ -28,7 +28,7 @@ from chat_api.modules.auth.presentation.dtos import (
     WorkspaceInfo,
 )
 from chat_api.shared.bus import CommandBusDep
-from chat_api.shared.config import settings
+from chat_api.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
