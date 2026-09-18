@@ -85,7 +85,7 @@ uv run poe dev
 
 - **API Base URL**: `http://127.0.0.1:8000`
 - **Interactive Swagger UI**: `http://127.0.0.1:8000/docs`
-- **Health Endpoint**: `http://127.0.0.1:8000/health`
+- **Health Endpoint**: `http://127.0.0.1:8000/api/v1/health`
 
 ---
 
@@ -158,7 +158,7 @@ docker compose -f deploy/docker-compose.prod.yml up -d --build
 - **Multi-stage Dockerfile**: Minimal image footprint using Astral UV caching.
 - **Non-root Execution**: Runs securely under unprivileged user `appuser:appgroup` (UID 10001).
 - **Automated Migration Runner**: Applies migrations before starting the web server.
-- **Health Checks**: Automated container health monitoring on `/health`.
+- **Health Checks**: Automated container health monitoring on `/api/v1/health`.
 - **Resource Constraints**: CPU and memory limits pre-configured.
 
 ---

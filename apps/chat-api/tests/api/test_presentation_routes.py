@@ -69,11 +69,14 @@ def client(fake_uow, fake_storage, fake_queue, fake_rag):
 
 def test_health_check(client):
     tc, _ = client
-    response = tc.get("/health")
+    response = tc.get("/api/v1/health")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
     assert "version" in data
+
+    # Verify un-prefixed /health is removed
+    assert tc.get("/health").status_code == 404
 
 
 def test_openapi_declares_route_permissions(client):

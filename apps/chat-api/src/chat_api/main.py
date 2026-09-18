@@ -57,8 +57,6 @@ app.add_middleware(
 register_exception_handlers(app)
 
 # Include module routers
-app.include_router(health_router)
-
 module_routers = [
     health_router,
     auth_router,
