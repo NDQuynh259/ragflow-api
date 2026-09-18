@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import uuid
+from datetime import UTC, datetime
+
 from sqlalchemy.orm import Session
 
 from chat_api.modules.chat_sessions.domain.entity import ChatSession as DomainSession
@@ -64,9 +65,7 @@ class SqlAlchemyChatSessionRepository(ChatSessionRepository):
 
         # Synchronize attached documents
         current_docs = (
-            self.session.query(ORMSessionDoc)
-            .filter(ORMSessionDoc.session_id == session.id)
-            .all()
+            self.session.query(ORMSessionDoc).filter(ORMSessionDoc.session_id == session.id).all()
         )
         current_doc_ids = {sd.document_id for sd in current_docs}
         target_doc_ids = set(session.attached_document_ids)
@@ -84,7 +83,7 @@ class SqlAlchemyChatSessionRepository(ChatSessionRepository):
         orm = self.session.query(ORMSession).filter(ORMSession.id == session_id).first()
         if not orm:
             return False
-        orm.deleted_at = datetime.now(timezone.utc)
+        orm.deleted_at = datetime.now(UTC)
         return True
 
     def _to_domain(self, orm: ORMSession) -> DomainSession:

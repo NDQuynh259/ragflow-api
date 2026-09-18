@@ -13,10 +13,10 @@ from rag_contracts import (
     TableData,
 )
 
-
 # ---------------------------------------------------------------------------
 # Pipeline outputs
 # ---------------------------------------------------------------------------
+
 
 class ProcessedDocument(BaseModel):
     """Final output of the document pipeline."""

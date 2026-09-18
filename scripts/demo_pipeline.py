@@ -140,12 +140,12 @@ def main() -> int:
         # ------------------------------------------------------------------
         # Step 5: Generate answer
         # ------------------------------------------------------------------
-        print(f"\n💬 [5/5] Generating answer...")
+        print("\n💬 [5/5] Generating answer...")
         gen_result = engine.generation.generate(query, results)
         print(f"\n{'─' * 60}")
         print(f"   Câu hỏi: {query}")
         print(f"{'─' * 60}")
-        print(f"   Trả lời:\n")
+        print("   Trả lời:\n")
         print(f"   {gen_result.answer}")
         print(f"\n{'─' * 60}")
 

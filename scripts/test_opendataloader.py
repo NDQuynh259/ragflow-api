@@ -1,7 +1,7 @@
 import sys
 import time
-from pathlib import Path
 from collections import Counter
+from pathlib import Path
 
 # Ensure UTF-8 output on Windows console
 sys.stdout.reconfigure(encoding="utf-8")
@@ -14,16 +14,17 @@ sys.path.insert(0, str(root / "packages" / "rag-core" / "src"))
 
 from rag_document_pipeline.parsers.opendataloader import OpenDataLoaderParser
 
+
 def test_parse(pdf_path_str: str):
     pdf_path = Path(pdf_path_str)
     if not pdf_path.exists():
         print(f"ERROR: File not found: {pdf_path}")
         return
 
-    print(f"=== Testing OpenDataLoaderParser ===")
+    print("=== Testing OpenDataLoaderParser ===")
     print(f"File: {pdf_path.name}")
     print(f"File size: {pdf_path.stat().st_size / 1024 / 1024:.2f} MB")
-    
+
     output_dir = root / "outputs"
     output_dir.mkdir(parents=True, exist_ok=True)
     image_dir = output_dir / f"{pdf_path.stem}_images"
@@ -93,7 +94,7 @@ def test_parse(pdf_path_str: str):
     # Check text quality & Vietnamese encoding
     sample_text = " ".join(el.text for el in elements[:20])
     vietnamese_chars = [c for c in sample_text if c in "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ"]
-    print(f"\n--- Vietnamese Character Verification ---")
+    print("\n--- Vietnamese Character Verification ---")
     print(f"Vietnamese accented characters detected: {len(vietnamese_chars)} occurrences")
     if vietnamese_chars:
         print(" Vietnamese accents properly preserved!")

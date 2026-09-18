@@ -7,6 +7,8 @@ ports and interfaces, never on concrete implementations.
 
 from __future__ import annotations
 
+# Ensure domain event handlers are registered to EventBus
+import chat_api.modules.documents.application.event_handlers  # noqa: F401
 from chat_api.modules.auth.domain.repository import UserSessionRepository
 from chat_api.modules.auth.infrastructure.repository import (
     SqlAlchemyUserSessionRepository,
@@ -37,9 +39,6 @@ from core.queue.background import BackgroundQueueAdapter
 from core.queue.port import IngestionQueuePort
 from core.storage.local import LocalStorageAdapter
 from core.storage.port import ObjectStoragePort
-
-# Ensure domain event handlers are registered to EventBus
-import chat_api.modules.documents.application.event_handlers  # noqa: F401
 
 # ---------------------------------------------------------------------------
 # Singleton adapter instances (created once at import time)

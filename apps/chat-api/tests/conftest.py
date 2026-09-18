@@ -1,16 +1,19 @@
 """Shared test fixtures and in-memory test doubles for Modular Monolith."""
 
 import uuid
+
 import pytest
 
+# Ensure domain event handlers are registered to EventBus
+import chat_api.modules.documents.application.event_handlers  # noqa: F401
 from chat_api.modules.auth.domain.entity import UserSession
 from chat_api.modules.auth.domain.repository import UserSessionRepository
+from chat_api.modules.chat_sessions.domain.entity import ChatSession
+from chat_api.modules.chat_sessions.domain.repository import ChatSessionRepository
 from chat_api.modules.documents.domain.entity import Document, DocumentStatus
 from chat_api.modules.documents.domain.repository import DocumentRepository
 from chat_api.modules.messages.domain.entity import Message
 from chat_api.modules.messages.domain.repository import MessageRepository
-from chat_api.modules.chat_sessions.domain.entity import ChatSession
-from chat_api.modules.chat_sessions.domain.repository import ChatSessionRepository
 from chat_api.modules.users.domain.entity import User
 from chat_api.modules.users.domain.repository import UserRepository
 from chat_api.modules.workspaces.domain.entity import Workspace
@@ -20,9 +23,6 @@ from chat_api.shared.infrastructure.database import UnitOfWork
 from chat_api.shared.infrastructure.rag import RAGEnginePort
 from core.queue import IngestionQueuePort
 from core.storage import ObjectStoragePort
-
-# Ensure domain event handlers are registered to EventBus
-import chat_api.modules.documents.application.event_handlers  # noqa: F401
 
 
 class InMemoryWorkspaceRepo(WorkspaceRepository):
@@ -73,17 +73,28 @@ class InMemoryDocRepo(DocumentRepository):
 
     def get_by_content_hash(self, workspace_id: uuid.UUID, content_hash: str) -> Document | None:
         return next(
-            (d for d in self.data.values() if d.workspace_id == workspace_id and d.content_hash == content_hash),
+            (
+                d
+                for d in self.data.values()
+                if d.workspace_id == workspace_id and d.content_hash == content_hash
+            ),
             None,
         )
 
-    def list_by_workspace(self, workspace_id: uuid.UUID, limit: int = 50, offset: int = 0) -> list[Document]:
+    def list_by_workspace(
+        self, workspace_id: uuid.UUID, limit: int = 50, offset: int = 0
+    ) -> list[Document]:
         return [d for d in self.data.values() if d.workspace_id == workspace_id]
 
-    def get_ready_documents_by_ids(self, workspace_id: uuid.UUID, document_ids: list[uuid.UUID]) -> list[Document]:
+    def get_ready_documents_by_ids(
+        self, workspace_id: uuid.UUID, document_ids: list[uuid.UUID]
+    ) -> list[Document]:
         return [
-            d for d in self.data.values()
-            if d.workspace_id == workspace_id and d.id in document_ids and d.status == DocumentStatus.READY
+            d
+            for d in self.data.values()
+            if d.workspace_id == workspace_id
+            and d.id in document_ids
+            and d.status == DocumentStatus.READY
         ]
 
     def save(self, document: Document) -> Document:
@@ -104,7 +115,9 @@ class InMemorySessionRepo(ChatSessionRepository):
     def get_by_id(self, session_id: uuid.UUID) -> ChatSession | None:
         return self.data.get(session_id)
 
-    def list_by_workspace(self, workspace_id: uuid.UUID, user_id=None, limit: int = 50, offset: int = 0) -> list[ChatSession]:
+    def list_by_workspace(
+        self, workspace_id: uuid.UUID, user_id=None, limit: int = 50, offset: int = 0
+    ) -> list[ChatSession]:
         return [s for s in self.data.values() if s.workspace_id == workspace_id]
 
     def save(self, session: ChatSession) -> ChatSession:
@@ -125,7 +138,9 @@ class InMemoryMessageRepo(MessageRepository):
     def get_by_id(self, message_id: uuid.UUID) -> Message | None:
         return self.data.get(message_id)
 
-    def list_by_session(self, session_id: uuid.UUID, limit: int = 100, offset: int = 0) -> list[Message]:
+    def list_by_session(
+        self, session_id: uuid.UUID, limit: int = 100, offset: int = 0
+    ) -> list[Message]:
         return [m for m in self.data.values() if m.session_id == session_id]
 
     def save(self, message: Message) -> Message:
@@ -193,12 +208,12 @@ class FakeUnitOfWork(UnitOfWork):
         self.rollback_count += 1
 
     def get_repo(self, repo_cls):
-        from chat_api.modules.documents.domain.repository import DocumentRepository
+        from chat_api.modules.auth.domain.repository import UserSessionRepository
         from chat_api.modules.chat_sessions.domain.repository import ChatSessionRepository
+        from chat_api.modules.documents.domain.repository import DocumentRepository
         from chat_api.modules.messages.domain.repository import MessageRepository
         from chat_api.modules.users.domain.repository import UserRepository
         from chat_api.modules.workspaces.domain.repository import WorkspaceRepository
-        from chat_api.modules.auth.domain.repository import UserSessionRepository
 
         mapping = {
             DocumentRepository: self.documents,
@@ -236,14 +251,16 @@ class FakeRAGEngine(RAGEnginePort):
     def answer(self, query: str, document_ids=None, top_k=None):
         citations = []
         if document_ids:
-            citations.append({
-                "document_id": document_ids[0],
-                "chunk_id": "chunk_1",
-                "page_number": 1,
-                "bbox": [0.1, 0.1, 0.5, 0.5],
-                "quote": "Trích dẫn tài liệu",
-                "relevance_score": 0.95,
-            })
+            citations.append(
+                {
+                    "document_id": document_ids[0],
+                    "chunk_id": "chunk_1",
+                    "page_number": 1,
+                    "bbox": [0.1, 0.1, 0.5, 0.5],
+                    "quote": "Trích dẫn tài liệu",
+                    "relevance_score": 0.95,
+                }
+            )
         return "Câu trả lời RAG test", citations, {"prompt_tokens": 10, "completion_tokens": 20}
 
 

@@ -1,21 +1,21 @@
 """Integration tests for Modular Presentation layer (Routes & DTOs)."""
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from fastapi.testclient import TestClient
 
 from chat_api.main import app
 from chat_api.modules.auth.domain.entity import UserSession
-from core.auth import CurrentPrincipal, ExecutionContext
-from chat_api.shared.auth import AuthContext, get_auth_context
 from chat_api.modules.documents.presentation.router import get_queue, get_storage
 from chat_api.modules.messages.presentation.router import get_rag_engine
 from chat_api.modules.users.domain.entity import User
 from chat_api.modules.workspaces.domain.entity import Workspace, WorkspaceMember, WorkspaceRole
+from chat_api.shared.auth import AuthContext, get_auth_context
 from chat_api.shared.bus import CommandBus, QueryBus
 from chat_api.shared.infrastructure.database import get_uow
-
+from core.auth import CurrentPrincipal, ExecutionContext
 
 TEST_USER = User(email="api-user@test.com")
 TEST_SESSION_ID = uuid.uuid4()
@@ -53,7 +53,7 @@ def client(fake_uow, fake_storage, fake_queue, fake_rag):
             id=TEST_SESSION_ID,
             user_id=TEST_USER.id,
             token="test-session-token",
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+            expires_at=datetime.now(UTC) + timedelta(hours=1),
         ),
         principal=principal,
         command_bus=CommandBus(fake_uow, execution_context=execution),
@@ -232,5 +232,3 @@ def test_documents_api_uses_active_workspace(client):
     )
     assert upload_resp.status_code == 201
     assert upload_resp.json()["document"]["filename"] == "guide.pdf"
-
-

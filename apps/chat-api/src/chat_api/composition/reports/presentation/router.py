@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
@@ -50,12 +51,12 @@ def get_workspace_overview_report(
     report_service: ReportService = Depends(get_report_service),
 ) -> WorkspaceOverviewReportResponse:
     target_workspace_id = (
-        workspace_id
-        or auth.principal.active_workspace_id
-        or auth.session.active_workspace_id
+        workspace_id or auth.principal.active_workspace_id or auth.session.active_workspace_id
     )
     if not target_workspace_id:
-        raise ForbiddenException("Active workspace is not set. Please switch or select an active workspace.")
+        raise ForbiddenException(
+            "Active workspace is not set. Please switch or select an active workspace."
+        )
 
     return report_service.get_workspace_overview(target_workspace_id)
 
@@ -78,11 +79,11 @@ def get_workspace_daily_activity_report(
     report_service: ReportService = Depends(get_report_service),
 ) -> WorkspaceDailyActivityResponse:
     target_workspace_id = (
-        workspace_id
-        or auth.principal.active_workspace_id
-        or auth.session.active_workspace_id
+        workspace_id or auth.principal.active_workspace_id or auth.session.active_workspace_id
     )
     if not target_workspace_id:
-        raise ForbiddenException("Active workspace is not set. Please switch or select an active workspace.")
+        raise ForbiddenException(
+            "Active workspace is not set. Please switch or select an active workspace."
+        )
 
     return report_service.get_workspace_daily_activity(target_workspace_id, days=days)

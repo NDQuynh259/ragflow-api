@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import uuid
+from dataclasses import dataclass
 
 from chat_api.modules.auth.domain.entity import UserSession
 from chat_api.shared.bus import Command, command_handler

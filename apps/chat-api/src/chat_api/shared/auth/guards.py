@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Annotated
-import uuid
 
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -47,7 +47,9 @@ def api_workspace_header() -> dict[str, object]:
     }
 
 
-def auth_openapi(*permissions: str | Permission, cookie_scheme: str = "session") -> dict[str, object]:
+def auth_openapi(
+    *permissions: str | Permission, cookie_scheme: str = "session"
+) -> dict[str, object]:
     """Describe authentication, cookie session, and permission requirements in OpenAPI."""
     return {
         "security": [{cookie_scheme: []}, {"bearerAuth": []}],
@@ -185,6 +187,7 @@ async def resolve_target_workspace_id(
             body_bytes = await request.body()
             if body_bytes:
                 import json
+
                 body_json = json.loads(body_bytes)
                 if isinstance(body_json, dict) and "workspace_id" in body_json:
                     return uuid.UUID(str(body_json["workspace_id"]))
@@ -309,7 +312,9 @@ class RequireAnyPermission:
             perms = auth.uow.workspaces.list_permissions(ws_id, auth.user.id)
             if not any("*" in perms or p in perms for p in self.permissions):
                 keys = ", ".join(self.permissions)
-                raise ForbiddenException(f"Missing required permission. Requires at least one of: [{keys}]")
+                raise ForbiddenException(
+                    f"Missing required permission. Requires at least one of: [{keys}]"
+                )
             return auth
 
         auth.principal.require_any_permission(*self.permissions)
@@ -341,7 +346,9 @@ class RequireRole:
                 raise ForbiddenException("User is not a member of this workspace.")
             clean_role = role.strip().lower()
             if clean_role not in self.roles:
-                raise ForbiddenException(f"User requires one of roles: {self.roles}, but has '{clean_role}'")
+                raise ForbiddenException(
+                    f"User requires one of roles: {self.roles}, but has '{clean_role}'"
+                )
             return auth
 
         auth.principal.require_role(*self.roles)

@@ -1,20 +1,9 @@
 """Unit tests for CQRS Handlers across modules."""
 
 import uuid
+
 import pytest
-from chat_api.modules.documents.application.commands import (
-    UploadDocumentCommand,
-    UploadDocumentHandler,
-)
-from chat_api.modules.documents.application.queries import (
-    GetDocumentHandler,
-    GetDocumentQuery,
-)
-from chat_api.modules.documents.domain.entity import Document, DocumentStatus
-from chat_api.modules.messages.application.commands import (
-    SendMessageCommand,
-    SendMessageHandler,
-)
+
 from chat_api.modules.chat_sessions.application.commands import (
     AttachDocumentCommand,
     AttachDocumentHandler,
@@ -25,10 +14,18 @@ from chat_api.modules.chat_sessions.application.queries import (
     GetSessionHandler,
     GetSessionQuery,
 )
-from chat_api.modules.workspaces.domain.entity import Workspace, WorkspaceMember, WorkspaceRole
+from chat_api.modules.documents.application.commands import (
+    UploadDocumentCommand,
+)
+from chat_api.modules.documents.domain.entity import Document, DocumentStatus
+from chat_api.modules.messages.application.commands import (
+    SendMessageCommand,
+    SendMessageHandler,
+)
 from chat_api.modules.users.domain.entity import User
-from core.auth import CurrentPrincipal, ExecutionContext
+from chat_api.modules.workspaces.domain.entity import Workspace, WorkspaceMember, WorkspaceRole
 from chat_api.shared.bus import CommandBus
+from core.auth import CurrentPrincipal, ExecutionContext
 from core.exceptions import ForbiddenException
 from core.queue import IngestionQueuePort
 from core.storage import ObjectStoragePort
@@ -69,7 +66,9 @@ def test_upload_document_and_attach(fake_uow, fake_storage, fake_queue):
     )
 
     # Create session
-    session_dto = CreateSessionHandler(fake_uow).handle(CreateSessionCommand(workspace_id=ws_id, title="Chat"))
+    session_dto = CreateSessionHandler(fake_uow).handle(
+        CreateSessionCommand(workspace_id=ws_id, title="Chat")
+    )
 
     # Upload document
     command_bus = CommandBus(
@@ -159,11 +158,15 @@ def test_send_message_flow(fake_uow, fake_rag):
         status=DocumentStatus.READY,
     )
     fake_uow.documents.save(doc)
-    AttachDocumentHandler(fake_uow).handle(AttachDocumentCommand(session_id=session.id, document_id=doc.id))
+    AttachDocumentHandler(fake_uow).handle(
+        AttachDocumentCommand(session_id=session.id, document_id=doc.id)
+    )
 
     # Send message
     msg_handler = SendMessageHandler(fake_uow, fake_rag)
-    msg_dto = msg_handler.handle(SendMessageCommand(session_id=session.id, content="Quy trình là gì?"))
+    msg_dto = msg_handler.handle(
+        SendMessageCommand(session_id=session.id, content="Quy trình là gì?")
+    )
 
     assert msg_dto.role == "assistant"
     assert msg_dto.content == "Câu trả lời RAG test"
@@ -221,9 +224,13 @@ def test_workspace_models_submodule_imports():
     )
     from chat_api.modules.workspaces.infrastructure.models.permission import Permission as PermMod
     from chat_api.modules.workspaces.infrastructure.models.role import Role as RoleMod
-    from chat_api.modules.workspaces.infrastructure.models.role_permission import RolePermission as RolePermMod
+    from chat_api.modules.workspaces.infrastructure.models.role_permission import (
+        RolePermission as RolePermMod,
+    )
     from chat_api.modules.workspaces.infrastructure.models.workspace import Workspace as WsMod
-    from chat_api.modules.workspaces.infrastructure.models.workspace_member import WorkspaceMember as WsMemMod
+    from chat_api.modules.workspaces.infrastructure.models.workspace_member import (
+        WorkspaceMember as WsMemMod,
+    )
 
     assert Permission is PermMod
     assert Role is RoleMod

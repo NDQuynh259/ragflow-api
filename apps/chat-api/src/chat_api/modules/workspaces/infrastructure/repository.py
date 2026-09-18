@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -122,7 +123,9 @@ class SqlAlchemyWorkspaceRepository(WorkspaceRepository):
                 id=m.id,
                 workspace_id=m.workspace_id,
                 user_id=m.user_id,
-                role=WorkspaceRole(m.role) if m.role in WorkspaceRole._value2member_map_ else WorkspaceRole.MEMBER,
+                role=WorkspaceRole(m.role)
+                if m.role in WorkspaceRole._value2member_map_
+                else WorkspaceRole.MEMBER,
                 created_at=m.created_at,
             )
             for m in orm.members

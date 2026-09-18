@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import time
 import uuid
+from dataclasses import dataclass
 
 from chat_api.modules.messages.application.dtos import MessageDTO
 from chat_api.modules.messages.application.mapper import MessageMapper
 from chat_api.modules.messages.domain.entity import Message, MessageRole
 from chat_api.shared.auth import Permission, require_session_access
 from chat_api.shared.bus import Command, authorization_handler, command_handler
-from core.auth import CurrentPrincipal
 from chat_api.shared.infrastructure.database import UnitOfWork
 from chat_api.shared.infrastructure.rag import RAGEnginePort
+from core.auth import CurrentPrincipal
 from core.exceptions import EntityNotFoundException
 from core.uuid7 import uuid7
 

@@ -76,21 +76,9 @@ class HeadingAwareChunker:
 
         # Chunk each lane
         chunks: list[DocumentChunk] = []
-        chunks.extend(
-            self.text_chunker.chunk(
-                text_elements, document_id=document_id
-            )
-        )
-        chunks.extend(
-            self.table_chunker.chunk(
-                table_elements, document_id=document_id
-            )
-        )
-        chunks.extend(
-            self.image_chunker.chunk(
-                image_elements, document_id=document_id
-            )
-        )
+        chunks.extend(self.text_chunker.chunk(text_elements, document_id=document_id))
+        chunks.extend(self.table_chunker.chunk(table_elements, document_id=document_id))
+        chunks.extend(self.image_chunker.chunk(image_elements, document_id=document_id))
 
         # Sort by page and re-index
         chunks.sort(key=lambda c: (c.page_start, c.page_end))
@@ -114,11 +102,7 @@ class HeadingAwareChunker:
             if el.type.lower() == "heading" and el.text.strip():
                 level = el.heading_level or 1
                 # Pop headings at same or deeper level
-                heading_stack = [
-                    (lvl, txt)
-                    for lvl, txt in heading_stack
-                    if lvl < level
-                ]
+                heading_stack = [(lvl, txt) for lvl, txt in heading_stack if lvl < level]
                 heading_stack.append((level, el.text.strip()))
                 el.section_path = [txt for _, txt in heading_stack]
             elif not el.section_path and heading_stack:

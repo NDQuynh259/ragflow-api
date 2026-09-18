@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any
 import uuid
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import DateTime, ForeignKey, Index, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import (
     Base,
@@ -19,9 +19,7 @@ from core.database import (
 
 class ChatSession(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "chat_sessions"
-    __table_args__ = (
-        Index("idx_chat_sessions_workspace_user", "workspace_id", "user_id"),
-    )
+    __table_args__ = (Index("idx_chat_sessions_workspace_user", "workspace_id", "user_id"),)
 
     workspace_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -59,6 +57,6 @@ class SessionDocument(Base):
     )
     attached_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         nullable=False,
     )

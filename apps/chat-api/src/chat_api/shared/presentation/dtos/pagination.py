@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Generic, TypeVar
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from chat_api.shared.presentation.dtos.api_response import ApiResponse
@@ -13,6 +14,7 @@ T = TypeVar("T")
 # ==========================================
 # 1. Offset-based Pagination (Request & Response)
 # ==========================================
+
 
 class OffsetPaginationRequest(BaseModel):
     """Request DTO for offset-based pagination.
@@ -28,7 +30,9 @@ class OffsetPaginationRequest(BaseModel):
 
     page: int | None = Field(default=None, ge=1, description="Page number (1-indexed)")
     page_size: int = Field(default=20, ge=1, le=100, description="Number of items per page")
-    limit: int | None = Field(default=None, ge=1, le=100, description="Direct limit of items to return")
+    limit: int | None = Field(
+        default=None, ge=1, le=100, description="Direct limit of items to return"
+    )
     offset: int | None = Field(default=None, ge=0, description="Direct offset of items to skip")
 
     @property
@@ -121,6 +125,7 @@ class PaginatedResponse(ApiResponse[PaginatedData[T]], Generic[T]):
 # 2. Cursor-based Pagination (Request & Response)
 # ==========================================
 
+
 class CursorPaginationRequest(BaseModel):
     """Request DTO for cursor-based pagination.
 
@@ -133,9 +138,15 @@ class CursorPaginationRequest(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
-    cursor: str | None = Field(default=None, description="Opaque cursor pointing to position in result set")
+    cursor: str | None = Field(
+        default=None, description="Opaque cursor pointing to position in result set"
+    )
     limit: int = Field(default=20, ge=1, le=100, description="Number of items to fetch")
-    direction: str = Field(default="next", pattern="^(next|prev)$", description="Pagination direction ('next' or 'prev')")
+    direction: str = Field(
+        default="next",
+        pattern="^(next|prev)$",
+        description="Pagination direction ('next' or 'prev')",
+    )
     order_by: str | None = Field(default=None, description="Attribute used for cursor comparison")
 
 
@@ -147,16 +158,24 @@ class CursorPaginationMeta(BaseModel):
     """Cursor-based pagination metadata DTO."""
 
     next_cursor: str | None = Field(default=None, description="Cursor for the next page of items")
-    prev_cursor: str | None = Field(default=None, description="Cursor for the previous page of items")
-    has_next: bool = Field(default=False, description="Whether more items exist in forward direction")
-    has_prev: bool = Field(default=False, description="Whether more items exist in backward direction")
+    prev_cursor: str | None = Field(
+        default=None, description="Cursor for the previous page of items"
+    )
+    has_next: bool = Field(
+        default=False, description="Whether more items exist in forward direction"
+    )
+    has_prev: bool = Field(
+        default=False, description="Whether more items exist in backward direction"
+    )
     limit: int = Field(default=20, description="Number of items requested per page")
 
 
 class CursorPaginatedData(BaseModel, Generic[T]):
     """Payload container for cursor-paginated collections."""
 
-    items: list[T] = Field(default_factory=list, description="Collection of items for current window")
+    items: list[T] = Field(
+        default_factory=list, description="Collection of items for current window"
+    )
     pagination: CursorPaginationMeta = Field(description="Cursor pagination details")
 
 

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
 from typing import Any
-import uuid
 
 from chat_api.modules.chat_sessions.application.dtos import SessionDTO
 from chat_api.modules.chat_sessions.application.mapper import SessionMapper

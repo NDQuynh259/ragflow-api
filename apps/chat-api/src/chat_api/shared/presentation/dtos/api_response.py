@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Generic, TypeVar
+
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -19,9 +20,11 @@ class ApiResponse(BaseModel, Generic[T]):
     code: int = Field(default=200, description="Application or HTTP status code")
     message: str = Field(default="Success", description="Human-readable response message")
     data: T | None = Field(default=None, description="Response payload data")
-    error: Any | None = Field(default=None, description="Error detail or payload when operation fails")
+    error: Any | None = Field(
+        default=None, description="Error detail or payload when operation fails"
+    )
     timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         description="UTC timestamp when the response was generated",
     )
 
@@ -84,5 +87,7 @@ def json_api_error(
     headers: dict[str, str] | None = None,
 ) -> JSONResponse:
     """Return a FastAPI JSONResponse with error wrapped in ApiResponse format."""
-    payload = ApiResponse.fail(message=message, error=error, code=code, data=data).model_dump(mode="json")
+    payload = ApiResponse.fail(message=message, error=error, code=code, data=data).model_dump(
+        mode="json"
+    )
     return JSONResponse(status_code=code, content=payload, headers=headers)

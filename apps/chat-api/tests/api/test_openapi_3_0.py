@@ -1,6 +1,7 @@
 """Test OpenAPI 3.0.0 and Swagger UI endpoint compatibility."""
 
 from fastapi.testclient import TestClient
+
 from chat_api.main import app
 
 
@@ -54,7 +55,3 @@ def test_docs_endpoint() -> None:
     assert "@scalar/api-reference" in res.text
     assert "/openapi.json" in res.text
     assert "swagger-ui" not in res.text.lower()
-
-
-
-

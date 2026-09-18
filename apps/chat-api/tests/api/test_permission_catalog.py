@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
 import uuid
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from fastapi.testclient import TestClient
 
 from chat_api.main import app
 from chat_api.modules.auth.domain.entity import UserSession
+from chat_api.modules.users.domain.entity import User
 from chat_api.shared.auth import (
     PERMISSION_CATALOG,
     AuthContext,
@@ -16,7 +18,6 @@ from chat_api.shared.auth import (
     ExecutionContext,
     get_auth_context,
 )
-from chat_api.modules.users.domain.entity import User
 from chat_api.shared.bus import CommandBus, QueryBus
 from chat_api.shared.infrastructure.database import get_uow
 
@@ -28,7 +29,7 @@ def auth_client(fake_uow):
         id=uuid.uuid4(),
         user_id=user.id,
         token="valid-token",
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        expires_at=datetime.now(UTC) + timedelta(hours=1),
     )
     principal = CurrentPrincipal(
         user_id=user.id,

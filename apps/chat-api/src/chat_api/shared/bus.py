@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
 import inspect
 import logging
 import time
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from typing import Annotated, Any, Generic, Protocol, TypeVar, get_type_hints
 
 from fastapi import Depends
@@ -15,16 +15,17 @@ from chat_api.shared.infrastructure.database import UnitOfWork, get_uow
 from core.auth import CurrentPrincipal, ExecutionContext
 
 R = TypeVar("R")
-M = TypeVar("M")
+M_contra = TypeVar("M_contra", contravariant=True)
+R_co = TypeVar("R_co", covariant=True)
 
 logger = logging.getLogger(__name__)
 
 
-class Command(Generic[R]):
+class Command(Generic[R_co]):
     """Marker base class for commands returning ``R``."""
 
 
-class Query(Generic[R]):
+class Query(Generic[R_co]):
     """Marker base class for queries returning ``R``."""
 
 
@@ -32,8 +33,8 @@ class Event:
     """Marker base class for in-process domain events."""
 
 
-class CommandHandler(Protocol[M, R]):
-    def handle(self, message: M) -> R: ...
+class CommandHandler(Protocol[M_contra, R_co]):
+    def handle(self, message: M_contra, /) -> R_co: ...
 
 
 class BusBehavior(Protocol):
@@ -120,7 +121,9 @@ def authorization_handler(message_cls: type[Any]) -> Callable[[HandlerType], Han
     return decorator
 
 
-def _build_handler(handler_cls: HandlerType, dependencies: DependencyMap) -> CommandHandler[Any, Any]:
+def _build_handler(
+    handler_cls: HandlerType, dependencies: DependencyMap
+) -> CommandHandler[Any, Any]:
     """Construct a handler from explicitly supplied, type-keyed dependencies."""
     signature = inspect.signature(handler_cls.__init__)
     try:

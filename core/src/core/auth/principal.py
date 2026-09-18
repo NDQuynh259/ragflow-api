@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
 from typing import Any
-import uuid
 
 from core.exceptions import ForbiddenException
 
@@ -29,7 +29,7 @@ class CurrentPrincipal:
         """Check if principal possesses a specific permission or wildcard access."""
         if self.is_owner:
             return True
-        perm_key = permission.value if hasattr(permission, "value") else str(permission)
+        perm_key = str(getattr(permission, "value", permission))
         return "*" in self.permissions or perm_key in self.permissions
 
     def has_any_permission(self, *permissions: str | Any) -> bool:
@@ -57,7 +57,7 @@ class CurrentPrincipal:
             return
         for perm in permissions:
             if not self.has_permission(perm):
-                perm_key = perm.value if hasattr(perm, "value") else str(perm)
+                perm_key = str(getattr(perm, "value", perm))
                 raise ForbiddenException(f"Missing required permission: '{perm_key}'")
 
     def require_any_permission(self, *permissions: str | Any) -> None:
@@ -68,10 +68,10 @@ class CurrentPrincipal:
         if self.is_owner:
             return
         if not self.has_any_permission(*permissions):
-            keys = ", ".join(
-                p.value if hasattr(p, "value") else str(p) for p in permissions
+            keys = ", ".join(str(getattr(p, "value", p)) for p in permissions)
+            raise ForbiddenException(
+                f"Missing required permission. Requires at least one of: [{keys}]"
             )
-            raise ForbiddenException(f"Missing required permission. Requires at least one of: [{keys}]")
 
     def require_role(self, *roles: str) -> None:
         """Assert that caller has one of the specified roles.

@@ -71,9 +71,7 @@ class Filename(ValueObject):
         if not isinstance(self.value, str) or not self.value.strip():
             raise ValueError("Filename must be a non-empty string.")
         if len(self.value) > self.MAX_LENGTH:
-            raise ValueError(
-                f"Filename exceeds maximum length of {self.MAX_LENGTH} characters."
-            )
+            raise ValueError(f"Filename exceeds maximum length of {self.MAX_LENGTH} characters.")
 
     def __str__(self) -> str:
         return self.value

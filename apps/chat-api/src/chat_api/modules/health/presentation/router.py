@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from chat_api.modules.health.presentation.dtos import HealthResponse
 from chat_api.config import settings
+from chat_api.modules.health.presentation.dtos import HealthResponse
 
 router = APIRouter(tags=["Health"])
 

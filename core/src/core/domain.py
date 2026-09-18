@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Generic, TypeVar
 
 TId = TypeVar("TId")
@@ -14,8 +14,8 @@ class Entity(Generic[TId]):
     """Base Domain Entity with identifier and audit timestamps."""
 
     id: TId
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Entity):
@@ -46,6 +46,7 @@ class AggregateRoot(Entity[TId]):
 @dataclass(frozen=True)
 class ValueObject:
     """Base immutable Value Object compared by structural value."""
+
     pass
 
 

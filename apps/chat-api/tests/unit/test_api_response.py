@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+
 from chat_api.modules.chat_sessions.presentation.dtos import SessionApiResponse, SessionResponse
 from chat_api.shared import (
     ApiResponse,
@@ -107,12 +108,13 @@ def test_json_api_response_helpers():
 def test_direct_shared_presentation_dtos_import():
     from chat_api.shared.presentation.dtos import (
         ApiResponse as DirectApiResponse,
-        ResponseAPI as DirectResponseAPI,
+        CursorPaginationRequest as DirectCursorPaginationRequest,
+        OffsetPaginationRequest as DirectOffsetPaginationRequest,
         PaginatedResponse as DirectPaginatedResponse,
         PaginationMeta as DirectPaginationMeta,
-        OffsetPaginationRequest as DirectOffsetPaginationRequest,
-        CursorPaginationRequest as DirectCursorPaginationRequest,
+        ResponseAPI as DirectResponseAPI,
     )
+
     assert DirectApiResponse is ApiResponse
     assert DirectResponseAPI is ResponseAPI
     assert DirectPaginatedResponse is PaginatedResponse
@@ -145,8 +147,8 @@ def test_offset_pagination_request_logic():
 
 def test_cursor_pagination_request_and_response():
     from chat_api.shared.presentation.dtos import (
-        CursorPaginationRequest,
         CursorPaginatedResponse,
+        CursorPaginationRequest,
     )
 
     req = CursorPaginationRequest(cursor="cursor_token_123", limit=10, direction="next")
@@ -170,5 +172,3 @@ def test_cursor_pagination_request_and_response():
     assert dumped["data"]["pagination"]["next_cursor"] == "cursor_token_456"
     assert dumped["data"]["pagination"]["has_next"] is True
     assert dumped["data"]["pagination"]["has_prev"] is True
-
-

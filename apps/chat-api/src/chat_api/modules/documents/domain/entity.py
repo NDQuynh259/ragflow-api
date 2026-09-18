@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
 import uuid
-
-from core.domain import AggregateRoot, Entity
-from core.uuid7 import uuid7
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import Enum
 
 from chat_api.modules.documents.domain.value_objects import (
     ContentHash,
@@ -16,6 +13,8 @@ from chat_api.modules.documents.domain.value_objects import (
     MimeType,
     StorageUri,
 )
+from core.domain import AggregateRoot, Entity
+from core.uuid7 import uuid7
 
 
 class DocumentStatus(str, Enum):
@@ -66,20 +65,20 @@ class Document(AggregateRoot[uuid.UUID]):
 
     def mark_processing(self) -> None:
         self.status = DocumentStatus.PROCESSING
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     def mark_ready(self, page_count: int = 0) -> None:
         self.status = DocumentStatus.READY
         self.page_count = page_count
         self.error_code = None
         self.error_message = None
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     def mark_failed(self, error_code: str, error_message: str) -> None:
         self.status = DocumentStatus.FAILED
         self.error_code = error_code
         self.error_message = error_message
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     def create_ingestion_job(
         self,

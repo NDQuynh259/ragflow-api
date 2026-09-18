@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import uuid
+from dataclasses import dataclass
 
 from chat_api.modules.documents.application.dtos import DocumentDTO
 from chat_api.modules.documents.application.mapper import DocumentMapper

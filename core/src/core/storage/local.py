@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import uuid
+from pathlib import Path
 
 from core.config import settings
 from core.storage.port import ObjectStoragePort

@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from chat_api.shared.infrastructure.database.uow import (
+    SqlAlchemyUnitOfWork,
+    UnitOfWork,
+    get_uow,
+    register_repository,
+)
 from core.database import (
     POSTGRES_NAMING_CONVENTION,
     Base,
@@ -10,12 +16,6 @@ from core.database import (
     UUIDPrimaryKeyMixin,
     engine,
     get_db,
-)
-from chat_api.shared.infrastructure.database.uow import (
-    SqlAlchemyUnitOfWork,
-    UnitOfWork,
-    get_uow,
-    register_repository,
 )
 
 __all__ = [

@@ -3,19 +3,10 @@
 from __future__ import annotations
 
 import uuid
+
 from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 
-from chat_api.modules.documents.application.commands import (
-    UploadDocumentCommand,
-)
-from chat_api.modules.documents.presentation.dtos import UploadDocumentResponse
-from chat_api.shared.auth import (
-    CurrentAuth,
-    Permission,
-    RequireAuth,
-    RequirePermission,
-    auth_openapi,
-)
+from chat_api.composition.dependencies import get_queue, get_storage
 from chat_api.modules.chat_sessions.application.commands import (
     AttachDocumentCommand,
     CreateSessionCommand,
@@ -30,18 +21,29 @@ from chat_api.modules.chat_sessions.presentation.dtos import (
     CreateSessionRequest,
     SessionResponse,
 )
-from chat_api.composition.dependencies import get_queue, get_storage
+from chat_api.modules.documents.application.commands import (
+    UploadDocumentCommand,
+)
+from chat_api.modules.documents.presentation.dtos import (
+    DocumentResponse,
+    UploadDocumentResponse,
+)
+from chat_api.shared.auth import (
+    CurrentAuth,
+    Permission,
+    RequireAuth,
+    RequirePermission,
+    auth_openapi,
+)
+from core.exceptions import ForbiddenException
 from core.queue.port import IngestionQueuePort
 from core.storage.port import ObjectStoragePort
-
-from core.exceptions import ForbiddenException
 
 router = APIRouter(
     prefix="/chat-sessions",
     tags=["Chat Sessions"],
     dependencies=[Depends(RequireAuth())],
 )
-
 
 
 @router.post(
@@ -55,9 +57,15 @@ def create_session(
     payload: CreateSessionRequest,
     auth: CurrentAuth,
 ) -> SessionResponse:
-    target_workspace_id = payload.workspace_id or auth.principal.active_workspace_id or auth.session.active_workspace_id
+    target_workspace_id = (
+        payload.workspace_id
+        or auth.principal.active_workspace_id
+        or auth.session.active_workspace_id
+    )
     if not target_workspace_id:
-        raise ForbiddenException("Active workspace is not set. Please switch or select an active workspace.")
+        raise ForbiddenException(
+            "Active workspace is not set. Please switch or select an active workspace."
+        )
 
     cmd = CreateSessionCommand(
         workspace_id=target_workspace_id,
@@ -77,14 +85,20 @@ def create_session(
 )
 def list_sessions(
     auth: CurrentAuth,
-    workspace_id: uuid.UUID | None = Query(None, description="Tùy chọn ghi đè Workspace ID, mặc định lấy từ active workspace"),
+    workspace_id: uuid.UUID | None = Query(
+        None, description="Tùy chọn ghi đè Workspace ID, mặc định lấy từ active workspace"
+    ),
     user_id: uuid.UUID | None = Query(None, description="Filter by User ID"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ) -> list[SessionResponse]:
-    target_workspace_id = workspace_id or auth.principal.active_workspace_id or auth.session.active_workspace_id
+    target_workspace_id = (
+        workspace_id or auth.principal.active_workspace_id or auth.session.active_workspace_id
+    )
     if not target_workspace_id:
-        raise ForbiddenException("Active workspace is not set. Please switch or select an active workspace.")
+        raise ForbiddenException(
+            "Active workspace is not set. Please switch or select an active workspace."
+        )
 
     query = ListSessionsQuery(
         workspace_id=target_workspace_id,
@@ -147,7 +161,9 @@ def attach_document(
 @router.post(
     "/{session_id}/documents",
     response_model=UploadDocumentResponse,
-    dependencies=[Depends(RequirePermission(Permission.SESSION_UPDATE, Permission.DOCUMENT_CREATE))],
+    dependencies=[
+        Depends(RequirePermission(Permission.SESSION_UPDATE, Permission.DOCUMENT_CREATE))
+    ],
     openapi_extra=auth_openapi(
         Permission.SESSION_READ,
         Permission.DOCUMENT_CREATE,
@@ -181,6 +197,6 @@ async def upload_and_attach_document(
     auth.command_bus.execute(AttachDocumentCommand(session_id=session_id, document_id=doc_dto.id))
 
     return UploadDocumentResponse(
-        document=doc_dto.__dict__,
+        document=DocumentResponse.model_validate(doc_dto),
         message="Tài liệu đã được tải lên, lập job xử lý và gắn vào phiên chat.",
     )

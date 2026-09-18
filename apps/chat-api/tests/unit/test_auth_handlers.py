@@ -1,8 +1,9 @@
 """Unit tests for Auth CQRS Handlers."""
 
-from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock
 import uuid
+from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock
+
 import pytest
 
 from chat_api.modules.auth.application.commands import (
@@ -21,8 +22,8 @@ from chat_api.modules.auth.application.queries import (
 )
 from chat_api.modules.auth.domain.entity import UserSession
 from chat_api.modules.auth.infrastructure.repository import SqlAlchemyUserSessionRepository
-from core.auth import hash_session_token, verify_password
 from chat_api.shared.auth import Permission
+from core.auth import hash_session_token, verify_password
 from core.exceptions import (
     DomainValidationException,
     ForbiddenException,
@@ -63,7 +64,7 @@ def test_session_repository_only_persists_token_hash():
     session = UserSession(
         user_id=uuid.uuid4(),
         token=raw_token,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        expires_at=datetime.now(UTC) + timedelta(hours=1),
     )
 
     repository.save(session)
@@ -139,15 +140,21 @@ def test_login_and_get_current_user_flow(fake_uow):
 
 
 def test_login_wrong_password_fails(fake_uow):
-    RegisterHandler(fake_uow).handle(RegisterCommand(email="bob@test.com", password="correctpassword"))
+    RegisterHandler(fake_uow).handle(
+        RegisterCommand(email="bob@test.com", password="correctpassword")
+    )
 
     with pytest.raises(UnauthenticatedException):
         LoginHandler(fake_uow).handle(LoginCommand(email="bob@test.com", password="wrongpassword"))
 
 
 def test_logout_invalidates_session(fake_uow):
-    RegisterHandler(fake_uow).handle(RegisterCommand(email="charlie@test.com", password="password123"))
-    login_result = LoginHandler(fake_uow).handle(LoginCommand(email="charlie@test.com", password="password123"))
+    RegisterHandler(fake_uow).handle(
+        RegisterCommand(email="charlie@test.com", password="password123")
+    )
+    login_result = LoginHandler(fake_uow).handle(
+        LoginCommand(email="charlie@test.com", password="password123")
+    )
     token = login_result.session.token
 
     # Logout
@@ -161,12 +168,14 @@ def test_logout_invalidates_session(fake_uow):
 
 
 def test_expired_session_fails(fake_uow):
-    reg = RegisterHandler(fake_uow).handle(RegisterCommand(email="david@test.com", password="password123"))
+    reg = RegisterHandler(fake_uow).handle(
+        RegisterCommand(email="david@test.com", password="password123")
+    )
     # Insert expired session
     expired_session = UserSession(
         user_id=reg.id,
         token="expired_token_123",
-        expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
+        expires_at=datetime.now(UTC) - timedelta(hours=1),
     )
     fake_uow.user_sessions.save(expired_session)
 
@@ -255,10 +264,22 @@ def test_register_creates_default_workspace_and_login_sets_active(fake_uow):
 
 def test_auth_submodule_imports():
     from chat_api.modules.auth.application.commands.login_command import LoginCommand, LoginHandler
-    from chat_api.modules.auth.application.commands.logout_command import LogoutCommand, LogoutHandler
-    from chat_api.modules.auth.application.commands.register_command import RegisterCommand, RegisterHandler
-    from chat_api.modules.auth.application.commands.switch_workspace_command import SwitchWorkspaceCommand, SwitchWorkspaceHandler
-    from chat_api.modules.auth.application.queries.get_current_user_query import GetCurrentUserHandler, GetCurrentUserQuery
+    from chat_api.modules.auth.application.commands.logout_command import (
+        LogoutCommand,
+        LogoutHandler,
+    )
+    from chat_api.modules.auth.application.commands.register_command import (
+        RegisterCommand,
+        RegisterHandler,
+    )
+    from chat_api.modules.auth.application.commands.switch_workspace_command import (
+        SwitchWorkspaceCommand,
+        SwitchWorkspaceHandler,
+    )
+    from chat_api.modules.auth.application.queries.get_current_user_query import (
+        GetCurrentUserHandler,
+        GetCurrentUserQuery,
+    )
 
     assert LoginCommand and LoginHandler
     assert LogoutCommand and LogoutHandler
@@ -268,13 +289,13 @@ def test_auth_submodule_imports():
 
 
 def test_command_bus_and_query_bus_flow(fake_uow):
-    from chat_api.shared.bus import Command, CommandBus, QueryBus
     from chat_api.modules.auth.application.commands import (
         LoginCommand,
         LogoutCommand,
         RegisterCommand,
     )
     from chat_api.modules.auth.application.queries import GetCurrentUserQuery
+    from chat_api.shared.bus import Command, CommandBus, QueryBus
 
     cmd_bus = CommandBus(fake_uow)
     query_bus = QueryBus(fake_uow)

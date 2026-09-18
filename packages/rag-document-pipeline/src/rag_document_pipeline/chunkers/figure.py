@@ -55,7 +55,9 @@ class ImageChunker:
             parts.append(element.text.strip())
 
         if len(parts) <= 1 and img and img.uri:
-            parts.append(f"Visual image/diagram on page {element.page_number} ({Path(img.uri).name})")
+            parts.append(
+                f"Visual image/diagram on page {element.page_number} ({Path(img.uri).name})"
+            )
 
         has_content = len(parts) > 1  # more than just "[IMAGE]"
         content = "\n".join(parts)

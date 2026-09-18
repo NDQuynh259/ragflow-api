@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Any
 import uuid
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import Date, case, cast, func, select
 from sqlalchemy.orm import Session
 
+from chat_api.modules.chat_sessions.infrastructure.model import ChatSession
 from chat_api.modules.documents.infrastructure.model import Chunk, Document
 from chat_api.modules.messages.infrastructure.model import (
     Message,
     MessageCitation,
     MessageFeedback,
 )
-from chat_api.modules.chat_sessions.infrastructure.model import ChatSession
 from chat_api.modules.workspaces.infrastructure.models import (
     Workspace,
     WorkspaceMember,
@@ -52,12 +52,12 @@ class ReportQueryRepository:
             func.count(Document.id).label("total_documents"),
             func.coalesce(func.sum(Document.file_size), 0).label("total_file_size_bytes"),
             func.coalesce(func.sum(Document.page_count), 0).label("total_pages"),
-            func.coalesce(
-                func.sum(case((Document.status == "ready", 1), else_=0)), 0
-            ).label("ready_documents"),
-            func.coalesce(
-                func.sum(case((Document.status == "failed", 1), else_=0)), 0
-            ).label("failed_documents"),
+            func.coalesce(func.sum(case((Document.status == "ready", 1), else_=0)), 0).label(
+                "ready_documents"
+            ),
+            func.coalesce(func.sum(case((Document.status == "failed", 1), else_=0)), 0).label(
+                "failed_documents"
+            ),
             func.coalesce(
                 func.sum(
                     case(
@@ -102,12 +102,12 @@ class ReportQueryRepository:
         msg_stmt = (
             select(
                 func.count(Message.id).label("total_messages"),
-                func.coalesce(
-                    func.sum(case((Message.role == "user", 1), else_=0)), 0
-                ).label("user_messages"),
-                func.coalesce(
-                    func.sum(case((Message.role == "assistant", 1), else_=0)), 0
-                ).label("assistant_messages"),
+                func.coalesce(func.sum(case((Message.role == "user", 1), else_=0)), 0).label(
+                    "user_messages"
+                ),
+                func.coalesce(func.sum(case((Message.role == "assistant", 1), else_=0)), 0).label(
+                    "assistant_messages"
+                ),
                 func.coalesce(func.sum(Message.prompt_tokens), 0).label("total_prompt_tokens"),
                 func.coalesce(func.sum(Message.completion_tokens), 0).label(
                     "total_completion_tokens"
@@ -142,12 +142,12 @@ class ReportQueryRepository:
         fb_stmt = (
             select(
                 func.count(MessageFeedback.id).label("total_feedbacks"),
-                func.coalesce(
-                    func.sum(case((MessageFeedback.rating > 0, 1), else_=0)), 0
-                ).label("positive_feedbacks"),
-                func.coalesce(
-                    func.sum(case((MessageFeedback.rating < 0, 1), else_=0)), 0
-                ).label("negative_feedbacks"),
+                func.coalesce(func.sum(case((MessageFeedback.rating > 0, 1), else_=0)), 0).label(
+                    "positive_feedbacks"
+                ),
+                func.coalesce(func.sum(case((MessageFeedback.rating < 0, 1), else_=0)), 0).label(
+                    "negative_feedbacks"
+                ),
             )
             .select_from(MessageFeedback)
             .join(Message, MessageFeedback.message_id == Message.id)
@@ -162,7 +162,7 @@ class ReportQueryRepository:
         return {
             "workspace_id": ws.id,
             "workspace_name": ws.name,
-            "generated_at": datetime.now(timezone.utc),
+            "generated_at": datetime.now(UTC),
             "members": {
                 "total_members": int(member_count),
             },
@@ -192,7 +192,7 @@ class ReportQueryRepository:
 
     def get_daily_activity(self, workspace_id: uuid.UUID, days: int = 30) -> list[dict[str, Any]]:
         """Aggregate daily activity counts for trend charts over the last N days."""
-        since_date = (datetime.now(timezone.utc) - timedelta(days=days)).date()
+        since_date = (datetime.now(UTC) - timedelta(days=days)).date()
 
         # Documents uploaded per day
         doc_date = cast(Document.created_at, Date).label("day")
@@ -236,15 +236,17 @@ class ReportQueryRepository:
         sess_counts = {r[0]: r[1] for r in sess_rows}
 
         results: list[dict[str, Any]] = []
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         for i in range(days):
             current_day = since_date + timedelta(days=i)
             if current_day > today:
                 break
-            results.append({
-                "date": current_day.isoformat(),
-                "documents_uploaded": int(doc_counts.get(current_day, 0)),
-                "messages_sent": int(msg_counts.get(current_day, 0)),
-                "sessions_created": int(sess_counts.get(current_day, 0)),
-            })
+            results.append(
+                {
+                    "date": current_day.isoformat(),
+                    "documents_uploaded": int(doc_counts.get(current_day, 0)),
+                    "messages_sent": int(msg_counts.get(current_day, 0)),
+                    "sessions_created": int(sess_counts.get(current_day, 0)),
+                }
+            )
         return results

@@ -47,9 +47,7 @@ class PgVectorStore:
         )
         # psycopg needs postgresql:// not postgresql+psycopg://
         self._dsn = self._url.replace("postgresql+psycopg://", "postgresql://")
-        self._dim = embedding_dimension or int(
-            os.environ.get("EMBEDDING_DIMENSION", "768")
-        )
+        self._dim = embedding_dimension or int(os.environ.get("EMBEDDING_DIMENSION", "768"))
         self._table = table_name
         self._conn = None
 
@@ -241,9 +239,7 @@ class PgVectorStore:
             if "document_ids" in filter:
                 doc_ids = filter["document_ids"]
                 placeholders = ", ".join(["%s"] * len(doc_ids))
-                where_clauses.append(
-                    f"document_id IN ({placeholders})"
-                )
+                where_clauses.append(f"document_id IN ({placeholders})")
                 filter_params.extend(doc_ids)
             if "kind" in filter:
                 where_clauses.append("kind = %s")
@@ -291,8 +287,17 @@ class PgVectorStore:
                     page_start=p_start,
                     page_end=p_end,
                     element_ids=el_ids if isinstance(el_ids, list) else json.loads(el_ids or "[]"),
-                    bboxes=[tuple(b) for b in (bboxes_json if isinstance(bboxes_json, list) else json.loads(bboxes_json or "[]"))],
-                    section_path=sec_path if isinstance(sec_path, list) else json.loads(sec_path or "[]"),
+                    bboxes=[
+                        tuple(b)
+                        for b in (
+                            bboxes_json
+                            if isinstance(bboxes_json, list)
+                            else json.loads(bboxes_json or "[]")
+                        )
+                    ],
+                    section_path=sec_path
+                    if isinstance(sec_path, list)
+                    else json.loads(sec_path or "[]"),
                     token_count=tok_count,
                     indexable=indexable,
                     metadata=meta if isinstance(meta, dict) else json.loads(meta or "{}"),
@@ -310,9 +315,7 @@ class PgVectorStore:
                 (document_id,),
             )
             deleted = cur.rowcount
-        logger.info(
-            "Deleted %d records for document '%s'", deleted, document_id
-        )
+        logger.info("Deleted %d records for document '%s'", deleted, document_id)
         return deleted
 
     def close(self) -> None:

@@ -1,8 +1,9 @@
 """Integration tests for Authentication API routes."""
 
 from fastapi.testclient import TestClient
+
 from chat_api.main import app
-from chat_api.shared.infrastructure.database import UnitOfWork, get_uow
+from chat_api.shared.infrastructure.database import get_uow
 
 
 def test_auth_full_session_flow(fake_uow):
@@ -68,7 +69,13 @@ def test_auth_full_session_flow(fake_uow):
 
         # 5. Switch Workspace
         import uuid
-        from chat_api.modules.workspaces.domain.entity import Workspace, WorkspaceMember, WorkspaceRole
+
+        from chat_api.modules.workspaces.domain.entity import (
+            Workspace,
+            WorkspaceMember,
+            WorkspaceRole,
+        )
+
         second_ws = Workspace(
             name="Secondary Team Workspace",
             slug="secondary-team",

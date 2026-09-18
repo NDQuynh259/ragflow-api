@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from typing import Any
-import uuid
+
 from pydantic import BaseModel, Field
 
 from chat_api.shared.presentation import ApiResponse, PaginatedResponse
@@ -14,9 +15,7 @@ class CreateSessionRequest(BaseModel):
     workspace_id: uuid.UUID | None = None
     user_id: uuid.UUID | None = None
     title: str = Field(default="New Chat", max_length=255)
-    rag_config: dict[str, Any] = Field(
-        default_factory=lambda: {"top_k": 5, "rerank": True}
-    )
+    rag_config: dict[str, Any] = Field(default_factory=lambda: {"top_k": 5, "rerank": True})
 
 
 class AttachDocumentRequest(BaseModel):

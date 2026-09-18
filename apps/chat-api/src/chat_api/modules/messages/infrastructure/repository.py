@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+
 from sqlalchemy.orm import Session
 
 from chat_api.modules.messages.domain.entity import (
@@ -15,7 +16,6 @@ from chat_api.modules.messages.domain.repository import MessageRepository
 from chat_api.modules.messages.infrastructure.model import (
     Message as ORMMessage,
     MessageCitation as ORMCitation,
-    MessageFeedback as ORMFeedback,
 )
 
 
@@ -109,7 +109,11 @@ class SqlAlchemyMessageRepository(MessageRepository):
             )
             for f in orm.feedbacks
         ]
-        role = MessageRole(orm.role) if orm.role in MessageRole._value2member_map_ else MessageRole.USER
+        role = (
+            MessageRole(orm.role)
+            if orm.role in MessageRole._value2member_map_
+            else MessageRole.USER
+        )
 
         return DomainMessage(
             id=orm.id,

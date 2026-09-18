@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     CheckConstraint,
@@ -43,7 +43,7 @@ class Message(Base, UUIDPrimaryKeyMixin):
     latency_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         nullable=False,
     )
 
@@ -61,9 +61,7 @@ class Message(Base, UUIDPrimaryKeyMixin):
 
 class MessageCitation(Base, UUIDPrimaryKeyMixin):
     __tablename__ = "message_citations"
-    __table_args__ = (
-        Index("idx_message_citations_msg", "message_id"),
-    )
+    __table_args__ = (Index("idx_message_citations_msg", "message_id"),)
 
     message_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -86,7 +84,7 @@ class MessageCitation(Base, UUIDPrimaryKeyMixin):
     relevance_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         nullable=False,
     )
 
@@ -114,7 +112,7 @@ class MessageFeedback(Base, UUIDPrimaryKeyMixin):
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         nullable=False,
     )
 

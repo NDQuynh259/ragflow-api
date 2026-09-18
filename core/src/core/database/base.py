@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, MetaData, func, text
 from sqlalchemy.dialects.postgresql import UUID
@@ -23,11 +23,13 @@ POSTGRES_NAMING_CONVENTION = {
 
 class Base(DeclarativeBase):
     """Base class for all SQLAlchemy ORM models."""
+
     metadata = MetaData(naming_convention=POSTGRES_NAMING_CONVENTION)
 
 
 class UUIDPrimaryKeyMixin:
     """Mixin for models having UUID primary keys (UUIDv7 for time-ordered B-Tree index optimization)."""
+
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
@@ -38,16 +40,17 @@ class UUIDPrimaryKeyMixin:
 
 class TimestampMixin:
     """Mixin for models having creation and update timestamps."""
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         server_default=func.now(),
         nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         server_default=func.now(),
-        onupdate=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(UTC),
         nullable=False,
     )

@@ -4,17 +4,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request, Response, status
 
+from chat_api.config import settings
 from chat_api.modules.auth.application.commands import (
     LoginCommand,
     LogoutCommand,
     RegisterCommand,
     SwitchWorkspaceCommand,
-)
-from chat_api.shared.auth import (
-    CurrentAuth,
-    RequireAuth,
-    auth_openapi,
-    extract_session_token,
 )
 from chat_api.modules.auth.presentation.dtos import (
     AuthResponse,
@@ -27,8 +22,13 @@ from chat_api.modules.auth.presentation.dtos import (
     UserResponse,
     WorkspaceInfo,
 )
+from chat_api.shared.auth import (
+    CurrentAuth,
+    RequireAuth,
+    auth_openapi,
+    extract_session_token,
+)
 from chat_api.shared.bus import CommandBusDep
-from chat_api.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -174,9 +174,7 @@ def get_me(
                     name=w.name,
                     slug=w.slug,
                     role=member_role.value if member_role is not None else "member",
-                    permissions=sorted(
-                        auth.uow.workspaces.list_permissions(w.id, user.id)
-                    ),
+                    permissions=sorted(auth.uow.workspaces.list_permissions(w.id, user.id)),
                 )
             )
 

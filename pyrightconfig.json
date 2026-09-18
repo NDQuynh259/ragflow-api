@@ -2,10 +2,19 @@
   "venvPath": ".",
   "venv": ".venv",
   "extraPaths": [
+    "core/src",
     "packages/rag-contracts/src",
     "packages/rag-core/src",
     "packages/rag-document-pipeline/src",
     "apps/chat-api/src",
     "workers/document-worker/src"
+  ],
+  "exclude": [
+    ".venv",
+    "**/__pycache__",
+    "output",
+    "outputs",
+    "scripts",
+    "deploy"
   ]
 }

@@ -88,17 +88,11 @@ class TableChunker:
 
         for i, row in enumerate(td.rows):
             current_rows.append(row)
-            current_content = (
-                caption_prefix + header_md + self._render_rows(current_rows)
-            )
+            current_content = caption_prefix + header_md + self._render_rows(current_rows)
             if len(current_content) > self.chunk_size and len(current_rows) > 1:
                 # Flush previous rows (excluding current)
                 flush_rows = current_rows[:-1]
-                flush_content = (
-                    caption_prefix
-                    + header_md
-                    + self._render_rows(flush_rows)
-                )
+                flush_content = caption_prefix + header_md + self._render_rows(flush_rows)
                 chunks.append(
                     self._make_chunk(
                         document_id=document_id,
@@ -112,9 +106,7 @@ class TableChunker:
 
         # Flush remaining
         if current_rows:
-            remaining_content = (
-                caption_prefix + header_md + self._render_rows(current_rows)
-            )
+            remaining_content = caption_prefix + header_md + self._render_rows(current_rows)
             chunks.append(
                 self._make_chunk(
                     document_id=document_id,

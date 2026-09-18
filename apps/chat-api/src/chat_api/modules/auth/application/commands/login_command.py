@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
 import uuid
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 from chat_api.modules.auth.domain.entity import UserSession
-from core.auth import (
-    generate_session_token,
-    verify_password,
-)
 from chat_api.modules.users.domain.entity import User
 from chat_api.modules.workspaces.domain.entity import (
     Workspace,
@@ -19,6 +15,10 @@ from chat_api.modules.workspaces.domain.entity import (
 )
 from chat_api.shared.bus import Command, command_handler
 from chat_api.shared.infrastructure.database import UnitOfWork
+from core.auth import (
+    generate_session_token,
+    verify_password,
+)
 from core.exceptions import UnauthenticatedException
 
 DEFAULT_SESSION_DURATION_DAYS = 7
@@ -89,7 +89,7 @@ class LoginHandler:
         command: LoginCommand,
     ) -> UserSession:
         token = generate_session_token()
-        expires_at = datetime.now(timezone.utc) + timedelta(days=DEFAULT_SESSION_DURATION_DAYS)
+        expires_at = datetime.now(UTC) + timedelta(days=DEFAULT_SESSION_DURATION_DAYS)
         return UserSession(
             user_id=user_id,
             active_workspace_id=active_workspace_id,

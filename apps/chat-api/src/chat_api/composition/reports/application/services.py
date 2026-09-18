@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+
 from sqlalchemy.orm import Session
 
 from chat_api.composition.reports.application.dtos import (

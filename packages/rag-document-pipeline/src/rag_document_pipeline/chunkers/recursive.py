@@ -57,9 +57,7 @@ class TextChunker:
         for group in groups:
             heading_prefix = self._heading_prefix(group)
             body = "\n\n".join(
-                el.text.strip()
-                for el in group
-                if el.text.strip() and el.type != "heading"
+                el.text.strip() for el in group if el.text.strip() and el.type != "heading"
             )
             full_text = f"{heading_prefix}\n\n{body}".strip() if heading_prefix else body.strip()
 
@@ -128,11 +126,7 @@ class TextChunker:
     @staticmethod
     def _heading_prefix(group: list[LayoutElement]) -> str:
         """Extract heading text from the group for context prefix."""
-        headings = [
-            el.text.strip()
-            for el in group
-            if el.type == "heading" and el.text.strip()
-        ]
+        headings = [el.text.strip() for el in group if el.type == "heading" and el.text.strip()]
         if headings:
             return "## " + " > ".join(headings)
         if group and group[0].section_path:

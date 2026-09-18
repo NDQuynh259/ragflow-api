@@ -26,24 +26,29 @@ class EntityNotFoundException(DomainException):
 
 class DomainValidationException(DomainException):
     """Raised when a business rule or invariant is violated."""
+
     pass
 
 
 class ResourceConflictException(DomainException):
     """Raised when a resource conflict occurs."""
+
     pass
 
 
 class UnauthenticatedException(DomainException):
     """Raised when credentials are missing, invalid, or expired."""
+
     pass
 
 
 class ForbiddenException(DomainException):
     """Raised when an authenticated principal lacks permission."""
+
     pass
 
 
 class UnauthorizedException(ForbiddenException):
     """Deprecated compatibility alias; use a precise auth exception."""
+
     pass

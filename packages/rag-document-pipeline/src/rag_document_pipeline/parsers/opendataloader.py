@@ -9,6 +9,7 @@ from typing import Any
 from rag_document_pipeline.models import ImageData, LayoutElement, TableData
 from rag_document_pipeline.parsers.base import ParserError
 
+
 class OpenDataLoaderParser:
     """Parse PDFs with OpenDataLoader's local Python SDK.
 
@@ -16,6 +17,7 @@ class OpenDataLoaderParser:
     directory. The adapter keeps that implementation detail out of the RAG
     application and converts its schema to our stable LayoutElement contract.
     """
+
     def __init__(
         self,
         *,
@@ -84,12 +86,15 @@ class OpenDataLoaderParser:
         candidates = sorted(output.rglob("*.json"))
         return candidates[0] if candidates else None
 
-
     # region _to_elements
-    
+
     @classmethod
     def _to_elements(cls, payload: Any, *, image_dir: Path | None = None) -> list[LayoutElement]:
-        raw = payload.get("elements", payload.get("kids", payload)) if isinstance(payload, dict) else payload
+        raw = (
+            payload.get("elements", payload.get("kids", payload))
+            if isinstance(payload, dict)
+            else payload
+        )
         if not isinstance(raw, list):
             raise ParserError("OpenDataLoader JSON has no elements array.")
         elements: list[LayoutElement] = []
@@ -116,7 +121,9 @@ class OpenDataLoaderParser:
                             img_name = Path(raw_source).name
                             img_path = image_dir / img_name
                             try:
-                                uri = str(img_path.resolve().relative_to(Path.cwd().resolve()).as_posix())
+                                uri = str(
+                                    img_path.resolve().relative_to(Path.cwd().resolve()).as_posix()
+                                )
                             except ValueError:
                                 uri = str(img_path.as_posix())
                         else:
@@ -131,20 +138,24 @@ class OpenDataLoaderParser:
             if element_type in ("table", "data_table") and "rows" in item:
                 table_data = cls._extract_table_data(item["rows"], caption=item.get("caption"))
 
-            elements.append(LayoutElement(
-                id=str(item.get("id", item.get("element_id", uuid.uuid4()))),
-                type=element_type,
-                text=text,
-                page_number=max(1, page),
-                bbox=bbox,
-                source=item.get("source") if isinstance(item.get("source"), str) else None,
-                caption=item.get("caption") if isinstance(item.get("caption"), str) else None,
-                order=order,
-                heading_level=item.get("heading level") if isinstance(item.get("heading level"), int) else None,
-                table_data=table_data,
-                image_data=image_data,
-                metadata=metadata,
-            ))
+            elements.append(
+                LayoutElement(
+                    id=str(item.get("id", item.get("element_id", uuid.uuid4()))),
+                    type=element_type,
+                    text=text,
+                    page_number=max(1, page),
+                    bbox=bbox,
+                    source=item.get("source") if isinstance(item.get("source"), str) else None,
+                    caption=item.get("caption") if isinstance(item.get("caption"), str) else None,
+                    order=order,
+                    heading_level=item.get("heading level")
+                    if isinstance(item.get("heading level"), int)
+                    else None,
+                    table_data=table_data,
+                    image_data=image_data,
+                    metadata=metadata,
+                )
+            )
         return elements
 
     @classmethod
@@ -206,12 +217,18 @@ class OpenDataLoaderParser:
                     row_text = OpenDataLoaderParser._text(row)
                     cells = row.get("cells")
                     if isinstance(cells, list):
-                        cell_text = [OpenDataLoaderParser._text(cell) for cell in cells if isinstance(cell, dict)]
+                        cell_text = [
+                            OpenDataLoaderParser._text(cell)
+                            for cell in cells
+                            if isinstance(cell, dict)
+                        ]
                         row_text = " | ".join(part for part in cell_text if part) or row_text
                     if row_text:
                         parts.append(row_text)
                 elif isinstance(row, list):
-                    cells = [str(cell).strip() for cell in row if cell is not None and str(cell).strip()]
+                    cells = [
+                        str(cell).strip() for cell in row if cell is not None and str(cell).strip()
+                    ]
                     if cells:
                         parts.append(" | ".join(cells))
 
@@ -223,8 +240,10 @@ class OpenDataLoaderParser:
     def _number(item: dict[str, Any], *keys: str, default: int = 1) -> int:
         for key in keys:
             if key in item:
-                try: return int(item[key])
-                except (TypeError, ValueError): pass
+                try:
+                    return int(item[key])
+                except (TypeError, ValueError):
+                    pass
         return default
 
     @staticmethod
@@ -242,4 +261,5 @@ class OpenDataLoaderParser:
         try:
             x0, y0, x1, y1 = (float(v) for v in value)
             return (min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
-        except (TypeError, ValueError): return None
+        except (TypeError, ValueError):
+            return None

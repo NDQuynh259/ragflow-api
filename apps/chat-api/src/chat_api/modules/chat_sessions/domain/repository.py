@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 import uuid
+from abc import ABC, abstractmethod
 
 from chat_api.modules.chat_sessions.domain.entity import ChatSession
 

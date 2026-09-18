@@ -7,8 +7,8 @@ application concerns.  Event *handlers* live in the application layer.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import uuid
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)

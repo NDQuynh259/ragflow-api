@@ -26,26 +26,18 @@ class GeminiEmbedder:
         retry_max_seconds: float | None = None,
     ) -> None:
         self._api_key = api_key or os.environ.get("GEMINI_API_KEY", "")
-        self._model = model or os.environ.get(
-            "GEMINI_EMBEDDING_MODEL", "gemini-embedding-001"
-        )
-        self._max_retries = max_retries or int(
-            os.environ.get("EMBEDDING_MAX_RETRIES", "3")
-        )
+        self._model = model or os.environ.get("GEMINI_EMBEDDING_MODEL", "gemini-embedding-001")
+        self._max_retries = max_retries or int(os.environ.get("EMBEDDING_MAX_RETRIES", "3"))
         self._retry_base = retry_base_seconds or float(
             os.environ.get("EMBEDDING_RETRY_BASE_SECONDS", "1")
         )
         self._retry_max = retry_max_seconds or float(
             os.environ.get("EMBEDDING_RETRY_MAX_SECONDS", "30")
         )
-        self._dimension: int = int(
-            os.environ.get("EMBEDDING_DIMENSION", "768")
-        )
+        self._dimension: int = int(os.environ.get("EMBEDDING_DIMENSION", "768"))
 
         if not self._api_key:
-            raise ValueError(
-                "GEMINI_API_KEY is required. Set it in .env or pass api_key=."
-            )
+            raise ValueError("GEMINI_API_KEY is required. Set it in .env or pass api_key=.")
 
         from google import genai
 
@@ -64,7 +56,12 @@ class GeminiEmbedder:
         processed = [t if t.strip() else " " for t in texts]
 
         from google.genai import types
-        embed_config = types.EmbedContentConfig(output_dimensionality=self._dimension) if self._dimension else None
+
+        embed_config = (
+            types.EmbedContentConfig(output_dimensionality=self._dimension)
+            if self._dimension
+            else None
+        )
 
         for attempt in range(self._max_retries + 1):
             try:
@@ -89,8 +86,7 @@ class GeminiEmbedder:
                     self._retry_max,
                 )
                 logger.warning(
-                    "Gemini embedding attempt %d failed (%s), "
-                    "retrying in %.1fs",
+                    "Gemini embedding attempt %d failed (%s), retrying in %.1fs",
                     attempt + 1,
                     exc,
                     wait,

@@ -76,9 +76,7 @@ class GenerationService:
         model: str | None = None,
     ) -> None:
         self._api_key = api_key or os.environ.get("GEMINI_API_KEY", "")
-        self._model = model or os.environ.get(
-            "GEMINI_LLM_MODEL", "gemini-2.5-flash"
-        )
+        self._model = model or os.environ.get("GEMINI_LLM_MODEL", "gemini-2.5-flash")
 
         if not self._api_key:
             raise ValueError("GEMINI_API_KEY is required for generation.")
@@ -94,9 +92,7 @@ class GenerationService:
     ) -> GenerationResult:
         """Generate an answer grounded in the retrieved chunks."""
         if not results:
-            return GenerationResult(
-                answer="Không tìm thấy thông tin phù hợp trong tài liệu."
-            )
+            return GenerationResult(answer="Không tìm thấy thông tin phù hợp trong tài liệu.")
 
         # 1. Build context
         context_parts: list[str] = []
@@ -116,9 +112,7 @@ class GenerationService:
                 )
             )
         context = "\n".join(context_parts)
-        user_message = USER_TEMPLATE.format(
-            context=context, query=query
-        )
+        user_message = USER_TEMPLATE.format(context=context, query=query)
 
         # 2. Call Gemini LLM
         from google.genai import types
@@ -136,9 +130,7 @@ class GenerationService:
             answer = response.text or ""
         except Exception as exc:
             logger.error("Gemini generation failed: %s", exc)
-            return GenerationResult(
-                answer=f"Lỗi khi tạo câu trả lời: {exc}"
-            )
+            return GenerationResult(answer=f"Lỗi khi tạo câu trả lời: {exc}")
 
         # 3. Extract citations
         citations = self._extract_citations(answer, results)
@@ -180,15 +172,10 @@ class GenerationService:
 
         for sr in results:
             chunk = sr.chunk
-            chunk_pages = set(
-                range(chunk.page_start, chunk.page_end + 1)
-            )
+            chunk_pages = set(range(chunk.page_start, chunk.page_end + 1))
             # If answer mentions pages from this chunk, or no pages mentioned
             # (cite all retrieved chunks)
-            if (
-                not mentioned_pages
-                or chunk_pages & mentioned_pages
-            ):
+            if not mentioned_pages or chunk_pages & mentioned_pages:
                 if chunk.id not in seen_chunks:
                     seen_chunks.add(chunk.id)
                     bbox = chunk.bboxes[0] if chunk.bboxes else None

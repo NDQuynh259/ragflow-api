@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import uuid
+
 from fastapi import APIRouter, Depends, Query
 
+from chat_api.composition.dependencies import get_rag_engine
 from chat_api.modules.messages.application.commands import SendMessageCommand
 from chat_api.modules.messages.application.queries import GetSessionMessagesQuery
 from chat_api.modules.messages.presentation.dtos import (
@@ -19,7 +21,6 @@ from chat_api.shared.auth import (
     RequirePermission,
     auth_openapi,
 )
-from chat_api.composition.dependencies import get_rag_engine
 from chat_api.shared.infrastructure.rag.port import RAGEnginePort
 
 router = APIRouter(
@@ -27,7 +28,6 @@ router = APIRouter(
     tags=["Messages"],
     dependencies=[Depends(RequireAuth())],
 )
-
 
 
 @router.post(

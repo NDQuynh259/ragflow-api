@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import uuid
+from dataclasses import dataclass
 
 from chat_api.modules.chat_sessions.application.dtos import SessionDTO
 from chat_api.modules.chat_sessions.application.mapper import SessionMapper

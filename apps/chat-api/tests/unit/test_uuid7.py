@@ -44,16 +44,16 @@ def test_uuid7_monotonic_time_ordering() -> None:
 
     # Strictly monotonically increasing
     for i in range(len(ids) - 1):
-        assert ids[i] < ids[i + 1], f"UUID {ids[i]} should be < {ids[i+1]}"
+        assert ids[i] < ids[i + 1], f"UUID {ids[i]} should be < {ids[i + 1]}"
 
 
 def test_domain_entities_eager_uuid7_generation() -> None:
     """Validate Pattern B: Domain entities eagerly auto-generate UUIDv7 IDs for CQRS / Event-Driven."""
-    from chat_api.modules.workspaces.domain.entity import Workspace
-    from chat_api.modules.users.domain.entity import User
-    from chat_api.modules.documents.domain.entity import Document
     from chat_api.modules.chat_sessions.domain.entity import ChatSession
+    from chat_api.modules.documents.domain.entity import Document
     from chat_api.modules.messages.domain.entity import Message, MessageRole
+    from chat_api.modules.users.domain.entity import User
+    from chat_api.modules.workspaces.domain.entity import Workspace
 
     ws = Workspace(name="AI Lab", slug="ai-lab")
     assert isinstance(ws.id, uuid.UUID)
@@ -63,7 +63,9 @@ def test_domain_entities_eager_uuid7_generation() -> None:
     assert isinstance(user.id, uuid.UUID)
     assert user.id.version == 7
 
-    doc = Document(workspace_id=ws.id, filename="paper.pdf", storage_uri="s3://...", content_hash="abc")
+    doc = Document(
+        workspace_id=ws.id, filename="paper.pdf", storage_uri="s3://...", content_hash="abc"
+    )
     assert isinstance(doc.id, uuid.UUID)
     assert doc.id.version == 7
 
@@ -82,7 +84,6 @@ def test_domain_entities_eager_uuid7_generation() -> None:
 
 def test_uuid_primary_key_mixin_dual_generation() -> None:
     """Validate Pattern B: ORM model supports both client-side default and server_default."""
-    from core.database import UUIDPrimaryKeyMixin
     from chat_api.modules.workspaces.infrastructure.models import Workspace
 
     # Verify column has both Python default and database server_default
@@ -90,4 +91,3 @@ def test_uuid_primary_key_mixin_dual_generation() -> None:
     assert id_col.default is not None
     assert id_col.server_default is not None
     assert "uuid_generate_v7()" in str(id_col.server_default.arg)
-

@@ -12,9 +12,12 @@ Validates:
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime, timedelta
+
 import pytest
 
 from chat_api.modules.auth.domain.entity import UserSession
+from chat_api.modules.users.domain.entity import User
 from chat_api.shared.auth import (
     ALL_PERMISSION_CODES,
     BUILTIN_ROLE_PERMISSIONS,
@@ -28,7 +31,6 @@ from chat_api.shared.auth import (
     effective_permissions,
     require_auth,
 )
-from chat_api.modules.users.domain.entity import User
 from chat_api.shared.bus import CommandBus, QueryBus
 from core.exceptions import ForbiddenException, UnauthenticatedException
 
@@ -123,7 +125,7 @@ def test_principal_or_guard_logic():
     # Holds at least one -> passes
     principal.require_any_permission(
         Permission.DOCUMENT_DELETE,  # Not held
-        Permission.SESSION_READ,     # Held
+        Permission.SESSION_READ,  # Held
     )
 
     # Holds none -> raises ForbiddenException
@@ -135,8 +137,6 @@ def test_principal_or_guard_logic():
     assert "Requires at least one of" in str(exc_info.value)
 
 
-from datetime import datetime, timedelta, timezone
-
 @pytest.mark.anyio
 async def test_fastapi_dependency_guards():
     """Test RequirePermission, RequireAnyPermission, RequireRole as FastAPI callables."""
@@ -145,7 +145,7 @@ async def test_fastapi_dependency_guards():
         id=uuid.uuid4(),
         user_id=user.id,
         token="fake_tok",
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        expires_at=datetime.now(UTC) + timedelta(hours=1),
     )
 
     member_principal = CurrentPrincipal(
@@ -203,6 +203,7 @@ async def test_fastapi_dependency_guards():
 def test_sqlalchemy_workspace_repository_effective_permissions():
     """Verify SqlAlchemyWorkspaceRepository uses effective_permissions calculation."""
     from unittest.mock import MagicMock
+
     from chat_api.modules.workspaces.infrastructure.repository import SqlAlchemyWorkspaceRepository
 
     mock_session = MagicMock()
@@ -236,4 +237,3 @@ def test_sqlalchemy_workspace_repository_effective_permissions():
     no_perms = repo.list_permissions(ws_id, user_id)
     assert len(no_perms) == 0
     assert not repo.has_permission(ws_id, user_id, Permission.DOCUMENT_READ.value)
-

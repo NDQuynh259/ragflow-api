@@ -27,8 +27,94 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 packages = []
 
+[dependency-groups]
+dev = [
+    "ruff>=0.9.0",
+    "pyright>=1.1.0",
+    "poethepoet>=0.32.0",
+    "pytest-cov>=6.0.0",
+]
+
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
 testpaths = ["packages", "tests", "apps", "workers", "core"]
 norecursedirs = ["scripts", "output", "outputs", "deploy", "docs", "migrations"]
+
+# ---------------------------------------------------------------------------
+# Ruff (Linter & Formatter - equivalent to ESLint + Prettier + isort)
+# ---------------------------------------------------------------------------
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+exclude = [
+    ".git",
+    ".venv",
+    "output",
+    "outputs",
+    "migrations",
+    "deploy",
+    "scripts",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes (unused imports, undefined variables)
+    "I",    # isort (alphabetical & grouped import ordering)
+    "B",    # flake8-bugbear (common logic traps)
+    "UP",   # pyupgrade (modern Python 3.11+ syntax)
+]
+ignore = [
+    "E501", # Line-too-long (handled gracefully by ruff format)
+    "B008", # Do not perform function call in argument defaults (standard for FastAPI Depends)
+    "B027", # Allow empty default methods in ABCs
+    "UP042",# Allow `(str, Enum)` inheritance alongside `StrEnum`
+    "E731", # Allow lambda assignment in middleware/behavior chains
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["core", "chat_api", "rag_contracts", "rag_core", "rag_document_pipeline"]
+combine-as-imports = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# ---------------------------------------------------------------------------
+# Pyright (Static Type Checker - equivalent to tsc --noEmit)
+# ---------------------------------------------------------------------------
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+extraPaths = [
+    "core/src",
+    "apps/chat-api/src",
+    "packages/rag-contracts/src",
+    "packages/rag-core/src",
+    "packages/rag-document-pipeline/src",
+    "workers/document-worker/src",
+]
+typeCheckingMode = "basic"
+reportMissingImports = true
+reportMissingTypeStubs = false
+
+# ---------------------------------------------------------------------------
+# Poe The Poet (Task Runner - equivalent to package.json npm scripts)
+# ---------------------------------------------------------------------------
+[tool.poe.tasks]
+lint = "ruff check ."
+"lint:fix" = "ruff check --fix ."
+format = "ruff format ."
+"format:check" = "ruff format --check ."
+typecheck = "pyright core/src apps/chat-api/src packages/rag-contracts/src"
+test = "pytest"
+"test:cov" = "pytest --cov=apps/chat-api/src --cov=core/src --cov-report=term-missing"
+dev = "uvicorn chat_api.main:app --reload --port 8000"
+migrate = "alembic upgrade head"
+openapi = "python scripts/export_openapi.py"
+
+[tool.poe.tasks.check]
+sequence = ["lint", "format:check", "typecheck", "test"]
+ignore_fail = false
 

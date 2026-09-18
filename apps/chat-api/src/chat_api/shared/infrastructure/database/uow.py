@@ -10,9 +10,10 @@ so that this module has ZERO dependencies on specific domain modules.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from typing import Any, Callable, Self, TypeVar
+from typing import Any, Self, TypeVar
+
 from fastapi import Depends
 from sqlalchemy.orm import Session
 

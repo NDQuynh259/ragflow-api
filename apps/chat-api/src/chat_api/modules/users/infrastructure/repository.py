@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+
 from sqlalchemy.orm import Session
 
 from chat_api.modules.users.domain.entity import User as DomainUser

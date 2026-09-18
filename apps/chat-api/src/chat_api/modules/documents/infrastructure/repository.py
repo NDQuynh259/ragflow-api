@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import uuid
+from datetime import UTC, datetime
+
 from sqlalchemy.orm import Session
 
 from chat_api.modules.documents.domain.entity import (
@@ -39,7 +40,9 @@ class SqlAlchemyDocumentRepository(DocumentRepository):
             return None
         return self._to_domain(orm)
 
-    def get_by_content_hash(self, workspace_id: uuid.UUID, content_hash: ContentHash) -> DomainDocument | None:
+    def get_by_content_hash(
+        self, workspace_id: uuid.UUID, content_hash: ContentHash
+    ) -> DomainDocument | None:
         orm = (
             self.session.query(ORMDocument)
             .filter(
@@ -90,7 +93,9 @@ class SqlAlchemyDocumentRepository(DocumentRepository):
 
     def save(self, document: DomainDocument) -> DomainDocument:
         orm = self.session.query(ORMDocument).filter(ORMDocument.id == document.id).first()
-        status_val = document.status.value if hasattr(document.status, "value") else str(document.status)
+        status_val = (
+            document.status.value if hasattr(document.status, "value") else str(document.status)
+        )
 
         if not orm:
             orm = ORMDocument(
@@ -150,7 +155,7 @@ class SqlAlchemyDocumentRepository(DocumentRepository):
         orm = self.session.query(ORMDocument).filter(ORMDocument.id == document_id).first()
         if not orm:
             return False
-        orm.deleted_at = datetime.now(timezone.utc)
+        orm.deleted_at = datetime.now(UTC)
         return True
 
     def _to_domain(self, orm: ORMDocument) -> DomainDocument:
@@ -158,7 +163,9 @@ class SqlAlchemyDocumentRepository(DocumentRepository):
             DomainJob(
                 id=j.id,
                 document_id=j.document_id,
-                status=IngestionStatus(j.status) if j.status in IngestionStatus._value2member_map_ else IngestionStatus.QUEUED,
+                status=IngestionStatus(j.status)
+                if j.status in IngestionStatus._value2member_map_
+                else IngestionStatus.QUEUED,
                 retry_count=j.retry_count,
                 parser_name=j.parser_name,
                 chunker_name=j.chunker_name,
@@ -170,7 +177,11 @@ class SqlAlchemyDocumentRepository(DocumentRepository):
             )
             for j in orm.jobs
         ]
-        status = DocumentStatus(orm.status) if orm.status in DocumentStatus._value2member_map_ else DocumentStatus.QUEUED
+        status = (
+            DocumentStatus(orm.status)
+            if orm.status in DocumentStatus._value2member_map_
+            else DocumentStatus.QUEUED
+        )
 
         return DomainDocument(
             id=orm.id,

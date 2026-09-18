@@ -3,25 +3,26 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import chat_api.composition.dependencies  # noqa: F401  # Wire DI adapters and UoW repo registries
 from chat_api.composition.reports.presentation.router import router as reports_router
+from chat_api.config import settings
 from chat_api.modules.auth.presentation.router import router as auth_router
-from chat_api.modules.documents.presentation.router import router as documents_router
-from chat_api.modules.health.presentation.router import router as health_router
-from chat_api.modules.messages.presentation.router import router as messages_router
 from chat_api.modules.chat_sessions.presentation.router import (
     router as chat_sessions_router,
 )
+from chat_api.modules.documents.presentation.router import router as documents_router
+from chat_api.modules.health.presentation.router import router as health_router
+from chat_api.modules.messages.presentation.router import router as messages_router
 from chat_api.modules.workspaces.presentation import workspaces_router
-from chat_api.config import settings
-from core.logging import setup_logging
 from chat_api.shared.presentation import (
     register_exception_handlers,
     setup_openapi_3_0,
 )
+from core.logging import setup_logging
 
 
 @asynccontextmanager

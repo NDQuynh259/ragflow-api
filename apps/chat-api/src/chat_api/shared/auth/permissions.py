@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from dataclasses import dataclass, field
-from enum import Enum
 import uuid
+from collections.abc import Iterable
+from dataclasses import dataclass
+from enum import Enum
 
 from chat_api.shared.infrastructure.database import UnitOfWork
 from core.auth import CurrentPrincipal, ExecutionContext

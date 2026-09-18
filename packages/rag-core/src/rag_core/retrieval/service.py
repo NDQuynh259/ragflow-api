@@ -6,7 +6,7 @@ import logging
 import os
 from typing import Any
 
-from rag_contracts.chunks import ChunkRecord, SearchResult
+from rag_contracts.chunks import SearchResult
 from rag_core.embeddings.base import Embedder
 from rag_core.ports.vector_store import VectorStore
 
@@ -33,12 +33,8 @@ class RetrievalService:
     ) -> None:
         self.embedder = embedder
         self.vector_store = vector_store
-        self.default_top_k = default_top_k or int(
-            os.environ.get("DEFAULT_TOP_K", "5")
-        )
-        self.neighbor_window = neighbor_window or int(
-            os.environ.get("RAG_NEIGHBOR_WINDOW", "1")
-        )
+        self.default_top_k = default_top_k or int(os.environ.get("DEFAULT_TOP_K", "5"))
+        self.neighbor_window = neighbor_window or int(os.environ.get("RAG_NEIGHBOR_WINDOW", "1"))
 
     def retrieve(
         self,

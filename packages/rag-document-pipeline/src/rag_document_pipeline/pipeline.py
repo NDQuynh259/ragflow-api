@@ -8,9 +8,9 @@ as the default chunker.  Both can be replaced via constructor injection.
 
 from __future__ import annotations
 
-from pathlib import Path
 import re
 import unicodedata
+from pathlib import Path
 
 from rag_document_pipeline.chunkers.base import Chunker
 from rag_document_pipeline.chunkers.heading_aware import HeadingAwareChunker
@@ -91,9 +91,7 @@ class DocumentPipeline:
         return ProcessedDocument(
             document_id=document_id,
             filename=filename,
-            page_count=max(
-                (el.page_number for el in elements), default=0
-            ),
+            page_count=max((el.page_number for el in elements), default=0),
             elements=elements,
             chunks=chunks,
         )
@@ -125,19 +123,13 @@ class DocumentPipeline:
             for el in elements
             if el.type in {"text", "heading", "paragraph", "list", "caption", "formula"}
         ]
-        table_elements = [
-            el for el in elements if el.type == "table"
-        ]
-        image_elements = [
-            el for el in elements if el.type in {"image", "figure"}
-        ]
+        table_elements = [el for el in elements if el.type == "table"]
+        image_elements = [el for el in elements if el.type in {"image", "figure"}]
 
         return ParsedDocument(
             document_id=document_id,
             filename=filename,
-            page_count=max(
-                (el.page_number for el in elements), default=0
-            ),
+            page_count=max((el.page_number for el in elements), default=0),
             text_elements=text_elements,
             table_elements=table_elements,
             image_elements=image_elements,
@@ -162,9 +154,7 @@ class DocumentPipeline:
             if el.caption:
                 el.caption = cls._clean_text(el.caption)
             if el.image_data and el.image_data.caption:
-                el.image_data.caption = cls._clean_text(
-                    el.image_data.caption
-                )
+                el.image_data.caption = cls._clean_text(el.image_data.caption)
         return elements
 
     @staticmethod

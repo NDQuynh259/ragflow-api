@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import uuid
+from dataclasses import dataclass, field
 
 from core.domain import AggregateRoot
 from core.uuid7 import uuid7
@@ -16,4 +16,3 @@ class User(AggregateRoot[uuid.UUID]):
     full_name: str | None = None
     hashed_password: str = ""
     is_active: bool = True
-

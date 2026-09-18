@@ -20,9 +20,12 @@ class RAGEngineAdapter(RAGEnginePort):
         if self._engine is None:
             try:
                 from rag_core.engine import RAGEngine
+
                 self._engine = RAGEngine.from_env()
             except Exception as exc:
-                logger.warning("Could not initialize live RAGEngine (%s). Operating in fallback mode.", exc)
+                logger.warning(
+                    "Could not initialize live RAGEngine (%s). Operating in fallback mode.", exc
+                )
                 return None
         return self._engine
 

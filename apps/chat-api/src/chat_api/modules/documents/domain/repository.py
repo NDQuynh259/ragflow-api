@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 import uuid
+from abc import ABC, abstractmethod
 
 from chat_api.modules.documents.domain.entity import Document
 from chat_api.modules.documents.domain.value_objects import ContentHash
@@ -15,7 +15,9 @@ class DocumentRepository(ABC):
         pass
 
     @abstractmethod
-    def get_by_content_hash(self, workspace_id: uuid.UUID, content_hash: ContentHash) -> Document | None:
+    def get_by_content_hash(
+        self, workspace_id: uuid.UUID, content_hash: ContentHash
+    ) -> Document | None:
         pass
 
     @abstractmethod

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
 import uuid
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -15,15 +16,15 @@ from chat_api.composition.reports.application.dtos import (
     WorkspaceDailyActivityResponse,
     WorkspaceOverviewReportResponse,
 )
-from chat_api.composition.reports.application.services import ReportService
 from chat_api.composition.reports.presentation.router import get_report_service
 from chat_api.main import app
 from chat_api.modules.auth.domain.entity import UserSession
 from chat_api.modules.users.domain.entity import User
-from core.auth import CurrentPrincipal, ExecutionContext
+from chat_api.modules.workspaces.domain.entity import Workspace, WorkspaceMember, WorkspaceRole
 from chat_api.shared.auth import AuthContext, Permission, get_auth_context
 from chat_api.shared.bus import CommandBus, QueryBus
 from chat_api.shared.infrastructure.database import get_uow
+from core.auth import CurrentPrincipal, ExecutionContext
 
 
 class MockReportService:
@@ -36,7 +37,7 @@ class MockReportService:
         return WorkspaceOverviewReportResponse(
             workspace_id=workspace_id,
             workspace_name="Test Engineering Workspace",
-            generated_at=datetime.now(timezone.utc),
+            generated_at=datetime.now(UTC),
             members=MemberStatsDTO(total_members=5),
             documents=DocumentStatsDTO(
                 total_documents=12,
@@ -85,9 +86,6 @@ class MockReportService:
         )
 
 
-from chat_api.modules.workspaces.domain.entity import Workspace, WorkspaceMember, WorkspaceRole
-
-
 @pytest.fixture
 def auth_client_with_reports(fake_uow):
     ws_id = uuid.uuid4()
@@ -96,17 +94,19 @@ def auth_client_with_reports(fake_uow):
         id=uuid.uuid4(),
         user_id=user.id,
         token="valid-token",
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        expires_at=datetime.now(UTC) + timedelta(hours=1),
     )
     principal = CurrentPrincipal(
         user_id=user.id,
         session_id=session.id,
         active_workspace_id=ws_id,
         role="owner",
-        permissions=frozenset({
-            Permission.WORKSPACE_READ.value,
-            Permission.REPORT_READ.value,
-        }),
+        permissions=frozenset(
+            {
+                Permission.WORKSPACE_READ.value,
+                Permission.REPORT_READ.value,
+            }
+        ),
     )
     execution = ExecutionContext(principal=principal)
 

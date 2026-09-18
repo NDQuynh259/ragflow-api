@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from rag_contracts import ChunkRecord, DocumentChunk
 from rag_core.embeddings.base import Embedder
@@ -37,7 +36,7 @@ class RAGEngine:
         self.generation = generation
 
     @classmethod
-    def from_env(cls) -> "RAGEngine":
+    def from_env(cls) -> RAGEngine:
         """Create a RAGEngine with all components configured from env vars."""
         from rag_core.embeddings.gemini import GeminiEmbedder
         from rag_core.indexing.pgvector import PgVectorStore
@@ -77,7 +76,7 @@ class RAGEngine:
 
         # Build records
         records: list[ChunkRecord] = []
-        for chunk, vector in zip(indexable, vectors):
+        for chunk, vector in zip(indexable, vectors, strict=False):
             records.append(
                 ChunkRecord(
                     id=chunk.id,
