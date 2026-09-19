@@ -1,4 +1,4 @@
-"""RabbitMQ message queue adapter for dispatching document ingestion jobs."""
+"""RabbitMQ message queue adapter for dispatching background jobs to workers."""
 
 from __future__ import annotations
 
@@ -12,12 +12,13 @@ import pika
 
 from core.config import settings
 from core.queue.port import IngestionQueuePort
+from core.uuid7 import uuid7_str
 
 logger = logging.getLogger(__name__)
 
 
 class RabbitMQQueueAdapter(IngestionQueuePort):
-    """Production RabbitMQ adapter for publishing document ingestion jobs."""
+    """Production RabbitMQ adapter for publishing background jobs and document ingestion tasks."""
 
     def __init__(
         self,
@@ -36,14 +37,25 @@ class RabbitMQQueueAdapter(IngestionQueuePort):
         self.routing_key = routing_key or getattr(
             settings, "RABBITMQ_ROUTING_KEY", "document.ingestion"
         )
+        self._connection: pika.BlockingConnection | None = None
+        self._channel: Any = None
 
-    def _get_connection(self) -> pika.BlockingConnection:
-        parameters = pika.URLParameters(self.amqp_url)
-        return pika.BlockingConnection(parameters)
+    def _get_channel(self) -> Any:
+        if self._connection is None or self._connection.is_closed:
+            parameters = pika.URLParameters(self.amqp_url)
+            self._connection = pika.BlockingConnection(parameters)
+            self._channel = self._connection.channel()
+            # Ensure exchange exists
+            self._channel.exchange_declare(
+                exchange=self.exchange,
+                exchange_type="direct",
+                durable=True,
+            )
+        return self._channel
 
     def setup_queues(self) -> None:
         """Declare exchanges, queues, and dead-letter routing in RabbitMQ."""
-        connection = self._get_connection()
+        connection = pika.BlockingConnection(pika.URLParameters(self.amqp_url))
         try:
             channel = connection.channel()
 
@@ -75,6 +87,61 @@ class RabbitMQQueueAdapter(IngestionQueuePort):
             if connection.is_open:
                 connection.close()
 
+    def enqueue(
+        self,
+        action: str,
+        payload: dict[str, Any],
+        job_id: str | uuid.UUID | None = None,
+        routing_key: str | None = None,
+    ) -> str:
+        """Enqueue an arbitrary background job action to RabbitMQ."""
+        resolved_job_id = str(job_id) if job_id else uuid7_str()
+        resolved_key = routing_key or self.routing_key
+
+        full_payload: dict[str, Any] = {
+            "job_id": resolved_job_id,
+            "action": action,
+            "enqueued_at": datetime.now(UTC).isoformat(),
+            **payload,
+        }
+        body = json.dumps(full_payload, ensure_ascii=False).encode("utf-8")
+
+        properties = pika.BasicProperties(
+            delivery_mode=pika.DeliveryMode.Persistent,
+            content_type="application/json",
+            message_id=resolved_job_id,
+            timestamp=int(datetime.now(UTC).timestamp()),
+        )
+
+        try:
+            channel = self._get_channel()
+            channel.basic_publish(
+                exchange=self.exchange,
+                routing_key=resolved_key,
+                body=body,
+                properties=properties,
+            )
+            logger.info(
+                "Enqueued job %s (action: %s) to RabbitMQ exchange '%s' [routing: '%s']",
+                resolved_job_id,
+                action,
+                self.exchange,
+                resolved_key,
+            )
+        except Exception as exc:
+            logger.warning("Failed to publish to RabbitMQ, attempting reconnect: %s", exc)
+            self.close()
+            # Retry once with fresh connection
+            channel = self._get_channel()
+            channel.basic_publish(
+                exchange=self.exchange,
+                routing_key=resolved_key,
+                body=body,
+                properties=properties,
+            )
+
+        return resolved_job_id
+
     def enqueue_ingestion(
         self,
         document_id: uuid.UUID,
@@ -82,47 +149,35 @@ class RabbitMQQueueAdapter(IngestionQueuePort):
         storage_uri: str,
         workspace_id: uuid.UUID,
     ) -> None:
-        payload = {
-            "job_id": str(job_id),
-            "document_id": str(document_id),
-            "storage_uri": storage_uri,
-            "workspace_id": str(workspace_id),
-            "action": "index",
-            "enqueued_at": datetime.now(UTC).isoformat(),
-        }
-        body = json.dumps(payload).encode("utf-8")
+        """Enqueue document ingestion job (implements IngestionQueuePort)."""
+        self.enqueue(
+            action="index",
+            payload={
+                "document_id": str(document_id),
+                "storage_uri": storage_uri,
+                "workspace_id": str(workspace_id),
+            },
+            job_id=job_id,
+            routing_key=self.routing_key,
+        )
 
-        connection = self._get_connection()
+    def check_health(self) -> bool:
+        """Ping RabbitMQ connection to verify liveness."""
         try:
-            channel = connection.channel()
+            channel = self._get_channel()
+            return bool(channel and channel.is_open)
+        except Exception:
+            return False
 
-            # Ensure exchange and queue exist
-            channel.exchange_declare(exchange=self.exchange, exchange_type="direct", durable=True)
-
-            properties = pika.BasicProperties(
-                delivery_mode=pika.DeliveryMode.Persistent,
-                content_type="application/json",
-                message_id=str(job_id),
-                timestamp=int(datetime.now(UTC).timestamp()),
-            )
-
-            channel.basic_publish(
-                exchange=self.exchange,
-                routing_key=self.routing_key,
-                body=body,
-                properties=properties,
-            )
-
-            logger.info(
-                "Enqueued ingestion job %s for document %s to RabbitMQ exchange '%s' (routing: '%s')",
-                job_id,
-                document_id,
-                self.exchange,
-                self.routing_key,
-            )
-        finally:
-            if connection.is_open:
-                connection.close()
+    def close(self) -> None:
+        """Close connection and channel."""
+        if self._connection and not self._connection.is_closed:
+            try:
+                self._connection.close()
+            except Exception:
+                pass
+        self._connection = None
+        self._channel = None
 
 
 __all__ = ["RabbitMQQueueAdapter"]

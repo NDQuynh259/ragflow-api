@@ -34,6 +34,7 @@ class CoreSettings(BaseSettings):
     RABBITMQ_INGESTION_QUEUE: str = "rag.document.ingestion"
     RABBITMQ_EXCHANGE: str = "rag.direct"
     RABBITMQ_ROUTING_KEY: str = "document.ingestion"
+    RABBITMQ_EVENTS_EXCHANGE: str = "rag.events"
 
 
 # Backward-compatible alias

@@ -545,6 +545,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "sqlalchemy" },
+    { name = "starlette" },
     { name = "uuid-utils" },
 ]
 
@@ -557,6 +558,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.8" },
     { name = "pydantic-settings", specifier = ">=2.4" },
     { name = "sqlalchemy", specifier = ">=2.0" },
+    { name = "starlette", specifier = ">=0.37.0" },
     { name = "uuid-utils", specifier = ">=0.9.0" },
 ]
 

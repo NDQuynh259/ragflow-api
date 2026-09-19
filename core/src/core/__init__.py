@@ -14,6 +14,7 @@ from core.exceptions import (
     UnauthorizedException,
 )
 from core.logging import setup_logging
+from core.sse import SSEHub, SSEMessage, SSEResponse, sse_hub
 from core.uuid7 import uuid7, uuid7_str
 
 __all__ = [
@@ -33,4 +34,8 @@ __all__ = [
     "setup_logging",
     "uuid7",
     "uuid7_str",
+    "SSEMessage",
+    "SSEResponse",
+    "SSEHub",
+    "sse_hub",
 ]

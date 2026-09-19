@@ -1,19 +1,20 @@
-"""Background job queue adapter for local execution and mock ingestion."""
+"""In-memory queue adapter for testing and offline development."""
 
 from __future__ import annotations
 
-import logging
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 from core.queue.port import IngestionQueuePort
 from core.uuid7 import uuid7_str
 
-logger = logging.getLogger(__name__)
 
+class InMemoryQueueAdapter(IngestionQueuePort):
+    """In-memory queue adapter storing dispatched jobs in a list."""
 
-class BackgroundQueueAdapter(IngestionQueuePort):
-    """Local adapter logging and accepting background jobs."""
+    def __init__(self) -> None:
+        self.enqueued_jobs: list[dict[str, Any]] = []
 
     def enqueue(
         self,
@@ -23,12 +24,14 @@ class BackgroundQueueAdapter(IngestionQueuePort):
         routing_key: str | None = None,
     ) -> str:
         resolved_job_id = str(job_id) if job_id else uuid7_str()
-        logger.info(
-            "Enqueued background job %s (action: %s, routing_key: %s)",
-            resolved_job_id,
-            action,
-            routing_key,
-        )
+        job_entry: dict[str, Any] = {
+            "job_id": resolved_job_id,
+            "action": action,
+            "routing_key": routing_key,
+            "enqueued_at": datetime.now(UTC).isoformat(),
+            **payload,
+        }
+        self.enqueued_jobs.append(job_entry)
         return resolved_job_id
 
     def enqueue_ingestion(
@@ -48,5 +51,9 @@ class BackgroundQueueAdapter(IngestionQueuePort):
             job_id=job_id,
         )
 
+    def clear(self) -> None:
+        """Clear all enqueued jobs."""
+        self.enqueued_jobs.clear()
 
-__all__ = ["BackgroundQueueAdapter"]
+
+__all__ = ["InMemoryQueueAdapter"]
