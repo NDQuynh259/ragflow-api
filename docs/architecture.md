@@ -64,11 +64,15 @@ Hệ thống API được triển khai theo mô hình **Modular Monolith (Vertic
 
 ```text
 apps/chat-api/src/chat_api/
-├── shared/                                     # TÀNG TÀI NGUYÊN & HẠ TẦNG DÙNG CHUNG
+├── shared/                                     # TẦNG TÀI NGUYÊN & HẠ TẦNG DÙNG CHUNG
 │   ├── config.py                               # Đọc biến môi trường (pydantic-settings)
 │   ├── exceptions.py                           # Định nghĩa các lỗi nghiệp vụ chuẩn
 │   ├── logging.py                              # Cấu hình log tập trung
 │   ├── middleware.py                           # Exception Handler chuyển đổi Domain Error -> HTTP Status
+│   ├── bus.py                                  # CQRS CommandBus & QueryBus
+│   ├── auth/                                   # TẦNG PHÂN QUYỀN & GUARDS (ViShop-style)
+│   │   ├── permissions.py                      # Permission Catalog, Built-in Roles, Role Permissions
+│   │   └── guards.py                           # RequirePermission, RequireRole, AuthDep dependencies
 │   ├── domain/
 │   │   ├── base_entity.py                      # Base Entity, AggregateRoot (quản lý Domain Events), ValueObject
 │   │   └── uow.py                              # Trừu tượng hóa UnitOfWork (Transaction Gateway)
@@ -82,12 +86,28 @@ apps/chat-api/src/chat_api/
 │       ├── queue/                              # IngestionQueuePort & BackgroundQueueAdapter
 │       └── rag/                                # RAGEnginePort & RAGEngineAdapter (kết nối rag-core)
 │
+├── composition/                                # TẦNG TỔNG HỢP CHÉO MODULE (API Composition Layer)
+│   └── reports/                                # Module Báo cáo & Thống kê đa bảng
+│       ├── application/
+│       │   ├── dtos.py                         # DTO số liệu báo cáo đa bảng & hoạt động theo ngày
+│       │   └── services.py                     # Điều phối dữ liệu báo cáo
+│       ├── infrastructure/
+│       │   └── queries.py                      # SQL Aggregation tối ưu (JOIN 6+ bảng, bypass ORM)
+│       └── presentation/
+│           └── router.py                       # FastAPI Router: GET /api/v1/reports/...
+│
 ├── modules/                                    # CÁC BOUNDED CONTEXTS NGHIỆP VỤ ĐỘC LẬP
+│   ├── auth/                                   # Bounded Context: Xác thực danh tính (IAM)
+│   │   ├── domain/                             # Entity UserSession, Token rules
+│   │   ├── application/                        # Commands (Login, Register, Logout), Queries
+│   │   ├── infrastructure/                     # UserSession model, SessionRepository
+│   │   └── presentation/                       # Auth DTOs & Router (/api/v1/auth)
+│   │
 │   ├── workspaces/                             # Bounded Context: Quản lý Không gian làm việc
 │   │   ├── domain/                             # Entity Workspace, WorkspaceMember, WorkspaceRole
 │   │   └── infrastructure/                     # SQLAlchemy Models & SqlAlchemyWorkspaceRepository
 │   │
-│   ├── users/                                  # Bounded Context: Người dùng & Xác thực
+│   ├── users/                                  # Bounded Context: Người dùng & Hồ sơ
 │   │   ├── domain/                             # Entity User, UserRepository interface
 │   │   └── infrastructure/                     # SQLAlchemy User Model, SqlAlchemyUserRepository
 │   │
@@ -156,6 +176,32 @@ Mỗi module (ví dụ `documents` hay `sessions`) là một "tiểu vương qu�
 │    - Ánh xạ bảng Database và liên kết khóa ngoại           │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+### 2.3. Tầng Composition (API Composition Layer - Báo cáo & Thống kê đa bảng)
+
+Khi nghiệp vụ đòi hỏi truy vấn tổng hợp từ nhiều Bounded Context khác nhau (ví dụ: Báo cáo không gian làm việc cần đếm số thành viên từ `workspaces`, số file và dung lượng từ `documents`, số chunks, số phiên chat từ `sessions`, số tin nhắn và token usage từ `messages`, tỉ lệ đánh giá từ `message_feedback`):
+* **Không nhồi nhét vào các module đơn lẻ**: Đặt báo cáo vào `documents` hay `messages` sẽ làm vỡ ranh giới (boundary pollution) và gây phụ thuộc chéo chằng chịt.
+* **Tách thành tầng `composition/`**:
+  * Tầng `composition` nằm ở cấp cao hơn các modules nghiệp vụ, đóng vai trò "nhạc trưởng" (Orchestrator/Aggregator).
+  * **Tối ưu hóa hiệu năng (CQRS Pure Read)**: [ReportQueryRepository](file:///c:/Users/Admin/Documents/Project/ragflow-api/apps/chat-api/src/chat_api/composition/reports/infrastructure/queries.py#L24) thực hiện truy vấn `SELECT` tổng hợp trực tiếp bằng SQLAlchemy Core (`func.count`, `func.sum`, `func.avg`, `case`), bỏ qua việc load ORM Entity để tránh lỗi N+1 và giảm thiểu chiếm dụng bộ nhớ RAM.
+
+---
+
+### 2.4. Phân tách An ninh và Phân quyền (`core/security` & `shared/auth`)
+
+Để giữ cho logic nghiệp vụ hoàn toàn thuần khiết, kiến trúc phân tách rõ ràng 2 lớp bảo mật:
+1. **Lớp nền tảng cốt lõi (`core/src/core/security/`):**
+   * Độc lập hoàn toàn với FastAPI và database nghiệp vụ.
+   * `password.py`: Hash và kiểm tra mật khẩu bằng thuật toán `bcrypt`.
+   * `tokens.py`: Sinh session token an toàn bằng `secrets.token_urlsafe` và băm SHA-256 digest lưu database.
+   * `principal.py`: Định nghĩa [CurrentPrincipal](file:///c:/Users/Admin/Documents/Project/ragflow-api/core/src/core/security/principal.py#L13) (chứa `user_id`, `role`, `permissions`, `is_owner`) và [ExecutionContext](file:///c:/Users/Admin/Documents/Project/ragflow-api/core/src/core/security/principal.py#L86).
+2. **Lớp phân quyền và bảo vệ API (`chat_api/shared/auth/`):**
+   * `permissions.py`: Định nghĩa danh mục `Permission` (Workspace, Documents, Sessions, Messages, Reports), bảng ánh xạ quyền theo vai trò (`owner`, `admin`, `member`).
+   * `guards.py`: Cung cấp FastAPI Dependencies (`RequirePermission`, `RequireRole`, `AuthDep`) để chặn request không hợp lệ ngay tại tầng Presentation trước khi chạm vào Application Handler.
+3. **Quy tắc ranh giới bất biến:**
+   * Các module nghiệp vụ (`documents`, `messages`, `sessions`) **tuyệt đối không phụ thuộc vào phương thức đăng nhập hay logic tạo session**. Chúng chỉ nhận `CurrentPrincipal` (đã xác thực) từ tầng Presentation truyền vào.
 
 ---
 
