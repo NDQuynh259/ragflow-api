@@ -71,7 +71,9 @@ def test_rabbitmq_adapter_enqueue_ingestion(mock_blocking_conn):
     assert payload["action"] == "index"
     assert "enqueued_at" in payload
 
-    # Verify connection closed
+    # Verify connection remains open for reuse, then closed on adapter.close()
+    assert adapter.check_health() is True
+    adapter.close()
     mock_conn.close.assert_called_once()
 
 

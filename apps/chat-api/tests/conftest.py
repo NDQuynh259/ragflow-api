@@ -242,6 +242,12 @@ class FakeStorage(ObjectStoragePort):
 class FakeQueue(IngestionQueuePort):
     def __init__(self):
         self.enqueued = []
+        self.raw_jobs = []
+
+    def enqueue(self, action: str, payload: dict, job_id=None, routing_key=None) -> str:
+        jid = str(job_id or uuid.uuid4())
+        self.raw_jobs.append((action, payload, jid, routing_key))
+        return jid
 
     def enqueue_ingestion(self, document_id, job_id, storage_uri, workspace_id):
         self.enqueued.append((document_id, job_id, storage_uri, workspace_id))

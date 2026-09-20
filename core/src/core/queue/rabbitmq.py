@@ -171,9 +171,10 @@ class RabbitMQQueueAdapter(IngestionQueuePort):
 
     def close(self) -> None:
         """Close connection and channel."""
-        if self._connection and not self._connection.is_closed:
+        if self._connection:
             try:
-                self._connection.close()
+                if getattr(self._connection, "is_open", True):
+                    self._connection.close()
             except Exception:
                 pass
         self._connection = None
