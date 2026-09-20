@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from chat_api.shared.infrastructure.database import UnitOfWork
-from core.auth import CurrentPrincipal, ExecutionContext
+from core.security import CurrentPrincipal, ExecutionContext
 from core.exceptions import ForbiddenException
 
 

@@ -10,7 +10,7 @@ from chat_api.modules.messages.application.mapper import MessageMapper
 from chat_api.shared.auth import require_session_access
 from chat_api.shared.bus import Query, authorization_handler, query_handler
 from chat_api.shared.infrastructure.database import UnitOfWork
-from core.auth import CurrentPrincipal
+from core.security import CurrentPrincipal
 from core.exceptions import EntityNotFoundException
 
 

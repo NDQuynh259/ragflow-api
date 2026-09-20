@@ -1,4 +1,4 @@
-"""Unit tests for core.auth (password, tokens, CurrentPrincipal)."""
+"""Unit tests for core.security (password, tokens, CurrentPrincipal)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import uuid
 
 import pytest
 
-from core.auth import (
+from core.security import (
     CurrentPrincipal,
     ExecutionContext,
     generate_session_token,

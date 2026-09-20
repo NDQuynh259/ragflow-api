@@ -13,7 +13,7 @@ from chat_api.shared.auth import Permission, require_session_access
 from chat_api.shared.bus import Command, authorization_handler, command_handler
 from chat_api.shared.infrastructure.database import UnitOfWork
 from chat_api.shared.infrastructure.rag import RAGEnginePort
-from core.auth import CurrentPrincipal
+from core.security import CurrentPrincipal
 from core.exceptions import EntityNotFoundException
 from core.uuid7 import uuid7
 

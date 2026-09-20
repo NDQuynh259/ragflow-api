@@ -24,7 +24,7 @@ from chat_api.modules.workspaces.domain.entity import Workspace, WorkspaceMember
 from chat_api.shared.auth import AuthContext, Permission, get_auth_context
 from chat_api.shared.bus import CommandBus, QueryBus
 from chat_api.shared.infrastructure.database import get_uow
-from core.auth import CurrentPrincipal, ExecutionContext
+from core.security import CurrentPrincipal, ExecutionContext
 
 
 class MockReportService:

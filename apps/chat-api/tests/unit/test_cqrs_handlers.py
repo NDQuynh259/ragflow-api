@@ -25,7 +25,7 @@ from chat_api.modules.messages.application.commands import (
 from chat_api.modules.users.domain.entity import User
 from chat_api.modules.workspaces.domain.entity import Workspace, WorkspaceMember, WorkspaceRole
 from chat_api.shared.bus import CommandBus
-from core.auth import CurrentPrincipal, ExecutionContext
+from core.security import CurrentPrincipal, ExecutionContext
 from core.exceptions import ForbiddenException
 from core.queue import IngestionQueuePort
 from core.storage import ObjectStoragePort

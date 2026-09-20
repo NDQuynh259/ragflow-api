@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from chat_api.modules.auth.domain.entity import UserSession as DomainSession
 from chat_api.modules.auth.domain.repository import UserSessionRepository
 from chat_api.modules.auth.infrastructure.model import UserSession as ORMSession
-from core.auth import hash_session_token
+from core.security import hash_session_token
 
 
 class SqlAlchemyUserSessionRepository(UserSessionRepository):

@@ -15,7 +15,7 @@ from chat_api.modules.workspaces.domain.entity import (
 )
 from chat_api.shared.bus import Command, command_handler
 from chat_api.shared.infrastructure.database import UnitOfWork
-from core.auth import (
+from core.security import (
     generate_session_token,
     verify_password,
 )

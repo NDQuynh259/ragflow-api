@@ -12,7 +12,7 @@ from chat_api.modules.workspaces.domain.entity import (
 )
 from chat_api.shared.bus import Command, command_handler
 from chat_api.shared.infrastructure.database import UnitOfWork
-from core.auth import hash_password
+from core.security import hash_password
 from core.exceptions import (
     DomainValidationException,
     ResourceConflictException,

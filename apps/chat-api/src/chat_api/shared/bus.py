@@ -12,7 +12,7 @@ from typing import Annotated, Any, Generic, Protocol, TypeVar, get_type_hints
 from fastapi import Depends
 
 from chat_api.shared.infrastructure.database import UnitOfWork, get_uow
-from core.auth import CurrentPrincipal, ExecutionContext
+from core.security import CurrentPrincipal, ExecutionContext
 
 R = TypeVar("R")
 M_contra = TypeVar("M_contra", contravariant=True)
