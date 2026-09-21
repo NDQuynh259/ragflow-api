@@ -1,4 +1,4 @@
-"""Synchronous CQRS buses and their execution pipeline."""
+"""Core synchronous CQRS bus primitives and execution pipeline."""
 
 from __future__ import annotations
 
@@ -7,12 +7,10 @@ import logging
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Annotated, Any, Generic, Protocol, TypeVar, get_type_hints
+from typing import Any, Generic, Protocol, TypeVar, get_type_hints
 
-from fastapi import Depends
-
-from chat_api.shared.infrastructure.database import UnitOfWork, get_uow
 from core.auth import CurrentPrincipal, ExecutionContext
+from core.database.uow import UnitOfWork
 
 R = TypeVar("R")
 M_contra = TypeVar("M_contra", contravariant=True)
@@ -55,7 +53,6 @@ DependencyMap = Mapping[type[Any], Any]
 COMMAND_HANDLERS: HandlerRegistry = {}
 QUERY_HANDLERS: HandlerRegistry = {}
 EVENT_HANDLERS: dict[type[Any], list[HandlerType]] = {}
-AUTHORIZERS: HandlerRegistry = {}
 
 
 @dataclass(frozen=True)
@@ -80,44 +77,11 @@ def _register_single(
 
 
 def command_handler(command_cls: type[Command[Any]]) -> Callable[[HandlerType], HandlerType]:
-    """Register exactly one handler for a command type."""
+    """Register exactly one handler for a command type in the global command registry."""
 
     def decorator(handler_cls: HandlerType) -> HandlerType:
         _register_single(COMMAND_HANDLERS, command_cls, handler_cls)
         return handler_cls
-
-    return decorator
-    
-
-
-def query_handler(query_cls: type[Query[Any]]) -> Callable[[HandlerType], HandlerType]:
-    """Register exactly one handler for a query type."""
-
-    def decorator(handler_cls: HandlerType) -> HandlerType:
-        _register_single(QUERY_HANDLERS, query_cls, handler_cls)
-        return handler_cls
-
-    return decorator
-
-
-def event_handler(event_cls: type[Any]) -> Callable[[HandlerType], HandlerType]:
-    """Register an in-process handler for a domain event type."""
-
-    def decorator(handler_cls: HandlerType) -> HandlerType:
-        handlers = EVENT_HANDLERS.setdefault(event_cls, [])
-        if handler_cls not in handlers:
-            handlers.append(handler_cls)
-        return handler_cls
-
-    return decorator
-
-
-def authorization_handler(message_cls: type[Any]) -> Callable[[HandlerType], HandlerType]:
-    """Register one authorization policy for a message type."""
-
-    def decorator(authorizer_cls: HandlerType) -> HandlerType:
-        _register_single(AUTHORIZERS, message_cls, authorizer_cls)
-        return authorizer_cls
 
     return decorator
 
@@ -132,6 +96,9 @@ def _build_handler(
     except (NameError, TypeError):
         hints = {}
 
+    import types
+    from typing import Union, get_args, get_origin
+
     kwargs: dict[str, Any] = {}
     missing: list[str] = []
     for name, parameter in signature.parameters.items():
@@ -140,8 +107,18 @@ def _build_handler(
         dependency_type = hints.get(name, parameter.annotation)
         if dependency_type in dependencies:
             kwargs[name] = dependencies[dependency_type]
-        elif parameter.default is inspect.Parameter.empty:
-            missing.append(name)
+        else:
+            # Handle Optional / Union types (e.g. RAGEngine | None)
+            origin = get_origin(dependency_type)
+            matched = False
+            if origin in (types.UnionType, Union):
+                for candidate in get_args(dependency_type):
+                    if candidate is not type(None) and candidate in dependencies:
+                        kwargs[name] = dependencies[candidate]
+                        matched = True
+                        break
+            if not matched and parameter.default is inspect.Parameter.empty:
+                missing.append(name)
 
     if missing:
         names = ", ".join(missing)
@@ -180,68 +157,6 @@ class TransactionBehavior:
     ) -> Any:
         with context.uow:
             return next_handler()
-
-
-class AuthorizationBehavior:
-    """Run the registered authorization policy inside the current transaction."""
-
-    def __init__(self, authorizers: HandlerRegistry | None = None) -> None:
-        self._authorizers = authorizers if authorizers is not None else AUTHORIZERS
-
-    def handle(
-        self,
-        message: object,
-        context: BusContext,
-        next_handler: Callable[[], Any],
-    ) -> Any:
-        authorizer_cls = self._authorizers.get(type(message))
-        if authorizer_cls is not None:
-            authorizer = _build_handler(authorizer_cls, context.dependencies)
-            authorizer.handle(message)
-        return next_handler()
-
-
-class ReadOnlyBehavior:
-    """Initialize repositories for a query and always end read transactions."""
-
-    def handle(
-        self,
-        message: object,
-        context: BusContext,
-        next_handler: Callable[[], Any],
-    ) -> Any:
-        with context.uow.read_only():
-            return next_handler()
-
-
-class EventBus:
-    """Publish domain events to in-process handlers."""
-
-    def __init__(self, handlers: Mapping[type[Any], Sequence[HandlerType]] | None = None) -> None:
-        self._handlers = handlers if handlers is not None else EVENT_HANDLERS
-
-    def publish(self, event: object, dependencies: DependencyMap) -> None:
-        for handler_cls in self._handlers.get(type(event), ()):
-            handler = _build_handler(handler_cls, dependencies)
-            handler.handle(event)
-
-
-class DomainEventBehavior:
-    """Publish tracked aggregate events after a successful commit."""
-
-    def __init__(self, event_bus: EventBus) -> None:
-        self._event_bus = event_bus
-
-    def handle(
-        self,
-        message: object,
-        context: BusContext,
-        next_handler: Callable[[], Any],
-    ) -> Any:
-        result = next_handler()
-        for event in context.uow.collect_new_events():
-            self._event_bus.publish(event, context.dependencies)
-        return result
 
 
 class _RequestBus:
@@ -288,7 +203,7 @@ class _RequestBus:
 
 
 class CommandBus(_RequestBus):
-    """Dispatch commands through logging, domain-event and transaction behaviors."""
+    """Dispatch commands through logging and transaction behaviors."""
 
     def __init__(
         self,
@@ -296,17 +211,14 @@ class CommandBus(_RequestBus):
         handlers: HandlerRegistry | None = None,
         dependencies: DependencyMap | None = None,
         behaviors: Sequence[BusBehavior] | None = None,
-        event_bus: EventBus | None = None,
         execution_context: ExecutionContext | None = None,
     ) -> None:
-        domain_events = DomainEventBehavior(event_bus or EventBus())
-        authorization = AuthorizationBehavior()
         super().__init__(
             uow=uow,
             handlers=handlers if handlers is not None else COMMAND_HANDLERS,
             behaviors=behaviors
             if behaviors is not None
-            else (LoggingBehavior(), domain_events, TransactionBehavior(), authorization),
+            else (LoggingBehavior(), TransactionBehavior()),
             dependencies=dependencies,
             execution_context=execution_context,
         )
@@ -319,47 +231,6 @@ class CommandBus(_RequestBus):
         return self._execute(command, dependencies)
 
 
-class QueryBus(_RequestBus):
-    """Dispatch read-only queries without committing a transaction."""
-
-    def __init__(
-        self,
-        uow: UnitOfWork,
-        handlers: HandlerRegistry | None = None,
-        dependencies: DependencyMap | None = None,
-        behaviors: Sequence[BusBehavior] | None = None,
-        execution_context: ExecutionContext | None = None,
-    ) -> None:
-        super().__init__(
-            uow=uow,
-            handlers=handlers if handlers is not None else QUERY_HANDLERS,
-            behaviors=behaviors
-            if behaviors is not None
-            else (LoggingBehavior(), ReadOnlyBehavior(), AuthorizationBehavior()),
-            dependencies=dependencies,
-            execution_context=execution_context,
-        )
-
-    def execute(
-        self,
-        query: Query[R],
-        dependencies: DependencyMap | None = None,
-    ) -> R:
-        return self._execute(query, dependencies)
-
-
-def get_command_bus(uow: UnitOfWork = Depends(get_uow)) -> CommandBus:
-    return CommandBus(uow=uow)
-
-
-def get_query_bus(uow: UnitOfWork = Depends(get_uow)) -> QueryBus:
-    return QueryBus(uow=uow)
-
-
-CommandBusDep = Annotated[CommandBus, Depends(get_command_bus)]
-QueryBusDep = Annotated[QueryBus, Depends(get_query_bus)]
-
-
 __all__ = [
     "Command",
     "Query",
@@ -367,15 +238,14 @@ __all__ = [
     "CommandHandler",
     "BusBehavior",
     "BusContext",
-    "CommandBus",
-    "QueryBus",
-    "EventBus",
+    "COMMAND_HANDLERS",
+    "QUERY_HANDLERS",
+    "EVENT_HANDLERS",
     "command_handler",
-    "query_handler",
-    "event_handler",
-    "authorization_handler",
-    "get_command_bus",
-    "get_query_bus",
-    "CommandBusDep",
-    "QueryBusDep",
+    "LoggingBehavior",
+    "TransactionBehavior",
+    "CommandBus",
+    "_build_handler",
+    "_register_single",
+    "_RequestBus",
 ]

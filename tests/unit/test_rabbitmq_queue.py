@@ -35,6 +35,7 @@ def test_rabbitmq_adapter_enqueue_ingestion(mock_blocking_conn):
         exchange="rag.direct",
         queue_name="rag.document.ingestion",
         routing_key="document.ingestion",
+        auto_close=True,
     )
 
     doc_id = uuid.uuid4()
@@ -76,7 +77,7 @@ def test_rabbitmq_adapter_enqueue_ingestion(mock_blocking_conn):
 
 
 @patch("pika.BlockingConnection")
-def test_rabbitmq_adapter_setup_queues(mock_blocking_conn):
+def test_rabbitmq_adapter_setup_queues_3tier(mock_blocking_conn):
     mock_conn = MagicMock()
     mock_channel = MagicMock()
     mock_conn.channel.return_value = mock_channel
@@ -86,11 +87,40 @@ def test_rabbitmq_adapter_setup_queues(mock_blocking_conn):
     adapter = RabbitMQQueueAdapter()
     adapter.setup_queues()
 
-    # Verify exchanges declared: primary and dlx
-    assert mock_channel.exchange_declare.call_count == 2
-    # Verify queues declared: primary and dlq
-    assert mock_channel.queue_declare.call_count == 2
-    # Verify queue binds: primary and dlq
-    assert mock_channel.queue_bind.call_count == 2
+    # Verify 3-tier topology declared: primary, retry, and dlx
+    assert mock_channel.exchange_declare.call_count == 3
+    # Verify 3 queues declared: primary, retry, and dlq
+    assert mock_channel.queue_declare.call_count == 3
+    # Verify 3 queue binds: primary, retry, and dlq
+    assert mock_channel.queue_bind.call_count == 3
 
     mock_conn.close.assert_called_once()
+
+
+@patch("pika.BlockingConnection")
+def test_rabbitmq_adapter_general_enqueue(mock_blocking_conn):
+    mock_conn = MagicMock()
+    mock_channel = MagicMock()
+    mock_conn.channel.return_value = mock_channel
+    mock_conn.is_open = True
+    mock_blocking_conn.return_value = mock_conn
+
+    adapter = RabbitMQQueueAdapter(auto_close=True)
+    job_id = adapter.enqueue(
+        action="custom_task",
+        payload={"task_data": 42},
+        correlation_id="corr-123",
+    )
+    assert job_id is not None
+    mock_channel.basic_publish.assert_called_once()
+    mock_conn.close.assert_called_once()
+
+
+@patch("pika.BlockingConnection")
+def test_rabbitmq_adapter_health_check(mock_blocking_conn):
+    mock_conn = MagicMock()
+    mock_conn.is_open = True
+    mock_blocking_conn.return_value = mock_conn
+
+    adapter = RabbitMQQueueAdapter(auto_close=True)
+    assert adapter.check_health() is True
