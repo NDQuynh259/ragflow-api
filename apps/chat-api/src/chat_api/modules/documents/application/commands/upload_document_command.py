@@ -1,4 +1,4 @@
-"""Document Commands and Command Handlers (Write Side)."""
+"""Upload Document Command, Authorizer, and Handler."""
 
 from __future__ import annotations
 
@@ -21,7 +21,6 @@ from chat_api.modules.workspaces.domain.repository import WorkspaceRepository
 from chat_api.shared.auth import (
     CurrentPrincipal,
     Permission,
-    require_document_access,
     require_workspace_permission,
 )
 from chat_api.shared.bus import Command, authorization_handler, command_handler
@@ -107,39 +106,3 @@ class UploadDocumentHandler:
         )
         self.uow.track(document)
         return DocumentMapper.to_dto(document)
-
-
-@dataclass(frozen=True)
-class DeleteDocumentCommand(Command[bool]):
-    document_id: uuid.UUID
-
-
-@authorization_handler(DeleteDocumentCommand)
-class DeleteDocumentAuthorizer:
-    def __init__(self, uow: UnitOfWork, principal: CurrentPrincipal) -> None:
-        self.uow = uow
-        self.principal = principal
-
-    def handle(self, command: DeleteDocumentCommand) -> None:
-        require_document_access(
-            self.uow,
-            self.principal,
-            command.document_id,
-            Permission.DOCUMENT_DELETE,
-        )
-
-
-@command_handler(DeleteDocumentCommand)
-class DeleteDocumentHandler:
-    def __init__(self, uow: UnitOfWork, storage: ObjectStoragePort) -> None:
-        self.uow = uow
-        self.storage = storage
-
-    def handle(self, cmd: DeleteDocumentCommand) -> bool:
-        doc_repo = self.uow.get_repo(DocumentRepository)
-        doc = doc_repo.get_by_id(cmd.document_id)
-        if not doc:
-            raise EntityNotFoundException("Document", cmd.document_id)
-
-        self.storage.delete(str(doc.storage_uri))
-        return doc_repo.delete(cmd.document_id)

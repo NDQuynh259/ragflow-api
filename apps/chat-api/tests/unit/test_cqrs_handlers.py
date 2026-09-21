@@ -237,3 +237,76 @@ def test_workspace_models_submodule_imports():
     assert RolePermission is RolePermMod
     assert Workspace is WsMod
     assert WorkspaceMember is WsMemMod
+
+
+def test_index_document_handler(fake_uow, fake_storage):
+    from unittest.mock import MagicMock
+
+    from chat_api.modules.documents.application.commands import (
+        IndexDocumentCommand,
+        IndexDocumentHandler,
+    )
+    from chat_api.modules.documents.domain.entity import Document, DocumentStatus
+    from chat_api.modules.documents.domain.value_objects import ContentHash, Filename, StorageUri
+    from rag_contracts import DocumentChunk
+
+    ws_id = uuid.uuid4()
+    doc_id = uuid.uuid4()
+    job_id = uuid.uuid4()
+    storage_uri = f"fake://{ws_id}/sop.pdf"
+
+    doc = Document(
+        id=doc_id,
+        workspace_id=ws_id,
+        filename=Filename("sop.pdf"),
+        storage_uri=StorageUri(storage_uri),
+        content_hash=ContentHash("a" * 64),
+        status=DocumentStatus.QUEUED,
+    )
+    fake_uow.documents.save(doc)
+
+    cmd = IndexDocumentCommand(
+        job_id=job_id,
+        document_id=doc_id,
+        workspace_id=ws_id,
+        storage_uri=storage_uri,
+    )
+
+    mock_pipeline = MagicMock()
+    mock_pipeline.process.return_value = MagicMock(
+        page_count=3,
+        chunks=[
+            DocumentChunk(
+                id="c1",
+                document_id=str(doc_id),
+                content="Chunk 1",
+                chunk_index=0,
+            ),
+            DocumentChunk(
+                id="c2",
+                document_id=str(doc_id),
+                content="Chunk 2",
+                chunk_index=1,
+            ),
+        ],
+    )
+
+    mock_engine = MagicMock()
+    mock_engine.index.return_value = 2
+
+    handler = IndexDocumentHandler(
+        uow=fake_uow,
+        storage=fake_storage,
+        pipeline=mock_pipeline,
+        engine=mock_engine,
+    )
+    indexed_count = handler.handle(cmd)
+
+    assert indexed_count == 2
+    mock_pipeline.process.assert_called_once()
+    mock_engine.index.assert_called_once()
+
+    updated = fake_uow.documents.get_by_id(doc_id)
+    assert updated is not None
+    assert updated.status == DocumentStatus.READY
+    assert updated.page_count == 3
