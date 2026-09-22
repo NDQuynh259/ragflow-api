@@ -21,7 +21,7 @@ COPY apps/chat-api/pyproject.toml ./apps/chat-api/
 COPY apps/worker/pyproject.toml ./apps/worker/
 
 # Sync external dependencies first (without installing workspace project packages)
-RUN uv sync --frozen --no-install-project --no-dev
+RUN uv sync --frozen --all-packages --no-install-project --no-dev
 
 # Copy source code of all workspace components
 COPY core/ ./core/
@@ -32,7 +32,7 @@ COPY migrations/ ./migrations/
 COPY alembic.ini ./
 
 # Install workspace project packages
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --all-packages --no-dev
 
 # ------------------------------------------------------------------------------
 # Stage 2: Minimal Production Runtime
