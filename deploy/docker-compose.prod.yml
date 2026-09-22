@@ -21,10 +21,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "2.0"
-          memory: 2G
+          cpus: "1.0"
+          memory: 1024M
 
   migration:
+    image: ${APP_IMAGE:-ghcr.io/ndquynh259/ragflow-api:latest}
     build:
       context: ..
       dockerfile: Dockerfile
@@ -58,8 +59,14 @@ services:
       retries: 5
     networks:
       - rag_prod_net
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 384M
 
   chat-api:
+    image: ${APP_IMAGE:-ghcr.io/ndquynh259/ragflow-api:latest}
     build:
       context: ..
       dockerfile: Dockerfile
@@ -93,10 +100,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "2.0"
-          memory: 2G
+          cpus: "1.0"
+          memory: 768M
 
   worker:
+    image: ${APP_IMAGE:-ghcr.io/ndquynh259/ragflow-api:latest}
     build:
       context: ..
       dockerfile: Dockerfile
@@ -123,8 +131,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "2.0"
-          memory: 3G
+          cpus: "1.0"
+          memory: 1536M
 
 volumes:
   pgdata_prod:
