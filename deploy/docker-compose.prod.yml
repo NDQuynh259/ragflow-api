@@ -26,9 +26,6 @@ services:
 
   migration:
     image: ${APP_IMAGE:-ghcr.io/ndquynh259/ragflow-api:latest}
-    build:
-      context: ..
-      dockerfile: Dockerfile
     container_name: rag_migration_prod
     environment:
       - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgrespassword}@postgres:5432/${POSTGRES_DB:-rag_db}
@@ -68,9 +65,6 @@ services:
 
   chat-api:
     image: ${APP_IMAGE:-ghcr.io/ndquynh259/ragflow-api:latest}
-    build:
-      context: ..
-      dockerfile: Dockerfile
     container_name: rag_chat_api_prod
     restart: unless-stopped
     ports:
@@ -106,9 +100,6 @@ services:
 
   worker:
     image: ${APP_IMAGE:-ghcr.io/ndquynh259/ragflow-api:latest}
-    build:
-      context: ..
-      dockerfile: Dockerfile
     container_name: rag_worker_prod
     restart: unless-stopped
     env_file:
