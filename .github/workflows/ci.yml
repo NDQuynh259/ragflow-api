@@ -101,10 +101,15 @@ jobs:
             mkdir -p "$APP_DIR"
             cd "$APP_DIR"
 
-            # Pull latest git changes for compose/config files if repository exists
+            # Pull latest git changes for compose/config files
             if [ -d ".git" ]; then
-              git fetch origin ${{ github.ref_name }} || true
-              git reset --hard origin/${{ github.ref_name }} || true
+              git fetch origin ${{ github.ref_name }}
+              git reset --hard origin/${{ github.ref_name }}
+            else
+              git init
+              git remote add origin https://github.com/${{ github.repository }}.git || git remote set-url origin https://github.com/${{ github.repository }}.git
+              git fetch origin ${{ github.ref_name }}
+              git checkout -f -B ${{ github.ref_name }} origin/${{ github.ref_name }}
             fi
 
             # Authenticate with GHCR using GITHUB_TOKEN
