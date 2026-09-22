@@ -1,0 +1,33 @@
+"""Shared database models and Unit of Work for chat-api."""
+
+from __future__ import annotations
+
+from chat_api.shared.infrastructure.database.uow import (
+    SqlAlchemyUnitOfWork,
+    UnitOfWork,
+    get_uow,
+    register_repository,
+)
+from core.database import (
+    POSTGRES_NAMING_CONVENTION,
+    Base,
+    SessionLocal,
+    TimestampMixin,
+    UUIDPrimaryKeyMixin,
+    engine,
+    get_db,
+)
+
+__all__ = [
+    "Base",
+    "POSTGRES_NAMING_CONVENTION",
+    "TimestampMixin",
+    "UUIDPrimaryKeyMixin",
+    "SessionLocal",
+    "engine",
+    "get_db",
+    "UnitOfWork",
+    "SqlAlchemyUnitOfWork",
+    "get_uow",
+    "register_repository",
+]

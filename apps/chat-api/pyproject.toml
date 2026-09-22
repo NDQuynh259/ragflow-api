@@ -1,0 +1,38 @@
+[project]
+name = "chat-api"
+version = "0.1.0"
+dependencies = [
+    "fastapi>=0.115",
+    "pydantic-settings>=2.4",
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.1",
+    "pgvector>=0.3",
+    "alembic>=1.14",
+    "uuid-utils>=0.9.0",
+    "scalar-fastapi>=1.0.0",
+    "bcrypt>=4.0",
+    "python-multipart>=0.0.9",
+    "core",
+    "rag-document-pipeline",
+    "rag-core",
+]
+requires-python = ">=3.11"
+
+[tool.uv.sources]
+core = { workspace = true }
+rag-document-pipeline = { workspace = true }
+rag-core = { workspace = true }
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.pyright]
+venvPath = "../.."
+venv = ".venv"
+extraPaths = [
+    "../../core/src",
+    "../../packages/rag-contracts/src",
+    "../../packages/rag-core/src",
+    "../../packages/rag-document-pipeline/src",
+]
+

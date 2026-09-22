@@ -1,0 +1,29 @@
+[project]
+name = "worker"
+version = "0.1.0"
+dependencies = [
+    "core",
+    "rag-document-pipeline",
+    "rag-core",
+    "aio-pika>=9.4.0",
+]
+requires-python = ">=3.11"
+
+[tool.uv.sources]
+core = { workspace = true }
+rag-document-pipeline = { workspace = true }
+rag-core = { workspace = true }
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.pyright]
+venvPath = "../.."
+venv = ".venv"
+extraPaths = [
+    "../../core/src",
+    "../../packages/rag-contracts/src",
+    "../../packages/rag-core/src",
+    "../../packages/rag-document-pipeline/src",
+]

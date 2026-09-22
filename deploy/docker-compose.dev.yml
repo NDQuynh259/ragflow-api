@@ -1,0 +1,72 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: rag_postgres_dev
+    ports:
+      - "45432:5432"
+    environment:
+      POSTGRES_DB: rag_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rag_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - rag_dev_net
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: rag_rabbitmq_dev
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data_dev:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rag_dev_net
+
+  chat-api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: rag_chat_api_dev
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+psycopg://postgres:postgrespassword@postgres:5432/rag_db
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - DEBUG=true
+      - STORAGE_DIR=/app/output/storage
+    volumes:
+      - ../apps/chat-api/src:/app/apps/chat-api/src
+      - ../core/src:/app/core/src
+      - ../packages:/app/packages
+      - ../output/storage:/app/output/storage
+    command: ["uvicorn", "chat_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - rag_dev_net
+
+volumes:
+  pgdata_dev:
+  rabbitmq_data_dev:
+
+networks:
+  rag_dev_net:
+    driver: bridge

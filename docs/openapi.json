@@ -1,0 +1,3563 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "RAG Chat API",
+    "description": "Multimodal RAG Platform API (PostgreSQL 16 + pgvector + Hybrid Search)",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health Check",
+        "operationId": "health_check_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Register a new user account",
+        "operationId": "register_api_v1_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Log in and create a new session",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/switch-workspace": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Switch active workspace context for the current session",
+        "operationId": "switch_workspace_api_v1_auth_switch_workspace_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SwitchWorkspaceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SwitchWorkspaceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": []
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Log out and invalidate session",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/chat_api__modules__auth__presentation__dtos__MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Get profile of currently logged-in user with active workspace and workspace list",
+        "operationId": "get_me_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserMeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": []
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Register a new user account",
+        "operationId": "register_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Log in and create a new session",
+        "operationId": "login_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/switch-workspace": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Switch active workspace context for the current session",
+        "operationId": "switch_workspace_auth_switch_workspace_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SwitchWorkspaceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SwitchWorkspaceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": []
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Log out and invalidate session",
+        "operationId": "logout_auth_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/chat_api__modules__auth__presentation__dtos__MessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Get profile of currently logged-in user with active workspace and workspace list",
+        "operationId": "get_me_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserMeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": []
+      }
+    },
+    "/api/v1/chat-sessions": {
+      "post": {
+        "tags": [
+          "Chat Sessions"
+        ],
+        "summary": "Create Session",
+        "operationId": "create_session_api_v1_chat_sessions_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSessionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "sessions:create"
+        ]
+      },
+      "get": {
+        "tags": [
+          "Chat Sessions"
+        ],
+        "summary": "List Sessions",
+        "operationId": "list_sessions_api_v1_chat_sessions_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Tùy chọn ghi đè Workspace ID, mặc định lấy từ active workspace",
+              "title": "Workspace Id",
+              "nullable": true,
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tùy chọn ghi đè Workspace ID, mặc định lấy từ active workspace"
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Filter by User ID",
+              "title": "User Id",
+              "nullable": true,
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Filter by User ID"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SessionResponse"
+                  },
+                  "title": "Response List Sessions Api V1 Chat Sessions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "sessions:read"
+        ]
+      }
+    },
+    "/api/v1/chat-sessions/{session_id}": {
+      "get": {
+        "tags": [
+          "Chat Sessions"
+        ],
+        "summary": "Get Session",
+        "operationId": "get_session_api_v1_chat_sessions__session_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "sessions:read"
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Chat Sessions"
+        ],
+        "summary": "Delete Session",
+        "operationId": "delete_session_api_v1_chat_sessions__session_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "sessions:delete"
+        ]
+      }
+    },
+    "/api/v1/chat-sessions/{session_id}/documents/attach": {
+      "post": {
+        "tags": [
+          "Chat Sessions"
+        ],
+        "summary": "Attach Document",
+        "operationId": "attach_document_api_v1_chat_sessions__session_id__documents_attach_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachDocumentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "sessions:update",
+          "documents:read"
+        ]
+      }
+    },
+    "/api/v1/chat-sessions/{session_id}/documents": {
+      "post": {
+        "tags": [
+          "Chat Sessions"
+        ],
+        "summary": "Upload And Attach Document",
+        "operationId": "upload_and_attach_document_api_v1_chat_sessions__session_id__documents_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_and_attach_document_api_v1_chat_sessions__session_id__documents_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadDocumentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "sessions:read",
+          "documents:create",
+          "sessions:update",
+          "documents:read"
+        ]
+      }
+    },
+    "/chat-sessions": {
+      "post": {
+        "tags": [
+          "Chat Sessions"
+        ],
+        "summary": "Create Session",
+        "operationId": "create_session_chat_sessions_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSessionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "sessions:create"
+        ]
+      },
+      "get": {
+        "tags": [
+          "Chat Sessions"
+        ],
+        "summary": "List Sessions",
+        "operationId": "list_sessions_chat_sessions_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Tùy chọn ghi đè Workspace ID, mặc định lấy từ active workspace",
+              "title": "Workspace Id",
+              "nullable": true,
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tùy chọn ghi đè Workspace ID, mặc định lấy từ active workspace"
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Filter by User ID",
+              "title": "User Id",
+              "nullable": true,
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Filter by User ID"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SessionResponse"
+                  },
+                  "title": "Response List Sessions Chat Sessions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "sessions:read"
+        ]
+      }
+    },
+    "/chat-sessions/{session_id}": {
+      "get": {
+        "tags": [
+          "Chat Sessions"
+        ],
+        "summary": "Get Session",
+        "operationId": "get_session_chat_sessions__session_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "sessions:read"
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Chat Sessions"
+        ],
+        "summary": "Delete Session",
+        "operationId": "delete_session_chat_sessions__session_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "sessions:delete"
+        ]
+      }
+    },
+    "/chat-sessions/{session_id}/documents/attach": {
+      "post": {
+        "tags": [
+          "Chat Sessions"
+        ],
+        "summary": "Attach Document",
+        "operationId": "attach_document_chat_sessions__session_id__documents_attach_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachDocumentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "sessions:update",
+          "documents:read"
+        ]
+      }
+    },
+    "/chat-sessions/{session_id}/documents": {
+      "post": {
+        "tags": [
+          "Chat Sessions"
+        ],
+        "summary": "Upload And Attach Document",
+        "operationId": "upload_and_attach_document_chat_sessions__session_id__documents_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_and_attach_document_chat_sessions__session_id__documents_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadDocumentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "sessions:read",
+          "documents:create",
+          "sessions:update",
+          "documents:read"
+        ]
+      }
+    },
+    "/api/v1/documents": {
+      "post": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Upload Document",
+        "operationId": "upload_document_api_v1_documents_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Tùy chọn ghi đè Workspace ID, mặc định lấy từ active workspace",
+              "title": "Workspace Id",
+              "nullable": true,
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tùy chọn ghi đè Workspace ID, mặc định lấy từ active workspace"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_document_api_v1_documents_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadDocumentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "documents:create"
+        ]
+      },
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "List Documents",
+        "operationId": "list_documents_api_v1_documents_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Tùy chọn ghi đè Workspace ID, mặc định lấy từ active workspace",
+              "title": "Workspace Id",
+              "nullable": true,
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tùy chọn ghi đè Workspace ID, mặc định lấy từ active workspace"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentResponse"
+                  },
+                  "title": "Response List Documents Api V1 Documents Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "documents:read"
+        ]
+      }
+    },
+    "/api/v1/documents/{document_id}": {
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Get Document",
+        "operationId": "get_document_api_v1_documents__document_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "documents:read"
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Delete Document",
+        "operationId": "delete_document_api_v1_documents__document_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "documents:delete"
+        ]
+      }
+    },
+    "/documents": {
+      "post": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Upload Document",
+        "operationId": "upload_document_documents_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Tùy chọn ghi đè Workspace ID, mặc định lấy từ active workspace",
+              "title": "Workspace Id",
+              "nullable": true,
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tùy chọn ghi đè Workspace ID, mặc định lấy từ active workspace"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_document_documents_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadDocumentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "documents:create"
+        ]
+      },
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "List Documents",
+        "operationId": "list_documents_documents_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Tùy chọn ghi đè Workspace ID, mặc định lấy từ active workspace",
+              "title": "Workspace Id",
+              "nullable": true,
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tùy chọn ghi đè Workspace ID, mặc định lấy từ active workspace"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentResponse"
+                  },
+                  "title": "Response List Documents Documents Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "documents:read"
+        ]
+      }
+    },
+    "/documents/{document_id}": {
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Get Document",
+        "operationId": "get_document_documents__document_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "documents:read"
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Delete Document",
+        "operationId": "delete_document_documents__document_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "documents:delete"
+        ]
+      }
+    },
+    "/api/v1/chat-sessions/{session_id}/messages": {
+      "post": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Send Message",
+        "operationId": "send_message_api_v1_chat_sessions__session_id__messages_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/chat_api__modules__messages__presentation__dtos__MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "messages:send"
+        ]
+      },
+      "get": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Get Session Messages",
+        "operationId": "get_session_messages_api_v1_chat_sessions__session_id__messages_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/chat_api__modules__messages__presentation__dtos__MessageResponse"
+                  },
+                  "title": "Response Get Session Messages Api V1 Chat Sessions  Session Id  Messages Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "sessions:read"
+        ]
+      }
+    },
+    "/chat-sessions/{session_id}/messages": {
+      "post": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Send Message",
+        "operationId": "send_message_chat_sessions__session_id__messages_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/chat_api__modules__messages__presentation__dtos__MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "messages:send"
+        ]
+      },
+      "get": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Get Session Messages",
+        "operationId": "get_session_messages_chat_sessions__session_id__messages_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/chat_api__modules__messages__presentation__dtos__MessageResponse"
+                  },
+                  "title": "Response Get Session Messages Chat Sessions  Session Id  Messages Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "sessions:read"
+        ]
+      }
+    },
+    "/api/v1/permissions/catalog": {
+      "get": {
+        "tags": [
+          "workspaces"
+        ],
+        "summary": "Get Permission Catalog",
+        "description": "Return the entire permission catalog grouped by module.\n\nAny authenticated user session can retrieve this catalog to render\nrole matrix and permission configurations.",
+        "operationId": "get_permission_catalog_api_v1_permissions_catalog_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionCatalogResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": []
+      }
+    },
+    "/api/v1/workspaces/permissions/catalog": {
+      "get": {
+        "tags": [
+          "workspaces"
+        ],
+        "summary": "Get Permission Catalog",
+        "description": "Return the entire permission catalog grouped by module.\n\nAny authenticated user session can retrieve this catalog to render\nrole matrix and permission configurations.",
+        "operationId": "get_permission_catalog_api_v1_workspaces_permissions_catalog_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionCatalogResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": []
+      }
+    },
+    "/permissions/catalog": {
+      "get": {
+        "tags": [
+          "workspaces"
+        ],
+        "summary": "Get Permission Catalog",
+        "description": "Return the entire permission catalog grouped by module.\n\nAny authenticated user session can retrieve this catalog to render\nrole matrix and permission configurations.",
+        "operationId": "get_permission_catalog_permissions_catalog_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionCatalogResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": []
+      }
+    },
+    "/workspaces/permissions/catalog": {
+      "get": {
+        "tags": [
+          "workspaces"
+        ],
+        "summary": "Get Permission Catalog",
+        "description": "Return the entire permission catalog grouped by module.\n\nAny authenticated user session can retrieve this catalog to render\nrole matrix and permission configurations.",
+        "operationId": "get_permission_catalog_workspaces_permissions_catalog_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionCatalogResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": []
+      }
+    },
+    "/api/v1/reports/overview": {
+      "get": {
+        "tags": [
+          "Reports & Analytics (Composition)"
+        ],
+        "summary": "Báo cáo tổng quan không gian làm việc (Multi-table Overview)",
+        "description": "Tổng hợp chỉ số đa bảng (Workspace, Members, Documents, Chunks, Sessions, Messages, Tokens, Feedback).",
+        "operationId": "get_workspace_overview_report_api_v1_reports_overview_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Tùy chọn Workspace ID cần xem báo cáo. Mặc định là active workspace của phiên làm việc.",
+              "title": "Workspace Id",
+              "nullable": true,
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tùy chọn Workspace ID cần xem báo cáo. Mặc định là active workspace của phiên làm việc."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceOverviewReportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "reports:read"
+        ]
+      }
+    },
+    "/api/v1/reports/activity": {
+      "get": {
+        "tags": [
+          "Reports & Analytics (Composition)"
+        ],
+        "summary": "Báo cáo xu hướng hoạt động theo ngày",
+        "description": "Thống kê số lượng upload tài liệu, tin nhắn và phiên hội thoại mới trong N ngày gần nhất.",
+        "operationId": "get_workspace_daily_activity_report_api_v1_reports_activity_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Tùy chọn Workspace ID cần xem báo cáo. Mặc định là active workspace của phiên làm việc.",
+              "title": "Workspace Id",
+              "nullable": true,
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tùy chọn Workspace ID cần xem báo cáo. Mặc định là active workspace của phiên làm việc."
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 90,
+              "minimum": 1,
+              "description": "Số ngày cần thống kê (1 - 90 ngày)",
+              "default": 30,
+              "title": "Days"
+            },
+            "description": "Số ngày cần thống kê (1 - 90 ngày)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDailyActivityResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "reports:read"
+        ]
+      }
+    },
+    "/reports/overview": {
+      "get": {
+        "tags": [
+          "Reports & Analytics (Composition)"
+        ],
+        "summary": "Báo cáo tổng quan không gian làm việc (Multi-table Overview)",
+        "description": "Tổng hợp chỉ số đa bảng (Workspace, Members, Documents, Chunks, Sessions, Messages, Tokens, Feedback).",
+        "operationId": "get_workspace_overview_report_reports_overview_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Tùy chọn Workspace ID cần xem báo cáo. Mặc định là active workspace của phiên làm việc.",
+              "title": "Workspace Id",
+              "nullable": true,
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tùy chọn Workspace ID cần xem báo cáo. Mặc định là active workspace của phiên làm việc."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceOverviewReportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "reports:read"
+        ]
+      }
+    },
+    "/reports/activity": {
+      "get": {
+        "tags": [
+          "Reports & Analytics (Composition)"
+        ],
+        "summary": "Báo cáo xu hướng hoạt động theo ngày",
+        "description": "Thống kê số lượng upload tài liệu, tin nhắn và phiên hội thoại mới trong N ngày gần nhất.",
+        "operationId": "get_workspace_daily_activity_report_reports_activity_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "session": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Tùy chọn Workspace ID cần xem báo cáo. Mặc định là active workspace của phiên làm việc.",
+              "title": "Workspace Id",
+              "nullable": true,
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tùy chọn Workspace ID cần xem báo cáo. Mặc định là active workspace của phiên làm việc."
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 90,
+              "minimum": 1,
+              "description": "Số ngày cần thống kê (1 - 90 ngày)",
+              "default": 30,
+              "title": "Days"
+            },
+            "description": "Số ngày cần thống kê (1 - 90 ngày)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDailyActivityResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "x-permission-mode": "all",
+        "x-required-permissions": [
+          "reports:read"
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AttachDocumentRequest": {
+        "properties": {
+          "document_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Document Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "document_id"
+        ],
+        "title": "AttachDocumentRequest"
+      },
+      "AuthResponse": {
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserResponse"
+          },
+          "active_workspace_id": {
+            "title": "Active Workspace Id",
+            "nullable": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          "session_token": {
+            "type": "string",
+            "title": "Session Token"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user",
+          "session_token",
+          "expires_at"
+        ],
+        "title": "AuthResponse"
+      },
+      "Body_upload_and_attach_document_api_v1_chat_sessions__session_id__documents_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "title": "File",
+            "format": "binary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_and_attach_document_api_v1_chat_sessions__session_id__documents_post"
+      },
+      "Body_upload_and_attach_document_chat_sessions__session_id__documents_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "title": "File",
+            "format": "binary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_and_attach_document_chat_sessions__session_id__documents_post"
+      },
+      "Body_upload_document_api_v1_documents_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "title": "File",
+            "format": "binary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_document_api_v1_documents_post"
+      },
+      "Body_upload_document_documents_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "title": "File",
+            "format": "binary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_document_documents_post"
+      },
+      "ChatStatsDTO": {
+        "properties": {
+          "total_sessions": {
+            "type": "integer",
+            "title": "Total Sessions",
+            "default": 0
+          },
+          "total_messages": {
+            "type": "integer",
+            "title": "Total Messages",
+            "default": 0
+          },
+          "user_messages": {
+            "type": "integer",
+            "title": "User Messages",
+            "default": 0
+          },
+          "assistant_messages": {
+            "type": "integer",
+            "title": "Assistant Messages",
+            "default": 0
+          },
+          "total_prompt_tokens": {
+            "type": "integer",
+            "title": "Total Prompt Tokens",
+            "default": 0
+          },
+          "total_completion_tokens": {
+            "type": "integer",
+            "title": "Total Completion Tokens",
+            "default": 0
+          },
+          "total_citations": {
+            "type": "integer",
+            "title": "Total Citations",
+            "default": 0
+          },
+          "average_latency_ms": {
+            "type": "number",
+            "title": "Average Latency Ms",
+            "default": 0.0
+          },
+          "total_feedbacks": {
+            "type": "integer",
+            "title": "Total Feedbacks",
+            "default": 0
+          },
+          "positive_feedbacks": {
+            "type": "integer",
+            "title": "Positive Feedbacks",
+            "default": 0
+          },
+          "negative_feedbacks": {
+            "type": "integer",
+            "title": "Negative Feedbacks",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "ChatStatsDTO",
+        "description": "Aggregated chat, token usage, latency, and feedback metrics."
+      },
+      "CitationResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "message_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Message Id"
+          },
+          "chunk_id": {
+            "type": "string",
+            "title": "Chunk Id"
+          },
+          "document_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Document Id"
+          },
+          "page_number": {
+            "type": "integer",
+            "title": "Page Number"
+          },
+          "bbox": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Bbox"
+          },
+          "quote": {
+            "title": "Quote",
+            "nullable": true,
+            "type": "string"
+          },
+          "relevance_score": {
+            "title": "Relevance Score",
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "message_id",
+          "chunk_id",
+          "document_id",
+          "page_number"
+        ],
+        "title": "CitationResponse"
+      },
+      "CreateSessionRequest": {
+        "properties": {
+          "workspace_id": {
+            "title": "Workspace Id",
+            "nullable": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_id": {
+            "title": "User Id",
+            "nullable": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Title",
+            "default": "New Chat"
+          },
+          "rag_config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Rag Config"
+          }
+        },
+        "type": "object",
+        "title": "CreateSessionRequest"
+      },
+      "DailyActivityItemDTO": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date",
+            "description": "ISO date string (YYYY-MM-DD)"
+          },
+          "documents_uploaded": {
+            "type": "integer",
+            "title": "Documents Uploaded",
+            "default": 0
+          },
+          "messages_sent": {
+            "type": "integer",
+            "title": "Messages Sent",
+            "default": 0
+          },
+          "sessions_created": {
+            "type": "integer",
+            "title": "Sessions Created",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "date"
+        ],
+        "title": "DailyActivityItemDTO",
+        "description": "Daily activity point for trend charts."
+      },
+      "DocumentResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Workspace Id"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "content_hash": {
+            "type": "string",
+            "title": "Content Hash"
+          },
+          "mime_type": {
+            "type": "string",
+            "title": "Mime Type"
+          },
+          "file_size": {
+            "type": "integer",
+            "title": "File Size"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "error_code": {
+            "title": "Error Code",
+            "nullable": true,
+            "type": "string"
+          },
+          "error_message": {
+            "title": "Error Message",
+            "nullable": true,
+            "type": "string"
+          },
+          "page_count": {
+            "type": "integer",
+            "title": "Page Count",
+            "default": 0
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          },
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/IngestionJobResponse"
+            },
+            "type": "array",
+            "title": "Jobs"
+          },
+          "created_at": {
+            "title": "Created At",
+            "nullable": true,
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "nullable": true,
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "workspace_id",
+          "filename",
+          "content_hash",
+          "mime_type",
+          "file_size",
+          "status"
+        ],
+        "title": "DocumentResponse"
+      },
+      "DocumentStatsDTO": {
+        "properties": {
+          "total_documents": {
+            "type": "integer",
+            "title": "Total Documents",
+            "default": 0
+          },
+          "total_file_size_bytes": {
+            "type": "integer",
+            "title": "Total File Size Bytes",
+            "default": 0
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages",
+            "default": 0
+          },
+          "ready_documents": {
+            "type": "integer",
+            "title": "Ready Documents",
+            "default": 0
+          },
+          "failed_documents": {
+            "type": "integer",
+            "title": "Failed Documents",
+            "default": 0
+          },
+          "processing_documents": {
+            "type": "integer",
+            "title": "Processing Documents",
+            "default": 0
+          },
+          "total_chunks": {
+            "type": "integer",
+            "title": "Total Chunks",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "DocumentStatsDTO",
+        "description": "Aggregated document metrics within a workspace."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "app_name": {
+            "type": "string",
+            "title": "App Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "version",
+          "app_name"
+        ],
+        "title": "HealthResponse"
+      },
+      "IngestionJobResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "document_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Document Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "retry_count": {
+            "type": "integer",
+            "title": "Retry Count"
+          },
+          "parser_name": {
+            "type": "string",
+            "title": "Parser Name"
+          },
+          "chunker_name": {
+            "type": "string",
+            "title": "Chunker Name"
+          },
+          "elapsed_seconds": {
+            "title": "Elapsed Seconds",
+            "nullable": true,
+            "type": "number"
+          },
+          "started_at": {
+            "title": "Started At",
+            "nullable": true,
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "title": "Completed At",
+            "nullable": true,
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "document_id",
+          "status",
+          "retry_count",
+          "parser_name",
+          "chunker_name"
+        ],
+        "title": "IngestionJobResponse"
+      },
+      "LoginRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "description": "User email address"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password",
+            "description": "User password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginRequest"
+      },
+      "MemberStatsDTO": {
+        "properties": {
+          "total_members": {
+            "type": "integer",
+            "title": "Total Members",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "MemberStatsDTO",
+        "description": "Workspace membership summary."
+      },
+      "PermissionCatalogResponse": {
+        "properties": {
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/PermissionGroupResponse"
+            },
+            "type": "array",
+            "title": "Groups"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "PermissionCatalogResponse"
+      },
+      "PermissionGroupResponse": {
+        "properties": {
+          "module": {
+            "type": "string",
+            "title": "Module"
+          },
+          "permissions": {
+            "items": {
+              "$ref": "#/components/schemas/PermissionItemResponse"
+            },
+            "type": "array",
+            "title": "Permissions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "module"
+        ],
+        "title": "PermissionGroupResponse"
+      },
+      "PermissionItemResponse": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "module": {
+            "type": "string",
+            "title": "Module"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "description",
+          "module"
+        ],
+        "title": "PermissionItemResponse"
+      },
+      "RegisterRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "description": "User email address"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "title": "Password",
+            "description": "User password (min 6 characters)"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "description": "User display name",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "RegisterRequest"
+      },
+      "SendMessageRequest": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Content",
+            "description": "Nội dung câu hỏi của người dùng."
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "SendMessageRequest"
+      },
+      "SessionResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Workspace Id"
+          },
+          "user_id": {
+            "title": "User Id",
+            "nullable": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "rag_config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Rag Config"
+          },
+          "attached_document_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Attached Document Ids"
+          },
+          "created_at": {
+            "title": "Created At",
+            "nullable": true,
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "nullable": true,
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "workspace_id",
+          "user_id",
+          "title",
+          "rag_config"
+        ],
+        "title": "SessionResponse"
+      },
+      "SwitchWorkspaceRequest": {
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Workspace Id",
+            "description": "Target workspace ID to switch active context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workspace_id"
+        ],
+        "title": "SwitchWorkspaceRequest"
+      },
+      "SwitchWorkspaceResponse": {
+        "properties": {
+          "active_workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Active Workspace Id"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Active workspace switched successfully."
+          }
+        },
+        "type": "object",
+        "required": [
+          "active_workspace_id"
+        ],
+        "title": "SwitchWorkspaceResponse"
+      },
+      "UploadDocumentResponse": {
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/DocumentResponse"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Tài liệu đã được tải lên và đưa vào hàng đợi xử lý."
+          }
+        },
+        "type": "object",
+        "required": [
+          "document"
+        ],
+        "title": "UploadDocumentResponse"
+      },
+      "UserMeResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "nullable": true,
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "active_workspace_id": {
+            "title": "Active Workspace Id",
+            "nullable": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          "workspaces": {
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceInfo"
+            },
+            "type": "array",
+            "title": "Workspaces"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "is_active",
+          "created_at"
+        ],
+        "title": "UserMeResponse"
+      },
+      "UserResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "nullable": true,
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "is_active",
+          "created_at"
+        ],
+        "title": "UserResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WorkspaceDailyActivityResponse": {
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Workspace Id"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days"
+          },
+          "activities": {
+            "items": {
+              "$ref": "#/components/schemas/DailyActivityItemDTO"
+            },
+            "type": "array",
+            "title": "Activities"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workspace_id",
+          "days",
+          "activities"
+        ],
+        "title": "WorkspaceDailyActivityResponse",
+        "description": "Time-series activity report for charting and trends."
+      },
+      "WorkspaceInfo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "default": "member"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Permissions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "slug"
+        ],
+        "title": "WorkspaceInfo"
+      },
+      "WorkspaceOverviewReportResponse": {
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Workspace Id"
+          },
+          "workspace_name": {
+            "type": "string",
+            "title": "Workspace Name"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "members": {
+            "$ref": "#/components/schemas/MemberStatsDTO"
+          },
+          "documents": {
+            "$ref": "#/components/schemas/DocumentStatsDTO"
+          },
+          "chat": {
+            "$ref": "#/components/schemas/ChatStatsDTO"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workspace_id",
+          "workspace_name",
+          "generated_at",
+          "members",
+          "documents",
+          "chat"
+        ],
+        "title": "WorkspaceOverviewReportResponse",
+        "description": "Comprehensive multi-table overview report for a workspace."
+      },
+      "chat_api__modules__auth__presentation__dtos__MessageResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "MessageResponse"
+      },
+      "chat_api__modules__messages__presentation__dtos__MessageResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Session Id"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "prompt_tokens": {
+            "type": "integer",
+            "title": "Prompt Tokens",
+            "default": 0
+          },
+          "completion_tokens": {
+            "type": "integer",
+            "title": "Completion Tokens",
+            "default": 0
+          },
+          "latency_ms": {
+            "title": "Latency Ms",
+            "nullable": true,
+            "type": "number"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/CitationResponse"
+            },
+            "type": "array",
+            "title": "Citations"
+          },
+          "created_at": {
+            "title": "Created At",
+            "nullable": true,
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "session_id",
+          "role",
+          "content"
+        ],
+        "title": "MessageResponse"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "session_token",
+        "description": "Session token stored in HTTP-only cookie"
+      },
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "session_token",
+        "description": "Session token cookie matching ViShop's @ApiCookieAuth('session')"
+      },
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Session token passed in Authorization: Bearer <token>"
+      }
+    }
+  }
+}
