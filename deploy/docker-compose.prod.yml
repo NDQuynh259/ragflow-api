@@ -53,17 +53,18 @@ services:
     volumes:
       - rabbitmq_data_prod:/var/lib/rabbitmq
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping || exit 1"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 6
+      start_period: 30s
     networks:
       - rag_prod_net
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 384M
+          memory: 512M
 
   chat-api:
     image: ${APP_IMAGE:-ghcr.io/ndquynh259/ragflow-api:latest}
