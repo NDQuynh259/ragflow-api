@@ -120,6 +120,9 @@ jobs:
             LOWER_REPO=$(echo "$RAW_REPO" | tr '[:upper:]' '[:lower:]')
             export APP_IMAGE="ghcr.io/$LOWER_REPO/ragflow-api:latest"
 
+            # Clean up old unused images before pull to save disk space
+            docker image prune -a -f || true
+
             # Pull pre-built image from GHCR (takes only seconds)
             docker compose -f deploy/docker-compose.prod.yml pull
 
