@@ -16,7 +16,7 @@ COPY packages/rag-document-pipeline/pyproject.toml ./packages/rag-document-pipel
 COPY apps/chat-api/pyproject.toml ./apps/chat-api/
 COPY apps/worker/pyproject.toml ./apps/worker/
 
-RUN uv sync --frozen --no-install-project --no-dev
+RUN uv sync --frozen --all-packages --no-install-project --no-dev
 
 COPY core/ ./core/
 COPY packages/ ./packages/
@@ -25,7 +25,7 @@ COPY apps/worker/ ./apps/worker/
 COPY migrations/ ./migrations/
 COPY alembic.ini ./
 
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --all-packages --no-dev
 
 FROM python:3.13-slim-bookworm AS runner
 
