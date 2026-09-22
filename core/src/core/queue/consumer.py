@@ -223,6 +223,17 @@ class AsyncRabbitMQConsumer:
             logger.info("Job %s completed successfully (ACKed).", envelope.job_id)
 
         except Exception as exc:
+            from core.exceptions import NonRetriableQueueError
+
+            if isinstance(exc, NonRetriableQueueError):
+                logger.warning(
+                    "Job %s encountered non-retriable error: %s. Aborting retries and routing to DLQ.",
+                    envelope.job_id,
+                    exc,
+                )
+                await message.reject(requeue=False)
+                return
+
             logger.exception(
                 "Error processing job %s (attempt %d/%d): %s",
                 envelope.job_id,

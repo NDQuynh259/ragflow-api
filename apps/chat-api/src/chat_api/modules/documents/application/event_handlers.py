@@ -7,8 +7,10 @@ enqueueing background jobs.  The domain events themselves are defined in
 
 from __future__ import annotations
 
+from typing import Any
+
 from chat_api.modules.documents.domain.events import DocumentIngestionRequested
-from chat_api.shared.bus import event_handler
+from core.cqrs import event_handler
 from core.queue import IngestionQueuePort
 
 
@@ -18,9 +20,14 @@ class EnqueueDocumentIngestionHandler:
         self.queue = queue
 
     def handle(self, event: DocumentIngestionRequested) -> None:
-        self.queue.enqueue_ingestion(
-            document_id=event.document_id,
-            job_id=event.job_id,
-            storage_uri=event.storage_uri,
-            workspace_id=event.workspace_id,
-        )
+        import inspect
+
+        kwargs: dict[str, Any] = {
+            "document_id": event.document_id,
+            "job_id": event.job_id,
+            "storage_uri": event.storage_uri,
+            "workspace_id": event.workspace_id,
+        }
+        if "user_id" in inspect.signature(self.queue.enqueue_ingestion).parameters:
+            kwargs["user_id"] = event.user_id
+        self.queue.enqueue_ingestion(**kwargs)

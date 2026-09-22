@@ -8,8 +8,8 @@ from chat_api.modules.auth.application.queries.get_authentication_context_query 
     resolve_authentication_context,
 )
 from chat_api.modules.users.domain.entity import User
-from chat_api.shared.bus import Query, query_handler
 from chat_api.shared.infrastructure.database import UnitOfWork
+from core.cqrs import Query, query_handler
 
 
 @dataclass(frozen=True)

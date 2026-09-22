@@ -9,15 +9,8 @@ from typing import Any
 from chat_api.modules.chat_sessions.application.dtos import SessionDTO
 from chat_api.modules.chat_sessions.application.mapper import SessionMapper
 from chat_api.modules.chat_sessions.domain.entity import ChatSession
-from chat_api.shared.auth import (
-    CurrentPrincipal,
-    Permission,
-    require_document_access,
-    require_session_access,
-    require_workspace_permission,
-)
-from chat_api.shared.bus import Command, authorization_handler, command_handler
 from chat_api.shared.infrastructure.database import UnitOfWork
+from core.cqrs import Command, command_handler
 from core.exceptions import EntityNotFoundException
 from core.uuid7 import uuid7
 
@@ -28,21 +21,6 @@ class CreateSessionCommand(Command[SessionDTO]):
     user_id: uuid.UUID | None = None
     title: str = "New Chat"
     rag_config: dict[str, Any] | None = None
-
-
-@authorization_handler(CreateSessionCommand)
-class CreateSessionAuthorizer:
-    def __init__(self, uow: UnitOfWork, principal: CurrentPrincipal) -> None:
-        self.uow = uow
-        self.principal = principal
-
-    def handle(self, command: CreateSessionCommand) -> None:
-        require_workspace_permission(
-            self.uow,
-            self.principal,
-            command.workspace_id,
-            Permission.SESSION_CREATE,
-        )
 
 
 @command_handler(CreateSessionCommand)
@@ -74,27 +52,6 @@ class AttachDocumentCommand(Command[SessionDTO]):
     document_id: uuid.UUID
 
 
-@authorization_handler(AttachDocumentCommand)
-class AttachDocumentAuthorizer:
-    def __init__(self, uow: UnitOfWork, principal: CurrentPrincipal) -> None:
-        self.uow = uow
-        self.principal = principal
-
-    def handle(self, command: AttachDocumentCommand) -> None:
-        require_session_access(
-            self.uow,
-            self.principal,
-            command.session_id,
-            Permission.SESSION_UPDATE,
-        )
-        require_document_access(
-            self.uow,
-            self.principal,
-            command.document_id,
-            Permission.DOCUMENT_READ,
-        )
-
-
 @command_handler(AttachDocumentCommand)
 class AttachDocumentHandler:
     def __init__(self, uow: UnitOfWork) -> None:
@@ -119,21 +76,6 @@ class AttachDocumentHandler:
 @dataclass(frozen=True)
 class DeleteSessionCommand(Command[bool]):
     session_id: uuid.UUID
-
-
-@authorization_handler(DeleteSessionCommand)
-class DeleteSessionAuthorizer:
-    def __init__(self, uow: UnitOfWork, principal: CurrentPrincipal) -> None:
-        self.uow = uow
-        self.principal = principal
-
-    def handle(self, command: DeleteSessionCommand) -> None:
-        require_session_access(
-            self.uow,
-            self.principal,
-            command.session_id,
-            Permission.SESSION_DELETE,
-        )
 
 
 @command_handler(DeleteSessionCommand)

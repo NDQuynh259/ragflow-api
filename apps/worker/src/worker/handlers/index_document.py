@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy import text
 
-from core.bus import Command, command_handler
+from core.cqrs import Command, command_handler
 from core.database import UnitOfWork
 from core.exceptions import EntityNotFoundException
 from core.storage import ObjectStoragePort
@@ -28,6 +28,7 @@ class IndexDocumentCommand(Command[int]):
     document_id: uuid.UUID
     workspace_id: uuid.UUID
     storage_uri: str
+    user_id: uuid.UUID | None = None
 
 
 @command_handler(IndexDocumentCommand)
@@ -48,10 +49,11 @@ class IndexDocumentHandler:
 
     def handle(self, cmd: IndexDocumentCommand) -> int:
         logger.info(
-            "Worker starting ingestion for document %s (job: %s, workspace: %s)",
+            "Worker starting ingestion for document %s (job: %s, workspace: %s, user: %s)",
             cmd.document_id,
             cmd.job_id,
             cmd.workspace_id,
+            cmd.user_id,
         )
         start_time = time.monotonic()
         now_utc = datetime.now(UTC)
@@ -84,7 +86,59 @@ class IndexDocumentHandler:
                     )
                     return 0
 
-            # 2. Fetch document metadata
+            # 2. Account & Workspace Security Gate: verify active status
+            ws_row = session.execute(
+                text("SELECT id FROM workspaces WHERE id = :ws_id"),
+                {"ws_id": cmd.workspace_id},
+            ).fetchone()
+            if not ws_row:
+                session.execute(
+                    text(
+                        "UPDATE ingestion_jobs "
+                        "SET status = 'failed', completed_at = :now, error_details = 'WORKSPACE_NOT_FOUND' "
+                        "WHERE id = :job_id"
+                    ),
+                    {"now": now_utc, "job_id": cmd.job_id},
+                )
+                self.uow.commit()
+                raise EntityNotFoundException("Workspace", cmd.workspace_id)
+
+            if cmd.user_id is not None:
+                user_row = session.execute(
+                    text("SELECT is_active FROM users WHERE id = :user_id"),
+                    {"user_id": cmd.user_id},
+                ).fetchone()
+                if not user_row or not user_row[0]:
+                    session.execute(
+                        text(
+                            "UPDATE ingestion_jobs "
+                            "SET status = 'failed', completed_at = :now, error_details = 'USER_ACCOUNT_SUSPENDED' "
+                            "WHERE id = :job_id"
+                        ),
+                        {"now": now_utc, "job_id": cmd.job_id},
+                    )
+                    session.execute(
+                        text(
+                            "UPDATE documents "
+                            "SET status = 'failed', error_message = 'User account is inactive or suspended' "
+                            "WHERE id = :doc_id"
+                        ),
+                        {"doc_id": cmd.document_id},
+                    )
+                    self.uow.commit()
+                    from core.exceptions import AccountSuspendedException
+
+                    logger.warning(
+                        "Security Gate: User %s is inactive/suspended. Aborting ingestion job %s.",
+                        cmd.user_id,
+                        cmd.job_id,
+                    )
+                    raise AccountSuspendedException(
+                        f"User '{cmd.user_id}' is inactive or suspended.",
+                        details={"user_id": str(cmd.user_id), "job_id": str(cmd.job_id)},
+                    )
+
+            # 3. Fetch document metadata
             doc_row = session.execute(
                 text(
                     "SELECT id, filename, storage_uri, status "

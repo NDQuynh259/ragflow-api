@@ -109,6 +109,7 @@ class DocumentJobPayload:
     document_id: str
     storage_uri: str
     workspace_id: str
+    user_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -119,11 +120,13 @@ class DocumentJobPayload:
         document_id: str | uuid.UUID,
         storage_uri: str,
         workspace_id: str | uuid.UUID,
+        user_id: str | uuid.UUID | None = None,
     ) -> DocumentJobPayload:
         return cls(
             document_id=str(document_id),
             storage_uri=storage_uri,
             workspace_id=str(workspace_id),
+            user_id=str(user_id) if user_id else None,
         )
 
 

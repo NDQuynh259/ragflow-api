@@ -23,12 +23,12 @@ from chat_api.modules.auth.presentation.dtos import (
     WorkspaceInfo,
 )
 from chat_api.shared.auth import (
+    CommandBusDep,
     CurrentAuth,
     RequireAuth,
     auth_openapi,
     extract_session_token,
 )
-from chat_api.shared.bus import CommandBusDep
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 

@@ -28,6 +28,7 @@ def test_rabbitmq_adapter_enqueue_ingestion(mock_blocking_conn):
     mock_channel = MagicMock()
     mock_conn.channel.return_value = mock_channel
     mock_conn.is_open = True
+    mock_conn.is_closed = False
     mock_blocking_conn.return_value = mock_conn
 
     adapter = RabbitMQQueueAdapter(
@@ -35,7 +36,7 @@ def test_rabbitmq_adapter_enqueue_ingestion(mock_blocking_conn):
         exchange="rag.direct",
         queue_name="rag.document.ingestion",
         routing_key="document.ingestion",
-        auto_close=True,
+        auto_close=False,
     )
 
     doc_id = uuid.uuid4()

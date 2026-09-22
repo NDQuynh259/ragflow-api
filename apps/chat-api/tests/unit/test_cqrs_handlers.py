@@ -24,10 +24,10 @@ from chat_api.modules.messages.application.commands import (
 )
 from chat_api.modules.users.domain.entity import User
 from chat_api.modules.workspaces.domain.entity import Workspace, WorkspaceMember, WorkspaceRole
-from chat_api.shared.bus import CommandBus
-from core.security import CurrentPrincipal, ExecutionContext
+from core.cqrs import CommandBus
 from core.exceptions import ForbiddenException
 from core.queue import IngestionQueuePort
+from core.security import CurrentPrincipal, ExecutionContext
 from core.storage import ObjectStoragePort
 
 
@@ -101,7 +101,9 @@ def test_upload_document_and_attach(fake_uow, fake_storage, fake_queue):
     assert doc_dto.id in updated_session.attached_document_ids
 
 
-def test_member_cannot_upload_document(fake_uow, fake_storage, fake_queue):
+def test_member_cannot_upload_document_at_route_level(fake_uow, fake_storage, fake_queue):
+    from chat_api.shared.auth import Permission, effective_permissions
+
     workspace_id = uuid.uuid4()
     user = User(email="limited-member@test.com")
     fake_uow.users.save(user)
@@ -119,27 +121,33 @@ def test_member_cannot_upload_document(fake_uow, fake_storage, fake_queue):
             ],
         )
     )
+    # Auth is handled at Route / Principal level:
+    principal = CurrentPrincipal(
+        user_id=user.id,
+        session_id=uuid.uuid4(),
+        role=WorkspaceRole.MEMBER.value,
+        permissions=effective_permissions(WorkspaceRole.MEMBER.value),
+    )
+    with pytest.raises(ForbiddenException, match="documents:create"):
+        principal.require_permission(Permission.DOCUMENT_CREATE)
+
+    # Bus itself is lean (logging + transaction), without authorizer classes:
     bus = CommandBus(
         fake_uow,
-        execution_context=ExecutionContext(
-            principal=CurrentPrincipal(user_id=user.id, session_id=uuid.uuid4())
-        ),
         dependencies={
             ObjectStoragePort: fake_storage,
             IngestionQueuePort: fake_queue,
         },
     )
-
-    with pytest.raises(ForbiddenException, match="documents:create"):
-        bus.execute(
-            UploadDocumentCommand(
-                workspace_id=workspace_id,
-                filename="restricted.pdf",
-                content=b"restricted",
-            )
+    doc_dto = bus.execute(
+        UploadDocumentCommand(
+            workspace_id=workspace_id,
+            filename="unrestricted_at_bus.pdf",
+            content=b"pure_cqrs_execution",
         )
-
-    assert fake_queue.enqueued == []
+    )
+    assert doc_dto.filename == "unrestricted_at_bus.pdf"
+    assert len(fake_queue.enqueued) == 1
 
 
 def test_send_message_flow(fake_uow, fake_rag):

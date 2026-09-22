@@ -6,7 +6,7 @@ import logging
 import uuid
 from typing import Any
 
-from worker.bus import get_worker_command_bus
+from worker.dependencies import get_worker_command_bus
 from worker.handlers.index_document import IndexDocumentCommand
 
 logger = logging.getLogger(__name__)
@@ -25,11 +25,15 @@ def process_index_document(
         document_id,
         job_id,
     )
+    raw_user_id = kwargs.get("user_id")
+    user_id = uuid.UUID(str(raw_user_id)) if raw_user_id else None
+
     command = IndexDocumentCommand(
         job_id=uuid.UUID(str(job_id)),
         document_id=uuid.UUID(str(document_id)),
         workspace_id=uuid.UUID(str(workspace_id)),
         storage_uri=str(storage_uri),
+        user_id=user_id,
     )
 
     bus = get_worker_command_bus()

@@ -8,8 +8,8 @@ from dataclasses import dataclass
 from enum import Enum
 
 from chat_api.shared.infrastructure.database import UnitOfWork
-from core.security import CurrentPrincipal, ExecutionContext
 from core.exceptions import ForbiddenException
+from core.security import CurrentPrincipal, ExecutionContext
 
 
 class Permission(str, Enum):

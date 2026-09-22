@@ -47,11 +47,13 @@ class InMemoryQueueAdapter(IngestionQueuePort):
         job_id: uuid.UUID,
         storage_uri: str,
         workspace_id: uuid.UUID,
+        user_id: uuid.UUID | None = None,
     ) -> None:
         payload = DocumentJobPayload.create(
             document_id=document_id,
             storage_uri=storage_uri,
             workspace_id=workspace_id,
+            user_id=user_id,
         ).to_dict()
 
         self.enqueue(

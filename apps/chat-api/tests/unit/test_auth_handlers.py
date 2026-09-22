@@ -23,13 +23,13 @@ from chat_api.modules.auth.application.queries import (
 from chat_api.modules.auth.domain.entity import UserSession
 from chat_api.modules.auth.infrastructure.repository import SqlAlchemyUserSessionRepository
 from chat_api.shared.auth import Permission
-from core.security import hash_session_token, verify_password
 from core.exceptions import (
     DomainValidationException,
     ForbiddenException,
     ResourceConflictException,
     UnauthenticatedException,
 )
+from core.security import hash_session_token, verify_password
 
 
 def test_register_success(fake_uow):
@@ -295,7 +295,7 @@ def test_command_bus_and_query_bus_flow(fake_uow):
         RegisterCommand,
     )
     from chat_api.modules.auth.application.queries import GetCurrentUserQuery
-    from chat_api.shared.bus import Command, CommandBus, QueryBus
+    from core.cqrs import Command, CommandBus, QueryBus
 
     cmd_bus = CommandBus(fake_uow)
     query_bus = QueryBus(fake_uow)

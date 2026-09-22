@@ -56,12 +56,19 @@ class IngestionQueuePort(JobQueuePort):
             and "document_id" in payload
             and "workspace_id" in payload
         ):
-            self.enqueue_ingestion(
-                document_id=uuid.UUID(str(payload["document_id"])),
-                job_id=uuid.UUID(resolved_job_id),
-                storage_uri=str(payload.get("storage_uri", "")),
-                workspace_id=uuid.UUID(str(payload["workspace_id"])),
-            )
+            kwargs: dict[str, Any] = {
+                "document_id": uuid.UUID(str(payload["document_id"])),
+                "job_id": uuid.UUID(resolved_job_id),
+                "storage_uri": str(payload.get("storage_uri", "")),
+                "workspace_id": uuid.UUID(str(payload["workspace_id"])),
+            }
+            import inspect
+
+            if "user_id" in inspect.signature(self.enqueue_ingestion).parameters:
+                kwargs["user_id"] = (
+                    uuid.UUID(str(payload["user_id"])) if payload.get("user_id") else None
+                )
+            self.enqueue_ingestion(**kwargs)
         return resolved_job_id
 
     @abstractmethod
@@ -71,6 +78,7 @@ class IngestionQueuePort(JobQueuePort):
         job_id: uuid.UUID,
         storage_uri: str,
         workspace_id: uuid.UUID,
+        user_id: uuid.UUID | None = None,
     ) -> None:
         """Publish document ingestion job to background worker queue."""
         pass

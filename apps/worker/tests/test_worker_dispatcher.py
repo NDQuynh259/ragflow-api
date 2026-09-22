@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from unittest.mock import MagicMock, patch
 
-from worker.bus import get_worker_command_bus
+from worker.dependencies import get_worker_command_bus
 from worker.dispatcher import build_dispatcher
 from worker.handlers.index_document import IndexDocumentCommand, IndexDocumentHandler
 from worker.processors.index_document import process_index_document
@@ -46,10 +46,10 @@ def test_process_index_document_dispatches_via_command_bus() -> None:
         assert cmd.storage_uri == uri
 
 
-@patch("worker.bus.get_rag_engine")
-@patch("worker.bus.get_storage")
-@patch("worker.bus.get_document_pipeline")
-@patch("worker.bus.get_uow")
+@patch("worker.dependencies.get_rag_engine")
+@patch("worker.dependencies.get_storage")
+@patch("worker.dependencies.get_document_pipeline")
+@patch("worker.dependencies.get_uow")
 def test_get_worker_command_bus_execution(
     mock_get_uow: MagicMock,
     mock_get_pipeline: MagicMock,

@@ -19,3 +19,4 @@ class DocumentIngestionRequested:
     job_id: uuid.UUID
     storage_uri: str
     workspace_id: uuid.UUID
+    user_id: uuid.UUID | None = None

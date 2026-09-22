@@ -7,10 +7,8 @@ from dataclasses import dataclass
 
 from chat_api.modules.messages.application.dtos import MessageDTO
 from chat_api.modules.messages.application.mapper import MessageMapper
-from chat_api.shared.auth import require_session_access
-from chat_api.shared.bus import Query, authorization_handler, query_handler
 from chat_api.shared.infrastructure.database import UnitOfWork
-from core.security import CurrentPrincipal
+from core.cqrs import Query, query_handler
 from core.exceptions import EntityNotFoundException
 
 
@@ -19,16 +17,6 @@ class GetSessionMessagesQuery(Query[list[MessageDTO]]):
     session_id: uuid.UUID
     limit: int = 100
     offset: int = 0
-
-
-@authorization_handler(GetSessionMessagesQuery)
-class GetSessionMessagesAuthorizer:
-    def __init__(self, uow: UnitOfWork, principal: CurrentPrincipal) -> None:
-        self.uow = uow
-        self.principal = principal
-
-    def handle(self, query: GetSessionMessagesQuery) -> None:
-        require_session_access(self.uow, self.principal, query.session_id)
 
 
 @query_handler(GetSessionMessagesQuery)

@@ -1,4 +1,4 @@
-"""Delete Document Command, Authorizer, and Handler."""
+"""Delete Document Command and Handler."""
 
 from __future__ import annotations
 
@@ -6,13 +6,8 @@ import uuid
 from dataclasses import dataclass
 
 from chat_api.modules.documents.domain.repository import DocumentRepository
-from chat_api.shared.auth import (
-    CurrentPrincipal,
-    Permission,
-    require_document_access,
-)
-from chat_api.shared.bus import Command, authorization_handler, command_handler
 from chat_api.shared.infrastructure.database import UnitOfWork
+from core.cqrs import Command, command_handler
 from core.exceptions import EntityNotFoundException
 from core.storage import ObjectStoragePort
 
@@ -20,21 +15,6 @@ from core.storage import ObjectStoragePort
 @dataclass(frozen=True)
 class DeleteDocumentCommand(Command[bool]):
     document_id: uuid.UUID
-
-
-@authorization_handler(DeleteDocumentCommand)
-class DeleteDocumentAuthorizer:
-    def __init__(self, uow: UnitOfWork, principal: CurrentPrincipal) -> None:
-        self.uow = uow
-        self.principal = principal
-
-    def handle(self, command: DeleteDocumentCommand) -> None:
-        require_document_access(
-            self.uow,
-            self.principal,
-            command.document_id,
-            Permission.DOCUMENT_DELETE,
-        )
 
 
 @command_handler(DeleteDocumentCommand)

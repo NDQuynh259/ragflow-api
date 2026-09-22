@@ -18,8 +18,8 @@ from chat_api.shared.auth.permissions import (
     ExecutionContext,
     Permission,
 )
-from chat_api.shared.bus import CommandBus, QueryBus
 from chat_api.shared.infrastructure.database import UnitOfWork, get_uow
+from core.cqrs import CommandBus, QueryBus
 from core.exceptions import ForbiddenException, UnauthenticatedException
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -127,6 +127,18 @@ CurrentPrincipalDep = Annotated[CurrentPrincipal, Depends(get_current_principal)
 
 # Backward compatibility alias
 AuthDep = CurrentAuth
+
+
+def get_command_bus(uow: UnitOfWork = Depends(get_uow)) -> CommandBus:
+    return CommandBus(uow=uow)
+
+
+def get_query_bus(uow: UnitOfWork = Depends(get_uow)) -> QueryBus:
+    return QueryBus(uow=uow)
+
+
+CommandBusDep = Annotated[CommandBus, Depends(get_command_bus)]
+QueryBusDep = Annotated[QueryBus, Depends(get_query_bus)]
 
 
 async def resolve_target_workspace_id(
@@ -373,5 +385,9 @@ __all__ = [
     "extract_session_token",
     "get_auth_context",
     "get_current_principal",
+    "get_command_bus",
+    "get_query_bus",
+    "CommandBusDep",
+    "QueryBusDep",
     "resolve_target_workspace_id",
 ]

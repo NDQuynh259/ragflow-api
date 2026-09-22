@@ -31,7 +31,7 @@ from chat_api.shared.auth import (
     effective_permissions,
     require_auth,
 )
-from chat_api.shared.bus import CommandBus, QueryBus
+from core.cqrs import CommandBus, QueryBus
 from core.exceptions import ForbiddenException, UnauthenticatedException
 
 

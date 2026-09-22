@@ -6,6 +6,7 @@ import uuid
 
 import pytest
 
+from core.exceptions import ForbiddenException
 from core.security import (
     CurrentPrincipal,
     ExecutionContext,
@@ -14,7 +15,6 @@ from core.security import (
     hash_session_token,
     verify_password,
 )
-from core.exceptions import ForbiddenException
 
 
 def test_password_hashing_and_verification():

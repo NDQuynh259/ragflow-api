@@ -1,4 +1,4 @@
-"""Synchronous CQRS buses and their execution pipeline."""
+"""Core synchronous CQRS bus primitives and execution pipeline."""
 
 from __future__ import annotations
 
@@ -7,11 +7,9 @@ import logging
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Annotated, Any, Generic, Protocol, TypeVar, get_type_hints
+from typing import Any, Generic, Protocol, TypeVar, get_type_hints
 
-from fastapi import Depends
-
-from chat_api.shared.infrastructure.database import UnitOfWork, get_uow
+from core.database.uow import UnitOfWork
 from core.security import CurrentPrincipal, ExecutionContext
 
 R = TypeVar("R")
@@ -55,7 +53,6 @@ DependencyMap = Mapping[type[Any], Any]
 COMMAND_HANDLERS: HandlerRegistry = {}
 QUERY_HANDLERS: HandlerRegistry = {}
 EVENT_HANDLERS: dict[type[Any], list[HandlerType]] = {}
-AUTHORIZERS: HandlerRegistry = {}
 
 
 @dataclass(frozen=True)
@@ -80,18 +77,17 @@ def _register_single(
 
 
 def command_handler(command_cls: type[Command[Any]]) -> Callable[[HandlerType], HandlerType]:
-    """Register exactly one handler for a command type."""
+    """Register exactly one handler for a command type in the global command registry."""
 
     def decorator(handler_cls: HandlerType) -> HandlerType:
         _register_single(COMMAND_HANDLERS, command_cls, handler_cls)
         return handler_cls
 
     return decorator
-    
 
 
 def query_handler(query_cls: type[Query[Any]]) -> Callable[[HandlerType], HandlerType]:
-    """Register exactly one handler for a query type."""
+    """Register exactly one handler for a query type in the global query registry."""
 
     def decorator(handler_cls: HandlerType) -> HandlerType:
         _register_single(QUERY_HANDLERS, query_cls, handler_cls)
@@ -112,16 +108,6 @@ def event_handler(event_cls: type[Any]) -> Callable[[HandlerType], HandlerType]:
     return decorator
 
 
-def authorization_handler(message_cls: type[Any]) -> Callable[[HandlerType], HandlerType]:
-    """Register one authorization policy for a message type."""
-
-    def decorator(authorizer_cls: HandlerType) -> HandlerType:
-        _register_single(AUTHORIZERS, message_cls, authorizer_cls)
-        return authorizer_cls
-
-    return decorator
-
-
 def _build_handler(
     handler_cls: HandlerType, dependencies: DependencyMap
 ) -> CommandHandler[Any, Any]:
@@ -132,6 +118,9 @@ def _build_handler(
     except (NameError, TypeError):
         hints = {}
 
+    import types
+    from typing import Union, get_args, get_origin
+
     kwargs: dict[str, Any] = {}
     missing: list[str] = []
     for name, parameter in signature.parameters.items():
@@ -140,8 +129,18 @@ def _build_handler(
         dependency_type = hints.get(name, parameter.annotation)
         if dependency_type in dependencies:
             kwargs[name] = dependencies[dependency_type]
-        elif parameter.default is inspect.Parameter.empty:
-            missing.append(name)
+        else:
+            # Handle Optional / Union types (e.g. RAGEngine | None)
+            origin = get_origin(dependency_type)
+            matched = False
+            if origin in (types.UnionType, Union):
+                for candidate in get_args(dependency_type):
+                    if candidate is not type(None) and candidate in dependencies:
+                        kwargs[name] = dependencies[candidate]
+                        matched = True
+                        break
+            if not matched and parameter.default is inspect.Parameter.empty:
+                missing.append(name)
 
     if missing:
         names = ", ".join(missing)
@@ -180,25 +179,6 @@ class TransactionBehavior:
     ) -> Any:
         with context.uow:
             return next_handler()
-
-
-class AuthorizationBehavior:
-    """Run the registered authorization policy inside the current transaction."""
-
-    def __init__(self, authorizers: HandlerRegistry | None = None) -> None:
-        self._authorizers = authorizers if authorizers is not None else AUTHORIZERS
-
-    def handle(
-        self,
-        message: object,
-        context: BusContext,
-        next_handler: Callable[[], Any],
-    ) -> Any:
-        authorizer_cls = self._authorizers.get(type(message))
-        if authorizer_cls is not None:
-            authorizer = _build_handler(authorizer_cls, context.dependencies)
-            authorizer.handle(message)
-        return next_handler()
 
 
 class ReadOnlyBehavior:
@@ -288,7 +268,7 @@ class _RequestBus:
 
 
 class CommandBus(_RequestBus):
-    """Dispatch commands through logging, domain-event and transaction behaviors."""
+    """Dispatch commands through logging, domain-event, and transaction behaviors."""
 
     def __init__(
         self,
@@ -300,13 +280,12 @@ class CommandBus(_RequestBus):
         execution_context: ExecutionContext | None = None,
     ) -> None:
         domain_events = DomainEventBehavior(event_bus or EventBus())
-        authorization = AuthorizationBehavior()
         super().__init__(
             uow=uow,
             handlers=handlers if handlers is not None else COMMAND_HANDLERS,
             behaviors=behaviors
             if behaviors is not None
-            else (LoggingBehavior(), domain_events, TransactionBehavior(), authorization),
+            else (LoggingBehavior(), domain_events, TransactionBehavior()),
             dependencies=dependencies,
             execution_context=execution_context,
         )
@@ -335,7 +314,7 @@ class QueryBus(_RequestBus):
             handlers=handlers if handlers is not None else QUERY_HANDLERS,
             behaviors=behaviors
             if behaviors is not None
-            else (LoggingBehavior(), ReadOnlyBehavior(), AuthorizationBehavior()),
+            else (LoggingBehavior(), ReadOnlyBehavior()),
             dependencies=dependencies,
             execution_context=execution_context,
         )
@@ -348,16 +327,28 @@ class QueryBus(_RequestBus):
         return self._execute(query, dependencies)
 
 
-def get_command_bus(uow: UnitOfWork = Depends(get_uow)) -> CommandBus:
-    return CommandBus(uow=uow)
+def get_command_bus(
+    uow: UnitOfWork | None = None,
+    dependencies: DependencyMap | None = None,
+    execution_context: ExecutionContext | None = None,
+) -> CommandBus:
+    if uow is None:
+        from core.database.uow import SqlAlchemyUnitOfWork
+
+        uow = SqlAlchemyUnitOfWork()
+    return CommandBus(uow=uow, dependencies=dependencies, execution_context=execution_context)
 
 
-def get_query_bus(uow: UnitOfWork = Depends(get_uow)) -> QueryBus:
-    return QueryBus(uow=uow)
+def get_query_bus(
+    uow: UnitOfWork | None = None,
+    dependencies: DependencyMap | None = None,
+    execution_context: ExecutionContext | None = None,
+) -> QueryBus:
+    if uow is None:
+        from core.database.uow import SqlAlchemyUnitOfWork
 
-
-CommandBusDep = Annotated[CommandBus, Depends(get_command_bus)]
-QueryBusDep = Annotated[QueryBus, Depends(get_query_bus)]
+        uow = SqlAlchemyUnitOfWork()
+    return QueryBus(uow=uow, dependencies=dependencies, execution_context=execution_context)
 
 
 __all__ = [
@@ -367,15 +358,22 @@ __all__ = [
     "CommandHandler",
     "BusBehavior",
     "BusContext",
-    "CommandBus",
-    "QueryBus",
-    "EventBus",
+    "COMMAND_HANDLERS",
+    "QUERY_HANDLERS",
+    "EVENT_HANDLERS",
     "command_handler",
     "query_handler",
     "event_handler",
-    "authorization_handler",
+    "LoggingBehavior",
+    "TransactionBehavior",
+    "ReadOnlyBehavior",
+    "DomainEventBehavior",
+    "EventBus",
+    "CommandBus",
+    "QueryBus",
     "get_command_bus",
     "get_query_bus",
-    "CommandBusDep",
-    "QueryBusDep",
+    "_build_handler",
+    "_register_single",
+    "_RequestBus",
 ]

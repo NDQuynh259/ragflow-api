@@ -13,13 +13,13 @@ from chat_api.modules.workspaces.domain.entity import (
     WorkspaceMember,
     WorkspaceRole,
 )
-from chat_api.shared.bus import Command, command_handler
 from chat_api.shared.infrastructure.database import UnitOfWork
+from core.cqrs import Command, command_handler
+from core.exceptions import UnauthenticatedException
 from core.security import (
     generate_session_token,
     verify_password,
 )
-from core.exceptions import UnauthenticatedException
 
 DEFAULT_SESSION_DURATION_DAYS = 7
 

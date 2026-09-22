@@ -1,4 +1,4 @@
-"""Upload Document Command, Authorizer, and Handler."""
+"""Upload Document Command and Handler."""
 
 from __future__ import annotations
 
@@ -18,13 +18,8 @@ from chat_api.modules.documents.domain.value_objects import (
     StorageUri,
 )
 from chat_api.modules.workspaces.domain.repository import WorkspaceRepository
-from chat_api.shared.auth import (
-    CurrentPrincipal,
-    Permission,
-    require_workspace_permission,
-)
-from chat_api.shared.bus import Command, authorization_handler, command_handler
 from chat_api.shared.infrastructure.database import UnitOfWork
+from core.cqrs import Command, command_handler
 from core.exceptions import EntityNotFoundException
 from core.storage import ObjectStoragePort
 from core.uuid7 import uuid7
@@ -38,21 +33,7 @@ class UploadDocumentCommand(Command[DocumentDTO]):
     mime_type: str = "application/pdf"
     parser_name: str = "opendataloader"
     chunker_name: str = "heading_aware"
-
-
-@authorization_handler(UploadDocumentCommand)
-class UploadDocumentAuthorizer:
-    def __init__(self, uow: UnitOfWork, principal: CurrentPrincipal) -> None:
-        self.uow = uow
-        self.principal = principal
-
-    def handle(self, command: UploadDocumentCommand) -> None:
-        require_workspace_permission(
-            self.uow,
-            self.principal,
-            command.workspace_id,
-            Permission.DOCUMENT_CREATE,
-        )
+    uploaded_by: uuid.UUID | None = None
 
 
 @command_handler(UploadDocumentCommand)
@@ -102,6 +83,7 @@ class UploadDocumentHandler:
                 job_id=job.id,
                 storage_uri=str(document.storage_uri),
                 workspace_id=cmd.workspace_id,
+                user_id=cmd.uploaded_by,
             )
         )
         self.uow.track(document)

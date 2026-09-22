@@ -18,8 +18,8 @@ from chat_api.shared.auth import (
     ExecutionContext,
     get_auth_context,
 )
-from chat_api.shared.bus import CommandBus, QueryBus
 from chat_api.shared.infrastructure.database import get_uow
+from core.cqrs import CommandBus, QueryBus
 
 
 @pytest.fixture

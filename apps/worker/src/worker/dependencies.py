@@ -41,9 +41,31 @@ def get_rag_engine() -> RAGEngine:
     return RAGEngine.from_env()
 
 
+def get_worker_command_bus():
+    """Build and return a CommandBus wired with worker-level dependencies."""
+    import worker.handlers  # noqa: F401
+    from core.cqrs import CommandBus, LoggingBehavior
+    from core.database import UnitOfWork
+
+    uow = get_uow()
+    dependencies = {
+        UnitOfWork: uow,
+        ObjectStoragePort: get_storage(),
+        DocumentPipeline: get_document_pipeline(),
+        RAGEngine: get_rag_engine(),
+    }
+
+    return CommandBus(
+        uow=uow,
+        dependencies=dependencies,
+        behaviors=[LoggingBehavior()],
+    )
+
+
 __all__ = [
     "get_storage",
     "get_uow",
     "get_document_pipeline",
     "get_rag_engine",
+    "get_worker_command_bus",
 ]

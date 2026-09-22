@@ -52,3 +52,33 @@ class UnauthorizedException(ForbiddenException):
     """Deprecated compatibility alias; use a precise auth exception."""
 
     pass
+
+
+class NonRetriableQueueError(Exception):
+    """Marker exception indicating that a queue message processing failure should not be retried."""
+
+    pass
+
+
+class AccountSuspendedException(ForbiddenException, NonRetriableQueueError):
+    """Raised when an account or workspace is inactive, locked, or suspended."""
+
+    def __init__(
+        self,
+        message: str = "Account or workspace is inactive or suspended.",
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message, details=details)
+
+
+__all__ = [
+    "DomainException",
+    "EntityNotFoundException",
+    "DomainValidationException",
+    "ResourceConflictException",
+    "UnauthenticatedException",
+    "ForbiddenException",
+    "UnauthorizedException",
+    "NonRetriableQueueError",
+    "AccountSuspendedException",
+]

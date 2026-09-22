@@ -159,3 +159,38 @@ def test_job_dispatcher_unknown_action():
             await dispatcher.dispatch(envelope)
 
     asyncio.run(run_test())
+
+
+def test_consumer_non_retriable_error_aborts_retry():
+    from unittest.mock import AsyncMock, MagicMock
+
+    from core.exceptions import AccountSuspendedException
+    from core.queue.consumer import AsyncRabbitMQConsumer
+
+    dispatcher = JobDispatcher()
+    consumer = AsyncRabbitMQConsumer(dispatcher=dispatcher)
+
+    # Mock dispatcher to raise AccountSuspendedException
+    async def failing_handler(**kwargs):
+        raise AccountSuspendedException("User account is locked.")
+
+    dispatcher.register("test_fail", failing_handler)
+
+    envelope = JobEnvelope(action="test_fail", payload={})
+    mock_message = MagicMock()
+    mock_message.body = envelope.to_bytes()
+    mock_message.reject = AsyncMock()
+    mock_message.ack = AsyncMock()
+
+    mock_retry_ex = MagicMock()
+    mock_retry_ex.publish = AsyncMock()
+
+    async def run():
+        await consumer._process_one_message(mock_message, mock_retry_ex)
+
+    asyncio.run(run())
+
+    # Verify message was rejected to DLQ (requeue=False) and NOT retried
+    mock_message.reject.assert_called_once_with(requeue=False)
+    mock_retry_ex.publish.assert_not_called()
+    mock_message.ack.assert_not_called()

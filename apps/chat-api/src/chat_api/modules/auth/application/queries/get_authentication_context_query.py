@@ -6,10 +6,10 @@ from dataclasses import dataclass
 
 from chat_api.modules.auth.domain.entity import UserSession
 from chat_api.modules.users.domain.entity import User
-from chat_api.shared.bus import Query, query_handler
 from chat_api.shared.infrastructure.database import UnitOfWork
-from core.security import CurrentPrincipal
+from core.cqrs import Query, query_handler
 from core.exceptions import UnauthenticatedException
+from core.security import CurrentPrincipal
 
 
 @dataclass(frozen=True)

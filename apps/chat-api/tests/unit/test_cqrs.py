@@ -6,8 +6,8 @@ from dataclasses import dataclass
 
 import pytest
 
-from chat_api.shared.bus import Command, CommandBus, EventBus, Query, QueryBus
 from chat_api.shared.infrastructure.database import UnitOfWork
+from core.cqrs import Command, CommandBus, EventBus, Query, QueryBus
 
 
 @dataclass(frozen=True)

@@ -7,30 +7,14 @@ from dataclasses import dataclass
 
 from chat_api.modules.chat_sessions.application.dtos import SessionDTO
 from chat_api.modules.chat_sessions.application.mapper import SessionMapper
-from chat_api.shared.auth import (
-    CurrentPrincipal,
-    Permission,
-    require_session_access,
-    require_workspace_permission,
-)
-from chat_api.shared.bus import Query, authorization_handler, query_handler
 from chat_api.shared.infrastructure.database import UnitOfWork
+from core.cqrs import Query, query_handler
 from core.exceptions import EntityNotFoundException
 
 
 @dataclass(frozen=True)
 class GetSessionQuery(Query[SessionDTO]):
     session_id: uuid.UUID
-
-
-@authorization_handler(GetSessionQuery)
-class GetSessionAuthorizer:
-    def __init__(self, uow: UnitOfWork, principal: CurrentPrincipal) -> None:
-        self.uow = uow
-        self.principal = principal
-
-    def handle(self, query: GetSessionQuery) -> None:
-        require_session_access(self.uow, self.principal, query.session_id)
 
 
 @query_handler(GetSessionQuery)
@@ -52,21 +36,6 @@ class ListSessionsQuery(Query[list[SessionDTO]]):
     user_id: uuid.UUID | None = None
     limit: int = 50
     offset: int = 0
-
-
-@authorization_handler(ListSessionsQuery)
-class ListSessionsAuthorizer:
-    def __init__(self, uow: UnitOfWork, principal: CurrentPrincipal) -> None:
-        self.uow = uow
-        self.principal = principal
-
-    def handle(self, query: ListSessionsQuery) -> None:
-        require_workspace_permission(
-            self.uow,
-            self.principal,
-            query.workspace_id,
-            Permission.SESSION_READ,
-        )
 
 
 @query_handler(ListSessionsQuery)
