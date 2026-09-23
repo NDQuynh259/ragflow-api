@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import uuid
 from dataclasses import dataclass
 
@@ -21,7 +20,7 @@ from chat_api.modules.workspaces.domain.repository import WorkspaceRepository
 from chat_api.shared.infrastructure.database import UnitOfWork
 from core.cqrs import Command, command_handler
 from core.exceptions import EntityNotFoundException
-from core.storage import ObjectStoragePort
+from core.storage import FileUploader, ObjectStoragePort
 from core.uuid7 import uuid7
 
 
@@ -42,12 +41,19 @@ class UploadDocumentHandler:
         self,
         uow: UnitOfWork,
         storage: ObjectStoragePort,
+        uploader: FileUploader | None = None,
     ) -> None:
         self.uow = uow
         self.storage = storage
+        self.uploader = uploader or FileUploader(storage=storage)
 
     def handle(self, cmd: UploadDocumentCommand) -> DocumentDTO:
-        content_hash = ContentHash(hashlib.sha256(cmd.content).hexdigest())
+        validated = self.uploader.validator.validate(
+            filename=cmd.filename,
+            content=cmd.content,
+            declared_mime_type=cmd.mime_type,
+        )
+        content_hash = ContentHash(validated.content_hash)
 
         workspace_repo = self.uow.get_repo(WorkspaceRepository)
         doc_repo = self.uow.get_repo(DocumentRepository)
@@ -60,15 +66,15 @@ class UploadDocumentHandler:
         if existing:
             return DocumentMapper.to_dto(existing)
 
-        raw_uri = self.storage.save(cmd.filename, cmd.content, cmd.workspace_id)
+        raw_uri = self.storage.save(validated.filename, validated.content, cmd.workspace_id)
         document = Document(
             id=uuid7(),
             workspace_id=cmd.workspace_id,
-            filename=Filename(cmd.filename),
+            filename=Filename(validated.filename),
             storage_uri=StorageUri(raw_uri),
             content_hash=content_hash,
-            mime_type=MimeType(cmd.mime_type),
-            file_size=len(cmd.content),
+            mime_type=MimeType(validated.detected_mime_type),
+            file_size=validated.file_size,
             status=DocumentStatus.QUEUED,
         )
         job = document.create_ingestion_job(

@@ -11,7 +11,7 @@ from functools import lru_cache
 
 from core.config import settings
 from core.database import SqlAlchemyUnitOfWork
-from core.storage import LocalStorageAdapter, ObjectStoragePort
+from core.storage import ObjectStoragePort, create_storage_adapter
 from rag_core.engine import RAGEngine
 from rag_document_pipeline.pipeline import DocumentPipeline
 
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 @lru_cache(maxsize=1)
 def get_storage() -> ObjectStoragePort:
     """Return configured ObjectStorage adapter for worker."""
-    return LocalStorageAdapter(base_dir=settings.STORAGE_DIR)
+    return create_storage_adapter(settings)
 
 
 def get_uow() -> SqlAlchemyUnitOfWork:

@@ -23,3 +23,18 @@ class ObjectStoragePort(ABC):
     def delete(self, storage_uri: str) -> bool:
         """Delete stored file."""
         pass
+
+    def exists(self, storage_uri: str) -> bool:
+        """Check whether file exists at storage URI. Default implementation probes get()."""
+        try:
+            self.get(storage_uri)
+            return True
+        except Exception:
+            return False
+
+    def get_size(self, storage_uri: str) -> int:
+        """Return size in bytes of file at storage URI. Default implementation measures get()."""
+        return len(self.get(storage_uri))
+
+
+__all__ = ["ObjectStoragePort"]

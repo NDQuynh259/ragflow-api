@@ -238,6 +238,12 @@ class FakeStorage(ObjectStoragePort):
     def delete(self, storage_uri: str) -> bool:
         return True
 
+    def exists(self, storage_uri: str) -> bool:
+        return True
+
+    def get_size(self, storage_uri: str) -> int:
+        return 7
+
 
 class FakeQueue(IngestionQueuePort):
     def __init__(self):
