@@ -42,6 +42,7 @@ from chat_api.shared.auth.permissions import (
     require_workspace_member,
     require_workspace_permission,
 )
+from chat_api.shared.auth.workspace_resolver import WorkspaceResolutionService
 
 __all__ = [
     # Guards & Dependencies
@@ -67,6 +68,7 @@ __all__ = [
     "get_auth_context",
     "get_current_principal",
     "resolve_target_workspace_id",
+    "WorkspaceResolutionService",
     # Permissions & Catalog
     "Permission",
     "PermissionItem",

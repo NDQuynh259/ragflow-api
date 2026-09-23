@@ -16,6 +16,7 @@ from core.exceptions import EntityNotFoundException
 from core.storage import ObjectStoragePort
 from rag_core.engine import RAGEngine
 from rag_document_pipeline.pipeline import DocumentPipeline
+from worker.services.ingestion import DocumentIngestionService
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +42,17 @@ class IndexDocumentHandler:
         storage: ObjectStoragePort,
         pipeline: DocumentPipeline | None = None,
         engine: RAGEngine | None = None,
+        ingestion_service: DocumentIngestionService | None = None,
     ) -> None:
         self.uow = uow
         self.storage = storage
         self.pipeline = pipeline or DocumentPipeline()
         self.engine = engine or RAGEngine.from_env()
+        self.ingestion_service = ingestion_service or DocumentIngestionService(
+            storage=self.storage,
+            pipeline=self.pipeline,
+            engine=self.engine,
+        )
 
     def handle(self, cmd: IndexDocumentCommand) -> int:
         logger.info(
@@ -160,33 +167,11 @@ class IndexDocumentHandler:
 
         # Ingestion pipeline outside of lock/transaction
         try:
-            # 3. Read raw file bytes from storage
-            file_bytes = self.storage.get(cmd.storage_uri)
-            logger.info("Read %d bytes from storage URI: %s", len(file_bytes), cmd.storage_uri)
-
-            # 4. Parse & chunk document
-            processed = self.pipeline.process(
-                file_bytes,
+            pipeline_result = self.ingestion_service.execute_pipeline(
+                storage_uri=cmd.storage_uri,
                 filename=filename,
-                document_id=str(cmd.document_id),
-            )
-            logger.info(
-                "Processed document %s: %d pages, %d chunks",
-                cmd.document_id,
-                processed.page_count,
-                len(processed.chunks),
-            )
-
-            # 5. Attach workspace_id to each chunk
-            for chunk in processed.chunks:
-                chunk.workspace_id = str(cmd.workspace_id)
-
-            # 6. Embed and index chunks into vector store (Idempotent upsert)
-            indexed_count = self.engine.index(processed.chunks)
-            logger.info(
-                "Successfully indexed %d chunks for document %s",
-                indexed_count,
-                cmd.document_id,
+                document_id=cmd.document_id,
+                workspace_id=cmd.workspace_id,
             )
 
             # 7. Mark job completed and document ready
@@ -211,15 +196,15 @@ class IndexDocumentHandler:
                             "WHERE id = :doc_id"
                         ),
                         {
-                            "pages": processed.page_count,
-                            "size": len(file_bytes),
+                            "pages": pipeline_result.page_count,
+                            "size": pipeline_result.file_size,
                             "doc_id": cmd.document_id,
                         },
                     )
                     self.uow.commit()
 
             logger.info("Ingestion job %s completed in %.2fs", cmd.job_id, elapsed)
-            return indexed_count
+            return pipeline_result.indexed_count
 
         except Exception as exc:
             elapsed = time.monotonic() - start_time

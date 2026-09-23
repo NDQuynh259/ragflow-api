@@ -5,11 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from chat_api.modules.users.domain.entity import User
-from chat_api.modules.workspaces.domain.entity import (
-    Workspace,
-    WorkspaceMember,
-    WorkspaceRole,
-)
+from chat_api.modules.workspaces.application import WorkspaceProvisioningService
 from chat_api.shared.infrastructure.database import UnitOfWork
 from core.cqrs import Command, command_handler
 from core.exceptions import (
@@ -50,20 +46,7 @@ class RegisterHandler:
         )
         saved_user = self.uow.users.save(user)
 
-        clean_name = command.full_name.strip() if command.full_name else clean_email.split("@")[0]
-        ws_slug = f"workspace-{saved_user.id.hex[:8]}"
-        workspace = Workspace(
-            name=f"{clean_name}'s Workspace",
-            slug=ws_slug,
-            members=[],
-        )
-        workspace.members.append(
-            WorkspaceMember(
-                workspace_id=workspace.id,
-                user_id=saved_user.id,
-                role=WorkspaceRole.OWNER,
-            )
-        )
-        self.uow.workspaces.save(workspace)
+        workspace_service = WorkspaceProvisioningService(self.uow)
+        workspace = workspace_service.create_default_workspace(saved_user)
         self.uow.track(saved_user, workspace)
         return saved_user
