@@ -107,6 +107,16 @@ class InMemoryDocRepo(DocumentRepository):
             return True
         return False
 
+    def update_storage_uri(self, old_uri: str, new_uri: str) -> bool:
+        from chat_api.modules.documents.domain.value_objects import StorageUri
+
+        updated = False
+        for doc in self.data.values():
+            if str(doc.storage_uri) == old_uri:
+                doc.storage_uri = StorageUri(new_uri)
+                updated = True
+        return updated
+
 
 class InMemorySessionRepo(ChatSessionRepository):
     def __init__(self):

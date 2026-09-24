@@ -158,6 +158,14 @@ class SqlAlchemyDocumentRepository(DocumentRepository):
         orm.deleted_at = datetime.now(UTC)
         return True
 
+    def update_storage_uri(self, old_uri: str, new_uri: str) -> bool:
+        rows = (
+            self.session.query(ORMDocument)
+            .filter(ORMDocument.storage_uri == old_uri, ORMDocument.deleted_at.is_(None))
+            .update({ORMDocument.storage_uri: new_uri}, synchronize_session=False)
+        )
+        return rows > 0
+
     def _to_domain(self, orm: ORMDocument) -> DomainDocument:
         jobs = [
             DomainJob(

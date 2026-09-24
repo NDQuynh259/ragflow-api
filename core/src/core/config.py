@@ -21,7 +21,9 @@ class CoreSettings(BaseSettings):
 
     # Storage
     STORAGE_DIR: Path = Path("output/storage")
-    STORAGE_BACKEND: str = "minio"
+    STORAGE_BACKEND: str = "minio_with_local_fallback"
+    STORAGE_SYNC_INTERVAL_SECONDS: int = 60
+    STORAGE_SYNC_MAX_RETRIES: int = 10
     MINIO_ENDPOINT: str = "localhost:9000"
     MINIO_ACCESS_KEY: str = "minioadmin"
     MINIO_SECRET_KEY: str = "minioadmin"

@@ -2,15 +2,17 @@
 
 Organized into:
 - ports: Abstract interfaces defining storage contracts
-- adapters: Concrete implementations (MinIO, Fallback)
-- services: Validation, file upload coordination, and factory wiring
+- adapters: Concrete implementations (Local, MinIO, Fallback)
+- services: Validation, file upload coordination, retry sync, and factory wiring
 """
 
 from __future__ import annotations
 
 from core.storage.adapters import (
     FallbackStorageAdapter,
+    LocalStorageAdapter,
     MinioStorageAdapter,
+    OutboxItem,
 )
 from core.storage.ports import ObjectStoragePort
 from core.storage.services import (
@@ -19,9 +21,12 @@ from core.storage.services import (
     EXTENSION_MIME_MAP,
     FileUploader,
     FileValidator,
+    StorageRetrySyncService,
+    SyncResult,
     UploadResult,
     ValidatedFile,
     create_storage_adapter,
+    create_storage_sync_service,
 )
 
 __all__ = [
@@ -31,9 +36,14 @@ __all__ = [
     "FallbackStorageAdapter",
     "FileUploader",
     "FileValidator",
+    "LocalStorageAdapter",
     "MinioStorageAdapter",
     "ObjectStoragePort",
+    "OutboxItem",
+    "StorageRetrySyncService",
+    "SyncResult",
     "UploadResult",
     "ValidatedFile",
     "create_storage_adapter",
+    "create_storage_sync_service",
 ]

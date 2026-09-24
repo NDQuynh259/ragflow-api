@@ -131,6 +131,8 @@ class MinioStorageAdapter(ObjectStoragePort):
 
         try:
             stat = self._client.stat_object(bucket, object_key)
+            if stat.size is None:
+                raise StorageException(f"Object size could not be determined for {storage_uri}")
             return stat.size
         except S3Error as err:
             if err.code in ("NoSuchKey", "NoSuchBucket"):
