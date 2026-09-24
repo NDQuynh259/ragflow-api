@@ -114,6 +114,7 @@ dev = "uvicorn chat_api.main:app --reload --port 8000"
 migrate = "alembic upgrade head"
 openapi = "python scripts/export_openapi.py"
 worker = "python -m worker.main"
+scheduler = "python -m worker.scheduler"
 
 [tool.poe.tasks.check]
 sequence = ["lint", "format:check", "typecheck", "test"]

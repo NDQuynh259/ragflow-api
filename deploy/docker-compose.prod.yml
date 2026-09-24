@@ -126,6 +126,31 @@ services:
           cpus: "1.0"
           memory: 1536M
 
+  scheduler:
+    image: ${APP_IMAGE:-ghcr.io/ndquynh259/ragflow-api:latest}
+    container_name: rag_scheduler_prod
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgrespassword}@postgres:5432/${POSTGRES_DB:-rag_db}
+      - STORAGE_DIR=/app/output/storage
+    volumes:
+      - rag_storage_prod:/app/output/storage
+    command: ["python", "-m", "worker.scheduler"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migration:
+        condition: service_completed_successfully
+    networks:
+      - rag_prod_net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
 volumes:
   pgdata_prod:
   rag_storage_prod:

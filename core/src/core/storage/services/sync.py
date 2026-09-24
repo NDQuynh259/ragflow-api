@@ -132,6 +132,7 @@ class StorageRetrySyncService:
         self,
         interval_seconds: int = 60,
         on_synced_callback: Callable[[str, str, uuid.UUID], None] | None = None,
+        stop_event: asyncio.Event | None = None,
     ) -> None:
         """Indefinitely runs periodic background sync loop without blocking the main event loop."""
         logger.info(
@@ -139,14 +140,21 @@ class StorageRetrySyncService:
             interval_seconds,
             self.max_retries,
         )
-        while True:
+        while stop_event is None or not stop_event.is_set():
             try:
                 self.sync_pending_files(on_synced_callback=on_synced_callback)
             except Exception as exc:
                 logger.error("Unexpected error in storage sync cycle: %s", exc, exc_info=True)
 
             try:
-                await asyncio.sleep(interval_seconds)
+                if stop_event is not None:
+                    try:
+                        await asyncio.wait_for(stop_event.wait(), timeout=interval_seconds)
+                        break
+                    except TimeoutError:
+                        pass
+                else:
+                    await asyncio.sleep(interval_seconds)
             except asyncio.CancelledError:
                 logger.info("StorageRetrySyncService background worker received shutdown signal.")
                 break
