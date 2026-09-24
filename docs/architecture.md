@@ -205,6 +205,50 @@ Khi nghiệp vụ đòi hỏi truy vấn tổng hợp từ nhiều Bounded Conte
 
 ---
 
+### 2.5. Cơ Chế Logging Chuẩn Hóa Cấp Toàn Hệ Thống (`core/src/core/logging.py`)
+
+Để đảm bảo khả năng quan sát (Observability) và vận hành mượt mà trên môi trường Container theo nguyên lý **Twelve-Factor App (Logs as Event Streams)**, toàn bộ hệ thống sử dụng cấu hình logging tập trung [setup_logging](file:///c:/Users/ndquynh/Documents/RAG/core/src/core/logging.py#L9):
+
+```python
+def setup_logging(level: int = logging.INFO) -> None:
+    """Configure root logger with unified formatting."""
+    formatter = logging.Formatter(
+        "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(formatter)
+
+    root = logging.getLogger()
+    root.setLevel(level)
+    root.handlers = [handler]
+```
+
+#### Nguyên Tắc Thiết Kế:
+1. **Xuất trực tiếp ra `sys.stdout` (Chuẩn Twelve-Factor App)**:
+   - Thay vì ghi log vào file cục bộ trên đĩa (dễ làm tràn dung lượng container và khó xoay vòng log), toàn bộ log được đẩy trực tiếp ra `sys.stdout`.
+   - Các Container Runtime (Docker Daemon, Kubernetes Kubelet, Vector, Promtail/Loki) sẽ tự động thu thập luồng log này qua lệnh `docker logs` tiêu chuẩn mà không cần mount volume hay cấu hình daemon phức tạp.
+2. **Khởi tạo duy nhất tại Entrypoint của 3 Ứng dụng Chính**:
+   - `apps/chat-api/src/chat_api/main.py`: Gọi `setup_logging()` khi khởi động FastAPI server.
+   - `apps/worker/src/worker/main.py`: Gọi `setup_logging()` khi bắt đầu lắng nghe hàng đợi RabbitMQ/Memory.
+   - `apps/scheduler/src/scheduler/main.py`: Gọi `setup_logging()` khi khởi chạy APScheduler engine.
+3. **Cơ chế kế thừa phân cấp (Hierarchical Logger)**:
+   - Nhờ cấu hình áp dụng trực tiếp lên `root = logging.getLogger()`, mọi module con trong toàn bộ codebase chỉ cần khai báo:
+     ```python
+     logger = logging.getLogger(__name__)
+     ```
+     sẽ tự động kế thừa format thời gian chuẩn, log level và stream handler mà không phải cấu hình lặp lại.
+4. **Định dạng Log Đồng Nhất Toàn Monorepo**:
+   - Cấu trúc: `YYYY-MM-DD HH:MM:SS [LEVEL] logger_name: Nội dung thông điệp`
+   - Ví dụ thực tế từ các dịch vụ:
+     ```text
+     2026-09-24 17:15:30 [INFO] scheduler.tasks.storage_sync: StorageSyncTask tick completed: 5 synced, 0 failed.
+     2026-09-24 17:15:45 [INFO] worker.dispatcher: Ingestion job 01923e4f-bc1a-7000-... processed successfully.
+     2026-09-24 17:16:00 [INFO] chat_api.modules.chat_sessions: Created session with id: 01923e50-1234-7000-...
+     ```
+
+---
+
 ## 3. Quản lý Giao dịch với Unit of Work (UoW Pattern)
 
 ### 3.1. Bản chất của Unit of Work
@@ -429,4 +473,5 @@ Hệ thống RAG áp dụng mô hình phân tách ranh giới kỹ thuật nghi�
 | **Full-Text Search** | PostgreSQL TSVector + GIN Index | Tìm kiếm từ khóa chuẩn xác kết hợp với Dense Search tạo nên Hybrid Search. |
 | **Di chuyển cấu trúc DB**| Alembic | Quản lý phiên bản migration cơ sở dữ liệu rõ ràng, có thể rollback. |
 | **Quản lý cấu hình** | `pydantic-settings` | Tự động parse và validate biến môi trường `.env`. |
+| **Logging Tập Trung** | `core.logging (setup_logging)` | Chuẩn hóa định dạng log RFC ra `stdout`, phục vụ container logging (Twelve-Factor App). |
 | **Kiểm thử** | `pytest` + `FastAPI TestClient` | Kiểm thử tự động từ cấp độ Unit test Handler đến Integration test REST endpoints. |
