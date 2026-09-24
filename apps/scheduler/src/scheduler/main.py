@@ -1,6 +1,6 @@
 """Dedicated Background Scheduler Process for periodic tasks and retry synchronization.
 
-Separated from the Ingestion Worker to:
+Separated as an independent application from the Ingestion Worker to:
 1. Prevent race conditions and duplicate outbox scans when Ingestion Workers are scaled out.
 2. Isolate lightweight cron/sync tasks from heavy OCR/Docling processing and potential worker OOMs.
 """
@@ -14,9 +14,9 @@ import sys
 
 from core.config import settings
 from core.logging import setup_logging
-from worker.dependencies import get_storage_sync_callback, get_storage_sync_service
+from scheduler.dependencies import get_storage_sync_callback, get_storage_sync_service
 
-logger = logging.getLogger("worker.scheduler")
+logger = logging.getLogger("scheduler")
 
 
 async def run_scheduler(stop_event: asyncio.Event | None = None) -> None:
@@ -84,7 +84,7 @@ async def run_scheduler(stop_event: asyncio.Event | None = None) -> None:
 
 
 def main() -> None:
-    """CLI Entrypoint for worker.scheduler."""
+    """CLI Entrypoint for scheduler."""
     try:
         asyncio.run(run_scheduler())
     except (KeyboardInterrupt, SystemExit):

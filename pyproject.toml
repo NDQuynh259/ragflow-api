@@ -11,6 +11,7 @@ members = [
     "packages/rag-core",
     "apps/chat-api",
     "apps/worker",
+    "apps/scheduler",
     "core",
 ]
 
@@ -19,6 +20,9 @@ rag-contracts = { workspace = true }
 rag-document-pipeline = { workspace = true }
 rag-core = { workspace = true }
 core = { workspace = true }
+chat-api = { workspace = true }
+worker = { workspace = true }
+scheduler = { workspace = true }
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -94,6 +98,7 @@ extraPaths = [
     "packages/rag-core/src",
     "packages/rag-document-pipeline/src",
     "apps/worker/src",
+    "apps/scheduler/src",
 ]
 typeCheckingMode = "basic"
 reportMissingImports = true
@@ -107,14 +112,14 @@ lint = "ruff check ."
 "lint:fix" = "ruff check --fix ."
 format = "ruff format ."
 "format:check" = "ruff format --check ."
-typecheck = "pyright core/src apps/chat-api/src packages/rag-contracts/src apps/worker/src"
+typecheck = "pyright core/src apps/chat-api/src packages/rag-contracts/src apps/worker/src apps/scheduler/src"
 test = "pytest"
 "test:cov" = "pytest --cov=apps/chat-api/src --cov=core/src --cov-report=term-missing"
 dev = "uvicorn chat_api.main:app --reload --port 8000"
 migrate = "alembic upgrade head"
 openapi = "python scripts/export_openapi.py"
 worker = "python -m worker.main"
-scheduler = "python -m worker.scheduler"
+scheduler = "python -m scheduler.main"
 
 [tool.poe.tasks.check]
 sequence = ["lint", "format:check", "typecheck", "test"]

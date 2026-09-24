@@ -19,6 +19,7 @@ COPY packages/rag-core/pyproject.toml ./packages/rag-core/
 COPY packages/rag-document-pipeline/pyproject.toml ./packages/rag-document-pipeline/
 COPY apps/chat-api/pyproject.toml ./apps/chat-api/
 COPY apps/worker/pyproject.toml ./apps/worker/
+COPY apps/scheduler/pyproject.toml ./apps/scheduler/
 
 # Sync external dependencies first (without installing workspace project packages)
 RUN uv sync --frozen --all-packages --no-install-project --no-dev
@@ -28,6 +29,7 @@ COPY core/ ./core/
 COPY packages/ ./packages/
 COPY apps/chat-api/ ./apps/chat-api/
 COPY apps/worker/ ./apps/worker/
+COPY apps/scheduler/ ./apps/scheduler/
 COPY migrations/ ./migrations/
 COPY alembic.ini ./
 

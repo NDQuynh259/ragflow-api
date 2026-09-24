@@ -292,7 +292,7 @@ sequenceDiagram
 
 ## 2.4 Luồng 4: Cơ Chế Định Kỳ Retry Đồng Bộ File Lên S3 & Cập Nhật CSDL
 
-Hệ thống sử dụng một tiến trình Scheduler độc lập (`worker.scheduler` / container `rag_scheduler_prod`, chạy qua `poe scheduler`), tách biệt hoàn toàn khỏi tiến trình Ingestion Worker để tránh tranh chấp Outbox khi scale Ingestion Worker. Định kỳ (mặc định mỗi **60 giây**, cấu hình qua `STORAGE_SYNC_INTERVAL_SECONDS`), tiến trình Scheduler kích hoạt `StorageRetrySyncService` để kiểm tra và đẩy lại các file đang tồn tại ở Local Outbox lên S3:
+Hệ thống sử dụng một ứng dụng Scheduler độc lập riêng biệt (`apps/scheduler`, container `rag_scheduler_prod`, chạy qua `poe scheduler` hoặc `python -m scheduler.main`), tách biệt hoàn toàn khỏi ứng dụng Ingestion Worker (`apps/worker`) để tránh tranh chấp Outbox khi scale Ingestion Worker. Định kỳ (mặc định mỗi **60 giây**, cấu hình qua `STORAGE_SYNC_INTERVAL_SECONDS`), tiến trình Scheduler kích hoạt `StorageRetrySyncService` để kiểm tra và đẩy lại các file đang tồn tại ở Local Outbox lên S3:
 
 ```mermaid
 %%{init: {'theme': 'dark', 'themeVariables': { 'darkMode': true, 'signalTextColor': '#ffffff', 'actorTextColor': '#ffffff', 'signalColor': '#10b981', 'lineColor': '#38bdf8' }}}%%

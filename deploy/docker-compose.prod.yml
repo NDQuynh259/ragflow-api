@@ -137,7 +137,7 @@ services:
       - STORAGE_DIR=/app/output/storage
     volumes:
       - rag_storage_prod:/app/output/storage
-    command: ["python", "-m", "worker.scheduler"]
+    command: ["python", "-m", "scheduler.main"]
     depends_on:
       postgres:
         condition: service_healthy

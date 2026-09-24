@@ -62,45 +62,10 @@ def get_worker_command_bus():
     )
 
 
-def get_storage_sync_callback():
-    """Return callback triggered when a local fallback file is successfully synced to S3."""
-
-    def on_synced(old_local_uri: str, new_s3_uri: str, workspace_id) -> None:
-        try:
-            from chat_api.modules.documents.domain.repository import DocumentRepository
-
-            uow = get_uow()
-            with uow:
-                repo = uow.get_repo(DocumentRepository)
-                if repo:
-                    repo.update_storage_uri(old_local_uri, new_s3_uri)
-                    uow.commit()
-                    logger.info(
-                        "Updated Document storage_uri in DB: %s -> %s",
-                        old_local_uri,
-                        new_s3_uri,
-                    )
-        except Exception as exc:
-            logger.warning("Could not update Document record for synced file: %s", exc)
-
-    return on_synced
-
-
-@lru_cache(maxsize=1)
-def get_storage_sync_service():
-    """Return configured StorageRetrySyncService if storage adapter is a FallbackStorageAdapter."""
-    from core.storage import create_storage_sync_service
-
-    storage = get_storage()
-    return create_storage_sync_service(storage, settings)
-
-
 __all__ = [
     "get_document_pipeline",
     "get_rag_engine",
     "get_storage",
-    "get_storage_sync_callback",
-    "get_storage_sync_service",
     "get_uow",
     "get_worker_command_bus",
 ]
