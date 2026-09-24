@@ -14,6 +14,14 @@ class FakeTask(BaseTask):
     def __init__(self, name: str = "fake") -> None:
         super().__init__(name=name, interval_seconds=1)
         self.tick_count = 0
+        self.setup_called = False
+        self.teardown_called = False
+
+    async def setup(self) -> None:
+        self.setup_called = True
+
+    async def teardown(self) -> None:
+        self.teardown_called = True
 
     async def execute_tick(self) -> None:
         self.tick_count += 1
@@ -32,11 +40,12 @@ async def test_scheduler_runs_registered_tasks_and_terminates() -> None:
 
         await asyncio.sleep(0.05)
         assert not scheduler_task.done()
-        assert fake_task.tick_count >= 1
+        assert fake_task.setup_called is True
 
         stop_event.set()
         await asyncio.wait_for(scheduler_task, timeout=1.0)
         assert scheduler_task.done()
+        assert fake_task.teardown_called is True
 
 
 @pytest.mark.anyio

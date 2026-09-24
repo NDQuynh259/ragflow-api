@@ -63,10 +63,16 @@ def get_storage_sync_service() -> StorageRetrySyncService | None:
 
 def get_scheduler_tasks():
     """Build and return all active scheduled tasks for the scheduler process."""
-    from scheduler.tasks import BaseTask, HeartbeatTask, StorageSyncTask
+    from scheduler.tasks import (
+        BaseTask,
+        HeartbeatTask,
+        MonthlyStorageCleanupTask,
+        StorageSyncTask,
+    )
 
     tasks: list[BaseTask] = [
         HeartbeatTask(interval_seconds=15),
+        MonthlyStorageCleanupTask(uow_factory=get_uow, retention_days=30),
     ]
 
     sync_service = get_storage_sync_service()

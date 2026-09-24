@@ -100,31 +100,32 @@ finally:
 
 ---
 
-# PHẦN 3: KIẾN TRÚC MÔ-ĐUN HÓA CỦA `apps/scheduler` (MODULAR TASK ENGINE)
+# PHẦN 3: KIẾN TRÚC MÔ-ĐUN HÓA CỦA `apps/scheduler` (APScheduler ENGINE)
 
-Thay vì viết toàn bộ logic vào một file `main.py` hay `dependencies.py` cồng kềnh, `apps/scheduler` được thiết kế theo mô hình **Modular Tasks** tương tự ViShop:
+Thay vì chạy các vòng lặp `while True` thủ công, `apps/scheduler` sử dụng **APScheduler** (`AsyncIOScheduler(timezone="UTC")`) kết hợp mô hình **Modular Tasks** chuẩn Enterprise tương tự ViShop:
 
 ```text
 apps/scheduler/
-├── pyproject.toml                     ← Khai báo dependencies độc lập
+├── pyproject.toml                     ← Khai báo apscheduler>=3.11.3 & core dependencies
 ├── Dockerfile                         ← Multi-stage build riêng biệt
 ├── src/
 │   └── scheduler/
 │       ├── __init__.py
 │       ├── config.py                  ← Cấu hình riêng cho scheduler (interval, timeouts)
-│       ├── dependencies.py            ← Composition Root (Storage, UoW, DB repos)
-│       ├── main.py                    ← Bootstrap Runner & Task Orchestration
+│       ├── dependencies.py            ← Composition Root (Storage, UoW, DB repos, Task Factory)
+│       ├── main.py                    ← Bootstrap Runner & APScheduler Engine Orchestrator
 │       │
 │       └── tasks/                     ← CÁC TÁC VỤ ĐỊNH KỲ ĐỘC LẬP (CHUẨN VISHOP)
-│           ├── __init__.py            ← BaseTask abstract class
-│           ├── base.py                ← Lớp cơ sở tích hợp Concurrency Guard & Error Handling
-│           ├── storage_sync_task.py   ← Tác vụ quét Outbox và retry upload lên S3
-│           ├── heartbeat_task.py      ← Tác vụ ghi file liveness probe cho Docker
-│           └── stale_cleanup_task.py  ← Tác vụ dọn dẹp file nháp/mồ côi quá hạn (Future)
+│           ├── __init__.py            ← BaseTask abstract class & export catalog
+│           ├── base.py                ← Lớp cơ sở tích hợp APScheduler Trigger resolver & Concurrency Guard
+│           ├── storage_sync_task.py   ← Tác vụ quét Outbox và retry upload lên S3 (Interval: 60s)
+│           ├── heartbeat_task.py      ← Tác vụ ghi file liveness probe cho Docker (Interval: 15s)
+│           └── monthly_cleanup_task.py← Tác vụ dọn dẹp file nháp/mồ côi cuối/đầu tháng (Cron: 30 4 1 * *)
 │
 └── tests/                             ← Kiểm thử tự động
     ├── conftest.py
-    └── test_scheduler.py              ← Unit test cho từng task và runner
+    ├── test_tasks.py                  ← Unit test kiểm thử trigger, guard và logic từng task
+    └── test_scheduler.py              ← Unit test kiểm thử APScheduler lifecycle runner
 ```
 
 ## 3.1 Thiết Kế Lớp Cơ Sở `BaseTask` (OOP Task Interface)
@@ -284,38 +285,40 @@ sequenceDiagram
 
 ---
 
-# PHẦN 5: BẢNG DANH MỤC TÁC VỤ DỰ KIẾN (TASK CATALOG)
+# PHẦN 5: BẢNG DANH MỤC TÁC VỤ (TASK CATALOG)
 
-| Tên Task | Chu kỳ (Mặc định) | Mục đích & Trách nhiệm | Xử lý khi lỗi |
-| :--- | :--- | :--- | :--- |
-| **`HeartbeatTask`** | Mỗi **15 giây** | Ghi timestamp vào `/tmp/scheduler-alive` phục vụ kiểm tra sức khỏe của Docker/Kubernetes container. | Thử lại ngay chu kỳ sau, nếu chết hẳn Docker sẽ restart. |
-| **`StorageSyncTask`** | Mỗi **60 giây** (`STORAGE_SYNC_INTERVAL_SECONDS`) | Quét các file lưu tạm ở Local Outbox khi S3 bị sự cố, thử đẩy lại lên S3 và cập nhật CSDL. | Tăng `retry_count`, áp dụng Exponential Backoff, ghi `last_error`. |
-| **`StaleCleanupTask`** *(Mở rộng)* | Mỗi **24 giờ** (03:00 AM) | Quét và dọn dẹp các file cache tạm, tài liệu ở trạng thái lỗi quá $N$ ngày. | Ghi log cảnh báo và thử lại vào chu kỳ đêm tiếp theo. |
+| Tên Task | Kiểu Lịch Trình | Cấu Hình Chu Kỳ | Mục Đích & Trách Nhiệm | Xử Lý Khi Lỗi / Trùng Lặp |
+| :--- | :--- | :--- | :--- | :--- |
+| **`HeartbeatTask`** | `IntervalTrigger` | Mỗi **15 giây** | Ghi timestamp vào `/tmp/scheduler-alive` phục vụ kiểm tra sức khỏe của Docker/Kubernetes container. | `max_instances=1`, tự phục hồi chu kỳ kế tiếp. |
+| **`StorageSyncTask`** | `IntervalTrigger` | Mỗi **60 giây** | Quét các file lưu tạm ở Local Outbox khi S3 bị sự cố, thử đẩy lại lên S3 và cập nhật CSDL qua callback. | Tăng `retry_count`, áp dụng Exponential Backoff, `coalesce=True`. |
+| **`MonthlyStorageCleanupTask`** | `CronTrigger` | **`30 4 1 * *`** (04:30 UTC ngày 1 hàng tháng) | Dọn dẹp các tệp tin tạm (temp/cache) và outbox logs mồ côi quá thời hạn `retention_days` (30 ngày). | Bắt ngoại lệ cục bộ, ghi error log, không làm gián đoạn scheduler. |
 
 ---
 
-# PHẦN 6: LỘ TRÌNH VÀ KẾ HOẠCH TRIỂN KHAI CODE
+# PHẦN 6: LỘ TRÌNH VÀ KẾ HOẠCH TRIỂN KHAI HOÀN TẤT
 
-Quá trình nâng cấp `apps/scheduler` theo mô hình chuẩn ViShop sẽ được thực hiện theo 4 bước bài bản:
+Quá trình nâng cấp `apps/scheduler` theo mô hình chuẩn ViShop tích hợp APScheduler đã hoàn thành xuất sắc qua 4 giai đoạn:
 
 ```text
-[BƯỚC 1: Xây Dựng Base Framework]
-  ├── Tạo lớp trừu tượng BaseTask (cung cấp Concurrency Guard, Interval Loop, Shutdown Listener)
-  └── Tạo HeartbeatTask (ghi nhận liveness probe vào file)
+[BƯỚC 1: Xây Dựng Base Framework & APScheduler]
+  ├── Cài đặt apscheduler>=3.11.3 vào workspace apps/scheduler
+  ├── Xây dựng BaseTask với get_trigger() (CronTrigger & IntervalTrigger)
+  └── Tích hợp Concurrency Guard (_is_running) và graceful setup/teardown
 
-[BƯỚC 2: Mô-đun Hóa Storage Sync Task]
-  ├── Chuyển logic StorageRetrySyncService vào StorageSyncTask kế thừa BaseTask
-  └── Tích hợp callback cập nhật DB DocumentRepository chuẩn xác
+[BƯỚC 2: Hiện Thực Task Catalog Chuẩn ViShop]
+  ├── StorageSyncTask: Quét và đẩy Local Outbox lên S3 (chu kỳ 60s)
+  ├── HeartbeatTask: Ghi nhận liveness probe vào /tmp/scheduler-alive (chu kỳ 15s)
+  └── MonthlyStorageCleanupTask: Dọn dẹp thư mục tạm theo chuẩn crontab "30 4 1 * *"
 
 [BƯỚC 3: Cải Tiến Scheduler Main Runner & Docker Healthcheck]
-  ├── Bootstrap danh sách tasks tự động trong main.py
-  ├── Cập nhật deploy/docker-compose.prod.yml (bổ sung file-based healthcheck probe & app name)
-  └── Cập nhật Dockerfile để cấp quyền thư mục probe /tmp/
+  ├── Bootstrap AsyncIOScheduler trong apps/scheduler/src/scheduler/main.py
+  ├── Cập nhật deploy/docker-compose.prod.yml với application_name=ragflow-scheduler
+  └── Cấu hình Docker Healthcheck liveness probe tự động hồi phục
 
-[BƯỚC 4: Kiểm Thử Tự Động & Đảm Bảo Chất Lượng]
-  ├── Viết Unit Tests kiểm thử BaseTask, Concurrency Guard, HeartbeatTask, StorageSyncTask
-  ├── Chạy toàn bộ test suite (142+ tests), Ruff linter và Pyright type checker
-  └── Commit hoàn tất lên nhánh upload
+[BƯỚC 4: Kiểm Thử Toàn Diện & Đảm Bảo Chất Lượng]
+  ├── Unit tests test_tasks.py và test_scheduler.py đạt 100% độ bao phủ
+  ├── Toàn bộ hệ thống 148/148 unit tests pass thành công
+  └── Pyright và Ruff 0 cảnh báo, 0 lỗi
 ```
 
 ---

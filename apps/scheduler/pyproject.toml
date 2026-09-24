@@ -4,6 +4,7 @@ version = "0.1.0"
 dependencies = [
     "core",
     "chat-api",
+    "apscheduler>=3.11.3",
 ]
 requires-python = ">=3.11"
 

@@ -1,9 +1,4 @@
-"""Dedicated Background Scheduler Process for periodic tasks and retry synchronization.
-
-Separated as an independent application from the Ingestion Worker to:
-1. Prevent race conditions and duplicate outbox scans when Ingestion Workers are scaled out.
-2. Isolate lightweight cron/sync tasks from heavy OCR/Docling processing and potential worker OOMs.
-"""
+"""Dedicated Background Scheduler Process for periodic tasks and retry synchronization."""
 
 from __future__ import annotations
 
@@ -12,6 +7,8 @@ import logging
 import signal
 import sys
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
 from core.logging import setup_logging
 from scheduler.dependencies import get_scheduler_tasks
 
@@ -19,9 +16,9 @@ logger = logging.getLogger("scheduler")
 
 
 async def run_scheduler(stop_event: asyncio.Event | None = None) -> None:
-    """Run all scheduled recurring jobs in a dedicated single-instance process."""
+    """Run all scheduled recurring jobs in a dedicated single-instance process using APScheduler."""
     setup_logging()
-    logger.info("Initializing dedicated Scheduler process...")
+    logger.info("Initializing dedicated APScheduler process...")
 
     if stop_event is None:
         stop_event = asyncio.Event()
@@ -38,31 +35,45 @@ async def run_scheduler(stop_event: asyncio.Event | None = None) -> None:
         await stop_event.wait()
         return
 
+    # Call setup on each task
+    for task in registered_tasks:
+        try:
+            await task.setup()
+        except Exception as exc:
+            logger.error("Error setting up task '%s': %s", task.name, exc, exc_info=True)
+
+    scheduler = AsyncIOScheduler(timezone="UTC")
+
+    for task in registered_tasks:
+        trigger = task.get_trigger()
+        scheduler.add_job(
+            task.safe_execute_tick,
+            trigger=trigger,
+            id=task.name,
+            name=task.name,
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=60,
+        )
+        logger.info("Registered job '%s' with trigger: %s", task.name, trigger)
+
+    scheduler.start()
     logger.info(
-        "Dedicated Scheduler running with %d registered background task(s).",
+        "Dedicated APScheduler running with %d registered job(s).",
         len(registered_tasks),
     )
 
-    running_tasks: list[asyncio.Task] = [
-        asyncio.create_task(task.run(stop_event), name=task.name) for task in registered_tasks
-    ]
-
-    # Await until stop_event is set or any task completes/errors
-    stop_waiter = asyncio.create_task(stop_event.wait(), name="scheduler_stop_waiter")
     try:
-        await asyncio.wait(
-            [stop_waiter, *running_tasks],
-            return_when=asyncio.FIRST_COMPLETED,
-        )
+        await stop_event.wait()
     finally:
-        stop_event.set()
-        for task in running_tasks:
-            if not task.done():
-                task.cancel()
-        if not stop_waiter.done():
-            stop_waiter.cancel()
-        await asyncio.gather(*running_tasks, return_exceptions=True)
-        logger.info("Dedicated Scheduler shutdown complete.")
+        logger.info("Shutting down APScheduler...")
+        scheduler.shutdown(wait=False)
+        for task in registered_tasks:
+            try:
+                await task.teardown()
+            except Exception as exc:
+                logger.error("Error tearing down task '%s': %s", task.name, exc, exc_info=True)
+        logger.info("Dedicated APScheduler shutdown complete.")
 
 
 def main() -> None:
