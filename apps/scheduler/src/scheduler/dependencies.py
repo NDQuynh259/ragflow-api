@@ -61,7 +61,33 @@ def get_storage_sync_service() -> StorageRetrySyncService | None:
     return create_storage_sync_service(storage, settings)
 
 
+def get_scheduler_tasks():
+    """Build and return all active scheduled tasks for the scheduler process."""
+    from scheduler.tasks import BaseTask, HeartbeatTask, StorageSyncTask
+
+    tasks: list[BaseTask] = [
+        HeartbeatTask(interval_seconds=15),
+    ]
+
+    sync_service = get_storage_sync_service()
+    if sync_service is not None:
+        tasks.append(
+            StorageSyncTask(
+                sync_service=sync_service,
+                on_synced_callback=get_storage_sync_callback(),
+                interval_seconds=settings.STORAGE_SYNC_INTERVAL_SECONDS,
+            )
+        )
+    else:
+        logger.warning(
+            "No StorageRetrySyncService configured (storage is not configured with fallback outbox)."
+        )
+
+    return tasks
+
+
 __all__ = [
+    "get_scheduler_tasks",
     "get_storage",
     "get_storage_sync_callback",
     "get_storage_sync_service",

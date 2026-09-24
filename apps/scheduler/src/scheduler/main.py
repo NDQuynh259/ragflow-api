@@ -12,9 +12,8 @@ import logging
 import signal
 import sys
 
-from core.config import settings
 from core.logging import setup_logging
-from scheduler.dependencies import get_storage_sync_callback, get_storage_sync_service
+from scheduler.dependencies import get_scheduler_tasks
 
 logger = logging.getLogger("scheduler")
 
@@ -33,53 +32,36 @@ async def run_scheduler(stop_event: asyncio.Event | None = None) -> None:
         for sig in (signal.SIGTERM, signal.SIGINT):
             loop.add_signal_handler(sig, stop_event.set)
 
-    sync_service = get_storage_sync_service()
-    sync_callback = get_storage_sync_callback()
-
-    tasks: list[asyncio.Task] = []
-
-    if sync_service is not None:
-        logger.info(
-            "Registered StorageRetrySyncService (interval: %ds, max_retries: %d)",
-            settings.STORAGE_SYNC_INTERVAL_SECONDS,
-            settings.STORAGE_SYNC_MAX_RETRIES,
-        )
-        sync_task = asyncio.create_task(
-            sync_service.run_periodic_sync(
-                interval_seconds=settings.STORAGE_SYNC_INTERVAL_SECONDS,
-                on_synced_callback=sync_callback,
-                stop_event=stop_event,
-            ),
-            name="storage_retry_sync",
-        )
-        tasks.append(sync_task)
-    else:
-        logger.warning(
-            "No StorageRetrySyncService configured (storage is not configured with fallback outbox)."
-        )
-
-    if not tasks:
+    registered_tasks = get_scheduler_tasks()
+    if not registered_tasks:
         logger.info("No active scheduled tasks to run. Scheduler waiting for stop event...")
         await stop_event.wait()
         return
 
-    logger.info("Dedicated Scheduler running with %d registered background task(s).", len(tasks))
+    logger.info(
+        "Dedicated Scheduler running with %d registered background task(s).",
+        len(registered_tasks),
+    )
+
+    running_tasks: list[asyncio.Task] = [
+        asyncio.create_task(task.run(stop_event), name=task.name) for task in registered_tasks
+    ]
 
     # Await until stop_event is set or any task completes/errors
     stop_waiter = asyncio.create_task(stop_event.wait(), name="scheduler_stop_waiter")
     try:
-        done, _ = await asyncio.wait(
-            [stop_waiter, *tasks],
+        await asyncio.wait(
+            [stop_waiter, *running_tasks],
             return_when=asyncio.FIRST_COMPLETED,
         )
     finally:
         stop_event.set()
-        for task in tasks:
+        for task in running_tasks:
             if not task.done():
                 task.cancel()
         if not stop_waiter.done():
             stop_waiter.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
+        await asyncio.gather(*running_tasks, return_exceptions=True)
         logger.info("Dedicated Scheduler shutdown complete.")
 
 
