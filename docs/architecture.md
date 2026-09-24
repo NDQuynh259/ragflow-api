@@ -462,6 +462,68 @@ Hệ thống RAG áp dụng mô hình phân tách ranh giới kỹ thuật nghi�
 
 ---
 
+### 6.7. Python có phải ngôn ngữ đa luồng? Bản chất GIL và Chiến lược Đa nhiệm (Concurrency Strategy)
+
+Một thắc mắc nền tảng thường gặp khi làm việc với Python: *"Python có thực sự là ngôn ngữ đa luồng (Multi-threaded) hay không? Tại sao nhiều tài liệu lại nói Python chỉ chạy đơn luồng?"*
+
+Câu trả lời chính xác về mặt kỹ thuật: **Python hỗ trợ Multi-threading thật sự của hệ điều hành (Native OS Threads), nhưng bị kiểm soát bởi cơ chế GIL (Global Interpreter Lock).**
+
+#### 1. Ổ khóa GIL (Global Interpreter Lock) là gì?
+Trong trình thông dịch CPython chuẩn:
+- Mặc dù bạn có thể tạo hàng trăm thread bằng thư viện `threading`, **tại một thời điểm chỉ có duy nhất 1 thread được phép thực thi bytecode Python trên 1 tiến trình**.
+- **Đối với tác vụ CPU-Bound (tính toán nặng, AI, bóc tách tài liệu)**: Các luồng phải xếp hàng tranh chấp ổ khóa GIL, khiến đa luồng không thể tận dụng nhiều lõi CPU thật sự, thậm chí còn chạy chậm hơn do chi phí chuyển ngữ cảnh (context switching).
+
+#### 2. Vì sao FastAPI Threadpool Worker (`def`) lại đạt hiệu năng cao với Database? (Cơ chế Release GIL)
+Điểm mấu chốt nằm ở chỗ: **Khi đụng đến các tác vụ I/O (Mạng Socket, Ổ đĩa, Database), Python sẽ TỰ ĐỘNG NHẢ KHÓA GIL (Release GIL)!**
+1. **Thread 1** trong Worker Pool thực thi câu lệnh SQL: `session.query(ORMWorkspace)...` và gửi gói tin qua mạng tới PostgreSQL.
+2. Trong toàn bộ khoảng thời gian **chờ PostgreSQL tính toán và trả về kết quả**, Thread 1 **nhả ngay khóa GIL ra**.
+3. **Thread 2** lập tức chiếm lấy GIL để xử lý logic Python của một request khác từ người dùng.
+4. Khi PostgreSQL trả dữ liệu về qua socket, Thread 1 mới xin lại GIL để parse kết quả thành Python Entity.
+
+👉 Nhờ cơ chế này, **FastAPI Threadpool Worker (`anyio.to_thread.run_sync`) xử lý hàng ngàn truy vấn Database đồng thời cực kỳ mượt mà**, các luồng cùng nhau "chờ" I/O mạng mà không hề làm đóng băng nhau.
+
+#### 3. Ba Trụ Cột Đa Nhiệm Được Áp Dụng Trong Hệ Thống RAG
+
+Hệ thống RAG phân bổ chính xác 3 mô hình đa nhiệm của Python cho 3 phân hệ chuyên biệt:
+
+```text
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                               BA TRỤ CỘT ĐA NHIỆM TRONG RAG PLATFORM                             │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 1. Multi-threading (Threadpool Workers)                                                          │
+│    • Vị trí: apps/chat-api (CQRS Command/Query Handlers, Database Repositories)                  │
+│    • Cơ chế: Luồng OS thật, tự động nhả GIL khi chờ PostgreSQL socket                             │
+│    • Ưu điểm: Tận dụng hoàn hảo SQLAlchemy ORM Session đồng bộ, tránh lỗi MissingGreenlet         │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 2. Async I/O (Single-threaded Event Loop - Cooperative Multitasking)                             │
+│    • Vị trí: apps/scheduler (APScheduler) và FastAPI SSE Streaming (Chat RAG)                    │
+│    • Cơ chế: Duy nhất 1 luồng OS, dùng từ khóa await để nhường quyền khi chờ mạng                │
+│    • Ưu điểm: Siêu nhẹ (< 50MB RAM), giữ hàng ngàn kết nối stream realtime và bộ đếm giờ (timers)│
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 3. Multi-processing (True Parallelism - Đa tiến trình độc lập)                                   │
+│    • Vị trí: apps/worker (Ingestion Worker Cluster)                                              │
+│    • Cơ chế: Mỗi worker là 1 OS Process độc lập, có Python Interpreter và GIL riêng biệt         │
+│    • Ưu điểm: Chạy song song thực sự trên nhiều CPU Core cho tác vụ CPU-bound nặng (Docling PDF, │
+│               OCR, Chunking, Embedding) mà không bao giờ làm đơ hay nghẽn Web API                │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Bảng So Sánh Chi Tiết:
+
+| Tiêu Chí | Multi-threading | Async I/O (`asyncio`) | Multi-processing (Workers) |
+| :--- | :--- | :--- | :--- |
+| **Bản chất** | Nhiều OS thread trong cùng 1 process | 1 OS thread duy nhất (Event Loop) | Nhiều OS process độc lập |
+| **Chia sẻ bộ nhớ** | Có (Chung bộ nhớ RAM của process) | Có (Cùng ngữ cảnh tiến trình) | Không (Bộ nhớ cô lập hoàn toàn) |
+| **Ảnh hưởng của GIL** | Bị khống chế mã Python, **nhả GIL khi I/O** | Chạy 1 thread nên **không xung đột GIL** | **Mỗi process có 1 GIL riêng** (Song song thật) |
+| **Phù hợp nhất** | Thao tác Database đồng bộ, file I/O | Server Web tải cao, Timers, SSE Streaming | Tác vụ CPU-bound nặng (OCR, Chunking, AI) |
+| **Áp dụng trong dự án**| CQRS Handlers + SQLAlchemy Session | `apps/scheduler` + FastAPI SSE Router | `apps/worker` (Ingestion Cluster) |
+
+> [!NOTE]
+> **Xu hướng tương lai (Python 3.13+ Free-threaded PEP 703)**:
+> Từ Python 3.13, phiên bản thử nghiệm gỡ bỏ hoàn toàn GIL (`python -X gil=0`) đã được giới thiệu. Trong các phiên bản tương lai (Python 3.14 - 3.15), Multi-threading trong Python sẽ chính thức đạt khả năng chạy song song mã Python thực thụ trên nhiều lõi CPU mà không còn bị rào cản bởi GIL.
+
+---
+
 ## 7. Tóm tắt các công nghệ sử dụng
 
 | Thành phần | Công nghệ lựa chọn | Mục đích |
