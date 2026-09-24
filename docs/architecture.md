@@ -378,6 +378,46 @@ Dưới đây là lời giải thích chi tiết cho từng quyết định ki�
 
 ---
 
+### 6.6. Vì sao phân định ranh giới Async (Presentation/Guards/Streaming) vs Sync (Domain/UoW/Repositories)?
+
+Một câu hỏi kiến trúc kinh điển là: *"Tại sao trong cùng một dự án, có những chỗ dùng `async def` (như Guard, WorkspaceResolver, Scheduler) nhưng các Repository và CQRS Handler lại dùng `def` đồng bộ?"*
+
+Hệ thống RAG áp dụng mô hình phân tách ranh giới kỹ thuật nghiêm ngặt giữa **I/O Network Stream** và **Database Transactional Business Logic**:
+
+#### 1. Vì sao Tầng Presentation & Auth Guards (`guards.py`, `workspace_resolver.py`) dùng `async def`?
+- **Đọc luồng HTTP Network Stream từ Socket**:
+  Trong [workspace_resolver.py](file:///c:/Users/ndquynh/Documents/RAG/apps/chat-api/src/chat_api/shared/auth/workspace_resolver.py), để phân giải `workspace_id` từ JSON Payload của các request `POST` / `PUT`, hệ thống phải đọc raw bytes:
+  ```python
+  body_bytes = await request.body()
+  ```
+  FastAPI (dựa trên ASGI Starlette) quản lý việc nhận dữ liệu từ client dưới dạng bất đồng bộ qua mạng. Phương thức `request.body()` là một Coroutine bắt buộc phải `await` (Starlette không hỗ trợ đọc body đồng bộ). Khi bên trong có `await`, hàm bao bọc `resolve_workspace_id` **bắt buộc phải là `async def`**.
+- **FastAPI Guard & Dependency Injection Pipeline**:
+  Các Dependency Guard như [RequirePermission](file:///c:/Users/ndquynh/Documents/RAG/apps/chat-api/src/chat_api/shared/auth/guards.py) thực thi phương thức `async def __call__(self, request: Request, ...)` để có thể gọi `await resolve_workspace_id(request, auth)`. Điều này giúp việc xác thực và trích xuất ngữ cảnh diễn ra bất đồng bộ ngay trên luồng ASGI trước khi dispatch vào controller.
+- **Realtime SSE Streaming**:
+  Endpoint sinh câu trả lời chat stream từng token chữ về giao diện qua Server-Sent Events (SSE). Bắt buộc dùng `async def` để giữ đồng thời hàng nghìn kết nối socket mở mà không làm cạn kiệt thread pool.
+
+#### 2. Vì sao Tầng Domain, CQRS Handlers, UnitOfWork và Repositories dùng `def` đồng bộ?
+- **Cơ chế Threadpool tự động của FastAPI**:
+  Khi một route handler hoặc dependency được khai báo là `def` (đồng bộ), FastAPI tự động chuyển nó sang một luồng riêng trong **Worker Threadpool** (`anyio.to_thread.run_sync`). Do đó, các tác vụ tính toán hoặc truy vấn CSDL đồng bộ **hoàn toàn không làm nghẽn (non-blocking) Event Loop chính**.
+- **Tính an toàn tuyệt đối với SQLAlchemy ORM & Tránh lỗi `MissingGreenlet`**:
+  Trong [SqlAlchemyWorkspaceRepository](file:///c:/Users/ndquynh/Documents/RAG/apps/chat-api/src/chat_api/modules/workspaces/infrastructure/repository.py), các quan hệ thực thể được nạp tự nhiên (ví dụ: `orm.members`). Nếu dùng SQLAlchemy Async (`AsyncSession`), việc truy cập thuộc tính quan hệ (Lazy Loading) sẽ gây sập ứng dụng ngay lập tức với lỗi `sqlalchemy.exc.MissingGreenlet` trừ khi cấu hình eagerly loading rất phức tạp.
+- **Tính trong sáng và tốc độ kiểm thử (Blazing-Fast Testing)**:
+  Tầng Domain và Application giữ được tính thuần khiết của mô hình DDD, không bị "ô nhiễm" bởi các từ khóa `async` / `await` ở khắp mọi nơi. Việc triển khai `FakeUnitOfWork` và `FakeWorkspaceRepository` trên bộ nhớ RAM phục vụ Unit Test trở nên cực kỳ đơn giản, không cần bọc coroutine giả lập.
+
+#### Bảng Ma Trận Phân Định Ranh Giới Kỹ Thuật (Async vs Sync Matrix):
+
+| Thành Phần Hệ Thống | Mô Hình | Thư Viện / Cơ Chế | Lý Do Thiết Kế |
+| :--- | :---: | :--- | :--- |
+| **Auth Guards (`RequirePermission`)** | **`async`** | ASGI Starlette Request | Cần `await request.body()` để bóc tách payload JSON từ luồng mạng. |
+| **Workspace Resolver** | **`async`** | `await request.body()` | Đọc socket stream bất đồng bộ trước khi vào Controller. |
+| **SSE Streaming (Chat RAG)** | **`async`** | `EventSourceResponse` | Giữ hàng ngàn kết nối stream câu trả lời realtime với chi phí RAM cực thấp. |
+| **Scheduler Engine (`apps/scheduler`)** | **`async`** | `APScheduler (AsyncIOScheduler)` | Quản lý timers (15s, 60s, Cron), heartbeat không tốn tài nguyên thread. |
+| **CQRS Handlers (`commands`, `queries`)** | **`sync`** | FastAPI Threadpool | Chạy trên worker thread, tập trung vào nghiệp vụ, logic giao dịch ACID rõ ràng. |
+| **Unit of Work & Repositories** | **`sync`** | SQLAlchemy `SessionLocal` | Tránh `MissingGreenlet`, lazy-loading an toàn, unit test siêu tốc với Fake UoW. |
+| **Ingestion Worker (`apps/worker`)** | **`worker`** | Tiến trình nền riêng (Process) | Xử lý CPU-bound (Docling, OCR, Vectorize) tách rời hoàn toàn khỏi API. |
+
+---
+
 ## 7. Tóm tắt các công nghệ sử dụng
 
 | Thành phần | Công nghệ lựa chọn | Mục đích |
