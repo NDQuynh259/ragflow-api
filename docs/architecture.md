@@ -247,6 +247,25 @@ def setup_logging(level: int = logging.INFO) -> None:
      2026-09-24 17:16:00 [INFO] chat_api.modules.chat_sessions: Created session with id: 01923e50-1234-7000-...
      ```
 
+#### Bảng So Sánh Các Phương Pháp Ghi Log Trong Hệ Thống:
+
+| Tiêu Chí So Sánh | Dùng `print()` Tùy Tiện | Ghi Tệp Cục Bộ (`*.log`) | Chuẩn Stream `sys.stdout` (`core.logging`) |
+| :--- | :--- | :--- | :--- |
+| **Định dạng & Mốc thời gian** | ❌ Không có timestamp, không có format | ⚠️ Có format nhưng cấu hình phân mảnh | ✔️ Chuẩn hóa RFC `%(asctime)s [%(levelname)s]` |
+| **Phân cấp Mức độ (Log Level)** | ❌ Không có (mọi thứ in ra lẫn lộn) | ✔️ Có (DEBUG, INFO, WARN, ERROR) | ✔️ Có đầy đủ, lọc động theo cấu hình môi trường |
+| **Nhận diện Nguồn gốc (Caller)** | ❌ Không biết module/file nào phát sinh | ⚠️ Phải tự viết cấu hình cho từng logger | ✔️ Tự động kế thừa tên module `%(name)s` qua phân cấp |
+| **Vận hành trên Docker/K8s** | ❌ Trộn lẫn stdout/stderr, khó parse | ❌ Nguy cơ đầy đĩa container, mất log khi reboot | ✔️ **Chuẩn Twelve-Factor App**: Container Engine thu thập trực tiếp |
+| **Tích hợp Log Collector (ELK/Loki)**| ❌ Cực kỳ khó khăn và phân mảnh | ⚠️ Phải mount volume, cấu hình Agent đọc file | ✔️ **Tự động streaming** qua stdout driver (Promtail, Fluentbit) |
+| **Hiệu năng & Tranh chấp I/O** | ⚠️ Không tối ưu cho production | ❌ Chậm do I/O đĩa, dễ xung đột lock file giữa các process | ✔️ Cực nhanh, luồng stream chuẩn không gây nghẽn tiến trình |
+
+#### Bảng Ma Trận Áp Dụng Logging Tại 3 Dịch Vụ:
+
+| Dịch Vụ | File Entrypoint | Root Logger | Logger Con Tiêu Biểu | Mục Đích Giám Sát & Vận Hành |
+| :--- | :--- | :--- | :--- | :--- |
+| **`apps/chat-api`** | `chat_api/main.py` | `setup_logging()` | `chat_api.modules.workspaces`<br>`chat_api.shared.auth` | Theo dõi request HTTP, luồng xác thực token, mã lỗi API, latency xử lý. |
+| **`apps/worker`** | `worker/main.py` | `setup_logging()` | `worker.dispatcher`<br>`worker.ingestion` | Giám sát tiến độ parse PDF (Docling), OCR, băm chunks, retry hàng đợi RabbitMQ. |
+| **`apps/scheduler`** | `scheduler/main.py` | `setup_logging()` | `scheduler.tasks.storage_sync`<br>`scheduler.tasks.heartbeat` | Theo dõi chu kỳ retry upload MinIO, liveness probe Docker, dọn dẹp temp cuối tháng. |
+
 ---
 
 ## 3. Quản lý Giao dịch với Unit of Work (UoW Pattern)
