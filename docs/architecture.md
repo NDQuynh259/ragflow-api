@@ -629,7 +629,22 @@ Hệ thống RAG phân bổ chính xác 3 mô hình đa nhiệm của Python cho
 | **Background Scheduler** | APScheduler (`AsyncIOScheduler`) | Động cơ lập lịch định kỳ độc lập: đồng bộ MinIO retry, Docker heartbeat probe, dọn rác temp. |
 | **Bóc Tách & OCR Tài Liệu** | Docling / PyMuPDF + Chunking Engine | Trích xuất văn bản, bảng biểu, bounding-box tọa độ trang, phân đoạn semantic / heading-aware chunking. |
 | **Mô Hình AI & LLM** | Google Gemini (`gemini-2.5-flash`) / Embeddings | Sinh câu trả lời RAG, trích dẫn citation chính xác và tạo vector biểu diễn 768 chiều (`text-embedding-004`). |
+| **Reverse Proxy & Web Server** | Nginx | Reverse Proxy xử lý SSL termination, Rate Limiting, tắt buffer cho SSE Realtime Streaming (xem chi tiết tại [docs/nginx_cloudflare_architecture.md](nginx_cloudflare_architecture.md)). |
+| **Edge Network & Bảo Vệ** | Cloudflare | Anycast DNS, Global CDN, WAF, Chống DDoS và bảo vệ giấu IP gốc (Origin Protection). |
 | **Di chuyển cấu trúc DB**| Alembic | Quản lý phiên bản migration cơ sở dữ liệu rõ ràng, có thể rollback. |
 | **Quản lý cấu hình** | `pydantic-settings` | Tự động parse và validate biến môi trường `.env`. |
 | **Logging Tập Trung** | `core.logging (setup_logging)` | Chuẩn hóa định dạng log RFC ra `stdout`, phục vụ container logging (Twelve-Factor App). |
 | **Kiểm thử** | `pytest` + `FastAPI TestClient` | Kiểm thử tự động từ cấp độ Unit test Handler đến Integration test REST endpoints. |
+
+---
+
+## 8. Danh mục tài liệu kiến trúc chuyên sâu (Architecture Deep-Dives)
+
+Để tìm hiểu chi tiết các khía cạnh kỹ thuật cụ thể, tham khảo các tài liệu chuyên đề sau:
+1. 🌐 [Kiến Trúc Mạng Ngoại Vi: Nginx & Cloudflare (docs/nginx_cloudflare_architecture.md)](nginx_cloudflare_architecture.md): Hướng dẫn cấu hình Reverse Proxy, SSE streaming buffering, WAF, và 4 giải pháp Origin Protection.
+2. 🚀 [Kiến Trúc Triển Khai CI/CD & Production (docs/cicd_deployment_architecture.md)](cicd_deployment_architecture.md): Quy trình GitHub Actions Runner, Docker Buildx, GHCR và Zero-Overhead Rollout trên VPS 1 Core.
+3. 📬 [Kiến Trúc Hàng Đợi RabbitMQ (docs/rabbitmq_architecture.md)](rabbitmq_architecture.md): Thiết kế Ingestion Queue, cơ chế Retry Dead-Letter, và Worker Dispatching.
+4. ⏰ [Kiến Trúc Động Cơ Lập Lịch Scheduler (docs/scheduler_architecture.md)](scheduler_architecture.md): Động cơ AsyncIOScheduler, cơ chế Storage Sync Retry, Heartbeat Probe và Housekeeping.
+5. 🗄️ [Kiến Trúc Lưu Trữ Storage (docs/storage_architecture.md)](storage_architecture.md): Thiết kế phân tầng lưu trữ S3/MinIO, Local Storage, và cơ chế Outbox Pattern.
+6. 📊 [Thiết Kế Cơ Sở Dữ Liệu & pgvector (docs/database_design.md)](database_design.md): Chi tiết 15 bảng, schema migrations, pgvector HNSW cosine index và Full-Text Search TSVector.
+
