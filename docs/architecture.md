@@ -398,13 +398,21 @@ Dưới đây là bảng tổng hợp các mô hình đa nhiệm cốt lõi và 
 
 ### 📌 Bảng Tổng Quan So Sánh Các Mô Hình Đa Nhiệm (Concurrency Strategy):
 
-| Tiêu Chí | Multi-threading | Async I/O (`asyncio`) | Multi-processing (Workers) |
+> [!IMPORTANT]
+> **Phân biệt rõ 2 cấp độ kiến trúc để không bị nhầm lẫn:**
+> 1. **Cấp độ Hạ tầng / Hệ điều hành (OS Process / Docker Level)**: Cả 3 thành phần (`apps/chat-api`, `apps/scheduler`, `apps/worker`) đều là **3 Tiến trình (Process / Container) độc lập hoàn toàn** (xem file `deploy/docker-compose.prod.yml`). Tiến trình này chết không ảnh hưởng đến tiến trình kia.
+> 2. **Cấp độ Đa nhiệm Bên Trong (In-Process Concurrency)**: Bảng dưới đây phân định **bên trong** mỗi tiến trình độc lập đó, Python sử dụng kỹ thuật đa nhiệm nào để tối ưu hóa tài nguyên phần cứng.
+
+| Tiêu Chí Phân Định | Multi-threading (Luồng) | Async I/O (`asyncio`) | Multi-processing (Tiến trình) |
 | :--- | :--- | :--- | :--- |
-| **Bản chất** | Nhiều OS thread trong cùng 1 process | 1 OS thread duy nhất (Event Loop) | Nhiều OS process độc lập |
-| **Chia sẻ bộ nhớ** | Có (Chung bộ nhớ RAM của process) | Có (Cùng ngữ cảnh tiến trình) | Không (Bộ nhớ cô lập hoàn toàn) |
+| **Tiến trình OS độc lập (Docker)** | **`apps/chat-api`** (`rag_api_prod`) | **`apps/scheduler`** (`rag_scheduler_prod`) | **`apps/worker`** (`rag_worker_prod`) |
+| **Cơ chế chạy bên trong Process** | FastAPI Threadpool Worker (`def`) | Single-threaded AsyncIOScheduler Event Loop | Child Process Pool / Multi-worker Cluster |
+| **Bản chất luồng thực thi** | Nhiều OS thread trong 1 process | DUY NHẤT 1 OS thread (Event Loop) | Nhiều OS process độc lập (True Parallelism) |
+| **Chia sẻ bộ nhớ (RAM)** | Chung vùng nhớ trong Process API | Chung vùng nhớ trong Process Scheduler | Bộ nhớ cô lập hoàn toàn giữa các worker |
 | **Ảnh hưởng của GIL** | Bị khống chế mã Python, **nhả GIL khi I/O** | Chạy 1 thread nên **không xung đột GIL** | **Mỗi process có 1 GIL riêng** (Song song thật) |
-| **Phù hợp nhất** | Thao tác Database đồng bộ, file I/O | Server Web tải cao, Timers, SSE Streaming | Tác vụ CPU-bound nặng (OCR, Chunking, AI) |
-| **Áp dụng trong dự án**| CQRS Handlers + SQLAlchemy Session (`apps/chat-api`) | `apps/scheduler` + FastAPI SSE Router | `apps/worker` (Ingestion Cluster) |
+| **Đặc thù khối lượng công việc** | I/O-Bound (Chờ PostgreSQL, Redis) | I/O & Timers (Đếm giờ 15s/60s, Outbox S3) | CPU-Bound nặng (Docling PDF, OCR, Embeddings) |
+| **Tài nguyên & Trách nhiệm** | Cần phục vụ ngàn kết nối Web, độ trễ thấp | Cực nhẹ (< 50MB RAM), không cần tốn thread | Ngốn CPU/RAM (1.5GB RAM, 1.0 CPU), cần cách ly |
+| **Áp dụng nghiệp vụ cụ thể** | CQRS Handlers + SQLAlchemy SessionLocal | Heartbeat probe, Storage Retry, Cron tháng | Pipeline Ingestion tài liệu lớn, Vectorize |
 
 ---
 
@@ -539,15 +547,18 @@ Hệ thống RAG phân bổ chính xác 3 mô hình đa nhiệm của Python cho
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-#### Bảng So Sánh Chi Tiết:
+#### Bảng So Sánh Chi Tiết (OS Process vs In-Process Concurrency):
 
-| Tiêu Chí | Multi-threading | Async I/O (`asyncio`) | Multi-processing (Workers) |
+| Tiêu Chí Phân Định | Multi-threading (Luồng) | Async I/O (`asyncio`) | Multi-processing (Tiến trình) |
 | :--- | :--- | :--- | :--- |
-| **Bản chất** | Nhiều OS thread trong cùng 1 process | 1 OS thread duy nhất (Event Loop) | Nhiều OS process độc lập |
-| **Chia sẻ bộ nhớ** | Có (Chung bộ nhớ RAM của process) | Có (Cùng ngữ cảnh tiến trình) | Không (Bộ nhớ cô lập hoàn toàn) |
+| **Tiến trình OS độc lập (Docker)** | **`apps/chat-api`** (`rag_api_prod`) | **`apps/scheduler`** (`rag_scheduler_prod`) | **`apps/worker`** (`rag_worker_prod`) |
+| **Cơ chế chạy bên trong Process** | FastAPI Threadpool Worker (`def`) | Single-threaded AsyncIOScheduler Event Loop | Child Process Pool / Multi-worker Cluster |
+| **Bản chất luồng thực thi** | Nhiều OS thread trong 1 process | DUY NHẤT 1 OS thread (Event Loop) | Nhiều OS process độc lập (True Parallelism) |
+| **Chia sẻ bộ nhớ (RAM)** | Chung vùng nhớ trong Process API | Chung vùng nhớ trong Process Scheduler | Bộ nhớ cô lập hoàn toàn giữa các worker |
 | **Ảnh hưởng của GIL** | Bị khống chế mã Python, **nhả GIL khi I/O** | Chạy 1 thread nên **không xung đột GIL** | **Mỗi process có 1 GIL riêng** (Song song thật) |
-| **Phù hợp nhất** | Thao tác Database đồng bộ, file I/O | Server Web tải cao, Timers, SSE Streaming | Tác vụ CPU-bound nặng (OCR, Chunking, AI) |
-| **Áp dụng trong dự án**| CQRS Handlers + SQLAlchemy Session | `apps/scheduler` + FastAPI SSE Router | `apps/worker` (Ingestion Cluster) |
+| **Đặc thù khối lượng công việc** | I/O-Bound (Chờ PostgreSQL, Redis) | I/O & Timers (Đếm giờ 15s/60s, Outbox S3) | CPU-Bound nặng (Docling PDF, OCR, Embeddings) |
+| **Tài nguyên & Trách nhiệm** | Cần phục vụ ngàn kết nối Web, độ trễ thấp | Cực nhẹ (< 50MB RAM), không cần tốn thread | Ngốn CPU/RAM (1.5GB RAM, 1.0 CPU), cần cách ly |
+| **Áp dụng nghiệp vụ cụ thể** | CQRS Handlers + SQLAlchemy SessionLocal | Heartbeat probe, Storage Retry, Cron tháng | Pipeline Ingestion tài liệu lớn, Vectorize |
 
 > [!NOTE]
 > **Xu hướng tương lai (Python 3.13+ Free-threaded PEP 703)**:
