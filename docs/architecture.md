@@ -177,7 +177,7 @@ core/src/core/
 
 ### 2.3. Chi tiết 4 tầng bên trong mỗi Module nghiệp vụ
 
-Mỗi module (ví dụ `documents` hay `sessions`) là một "tiểu vương quốc" độc lập tuân thủ quy tắc Clean Architecture:
+Mỗi module (ví dụ `documents` hay `chat_sessions`) là một "tiểu vương quốc" độc lập tuân thủ quy tắc Clean Architecture:
 
 ```text
 [HTTP Request]
@@ -223,7 +223,7 @@ Khi nghiệp vụ đòi hỏi truy vấn tổng hợp từ nhiều Bounded Conte
 * **Không nhồi nhét vào các module đơn lẻ**: Đặt báo cáo vào `documents` hay `messages` sẽ làm vỡ ranh giới (boundary pollution) và gây phụ thuộc chéo chằng chịt.
 * **Tách thành tầng `composition/`**:
   * Tầng `composition` nằm ở cấp cao hơn các modules nghiệp vụ, đóng vai trò "nhạc trưởng" (Orchestrator/Aggregator).
-  * **Tối ưu hóa hiệu năng (CQRS Pure Read)**: [ReportQueryRepository](file:///c:/Users/ndquynh/Documents/RAG/apps/chat-api/src/chat_api/composition/reports/infrastructure/queries.py#L24) thực hiện truy vấn `SELECT` tổng hợp trực tiếp bằng SQLAlchemy Core (`func.count`, `func.sum`, `func.avg`, `case`), bỏ qua việc load ORM Entity để tránh lỗi N+1 và giảm thiểu chiếm dụng bộ nhớ RAM.
+  * **Tối ưu hóa hiệu năng (CQRS Pure Read)**: [ReportQueryRepository](../apps/chat-api/src/chat_api/composition/reports/infrastructure/queries.py#L24) thực hiện truy vấn `SELECT` tổng hợp trực tiếp bằng SQLAlchemy Core (`func.count`, `func.sum`, `func.avg`, `case`), bỏ qua việc load ORM Entity để tránh lỗi N+1 và giảm thiểu chiếm dụng bộ nhớ RAM.
 
 ---
 
@@ -234,7 +234,7 @@ Khi nghiệp vụ đòi hỏi truy vấn tổng hợp từ nhiều Bounded Conte
    * Độc lập hoàn toàn với FastAPI và database nghiệp vụ.
    * `password.py`: Hash và kiểm tra mật khẩu bằng thuật toán `bcrypt`.
    * `tokens.py`: Sinh session token an toàn bằng `secrets.token_urlsafe` và băm SHA-256 digest lưu database.
-   * `principal.py`: Định nghĩa [CurrentPrincipal](file:///c:/Users/ndquynh/Documents/RAG/core/src/core/security/principal.py#L13) (chứa `user_id`, `role`, `permissions`, `is_owner`) và [ExecutionContext](file:///c:/Users/ndquynh/Documents/RAG/core/src/core/security/principal.py#L86).
+   * `principal.py`: Định nghĩa [CurrentPrincipal](../core/src/core/security/principal.py#L13) (chứa `user_id`, `role`, `permissions`, `is_owner`) và [ExecutionContext](../core/src/core/security/principal.py#L86).
 2. **Lớp phân quyền và bảo vệ API (`chat_api/shared/auth/`):**
    * `permissions.py`: Định nghĩa danh mục `Permission` (Workspace, Documents, Sessions, Messages, Reports), bảng ánh xạ quyền theo vai trò (`owner`, `admin`, `member`).
    * `guards.py`: Cung cấp FastAPI Dependencies (`RequirePermission`, `RequireRole`, `AuthDep`) để chặn request không hợp lệ ngay tại tầng Presentation trước khi chạm vào Application Handler.
@@ -245,7 +245,7 @@ Khi nghiệp vụ đòi hỏi truy vấn tổng hợp từ nhiều Bounded Conte
 
 ### 2.6. Cơ Chế Logging Chuẩn Hóa Cấp Toàn Hệ Thống (`core/src/core/logging.py`)
 
-Để đảm bảo khả năng quan sát (Observability) và vận hành mượt mà trên môi trường Container theo nguyên lý **Twelve-Factor App (Logs as Event Streams)**, toàn bộ hệ thống sử dụng cấu hình logging tập trung [setup_logging](file:///c:/Users/ndquynh/Documents/RAG/core/src/core/logging.py#L9):
+Để đảm bảo khả năng quan sát (Observability) và vận hành mượt mà trên môi trường Container theo nguyên lý **Twelve-Factor App (Logs as Event Streams)**, toàn bộ hệ thống sử dụng cấu hình logging tập trung [setup_logging](../core/src/core/logging.py#L9):
 
 ```python
 def setup_logging(level: int = logging.INFO) -> None:
@@ -518,13 +518,13 @@ Hệ thống RAG áp dụng mô hình phân tách ranh giới kỹ thuật nghi�
 
 #### 1. Vì sao Tầng Presentation & Auth Guards (`guards.py`, `workspace_resolver.py`) dùng `async def`?
 - **Đọc luồng HTTP Network Stream từ Socket**:
-  Trong [workspace_resolver.py](file:///c:/Users/ndquynh/Documents/RAG/apps/chat-api/src/chat_api/shared/auth/workspace_resolver.py), để phân giải `workspace_id` từ JSON Payload của các request `POST` / `PUT`, hệ thống phải đọc raw bytes:
+  Trong [workspace_resolver.py](../apps/chat-api/src/chat_api/shared/auth/workspace_resolver.py), để phân giải `workspace_id` từ JSON Payload của các request `POST` / `PUT`, hệ thống phải đọc raw bytes:
   ```python
   body_bytes = await request.body()
   ```
   FastAPI (dựa trên ASGI Starlette) quản lý việc nhận dữ liệu từ client dưới dạng bất đồng bộ qua mạng. Phương thức `request.body()` là một Coroutine bắt buộc phải `await` (Starlette không hỗ trợ đọc body đồng bộ). Khi bên trong có `await`, hàm bao bọc `resolve_workspace_id` **bắt buộc phải là `async def`**.
 - **FastAPI Guard & Dependency Injection Pipeline**:
-  Các Dependency Guard như [RequirePermission](file:///c:/Users/ndquynh/Documents/RAG/apps/chat-api/src/chat_api/shared/auth/guards.py) thực thi phương thức `async def __call__(self, request: Request, ...)` để có thể gọi `await resolve_workspace_id(request, auth)`. Điều này giúp việc xác thực và trích xuất ngữ cảnh diễn ra bất đồng bộ ngay trên luồng ASGI trước khi dispatch vào controller.
+  Các Dependency Guard như [RequirePermission](../apps/chat-api/src/chat_api/shared/auth/guards.py) thực thi phương thức `async def __call__(self, request: Request, ...)` để có thể gọi `await resolve_workspace_id(request, auth)`. Điều này giúp việc xác thực và trích xuất ngữ cảnh diễn ra bất đồng bộ ngay trên luồng ASGI trước khi dispatch vào controller.
 - **Realtime SSE Streaming**:
   Endpoint sinh câu trả lời chat stream từng token chữ về giao diện qua Server-Sent Events (SSE). Bắt buộc dùng `async def` để giữ đồng thời hàng nghìn kết nối socket mở mà không làm cạn kiệt thread pool.
 
@@ -532,7 +532,7 @@ Hệ thống RAG áp dụng mô hình phân tách ranh giới kỹ thuật nghi�
 - **Cơ chế Threadpool tự động của FastAPI**:
   Khi một route handler hoặc dependency được khai báo là `def` (đồng bộ), FastAPI tự động chuyển nó sang một luồng riêng trong **Worker Threadpool** (`anyio.to_thread.run_sync`). Do đó, các tác vụ tính toán hoặc truy vấn CSDL đồng bộ **hoàn toàn không làm nghẽn (non-blocking) Event Loop chính**.
 - **Tính an toàn tuyệt đối với SQLAlchemy ORM & Tránh lỗi `MissingGreenlet`**:
-  Trong [SqlAlchemyWorkspaceRepository](file:///c:/Users/ndquynh/Documents/RAG/apps/chat-api/src/chat_api/modules/workspaces/infrastructure/repository.py), các quan hệ thực thể được nạp tự nhiên (ví dụ: `orm.members`). Nếu dùng SQLAlchemy Async (`AsyncSession`), việc truy cập thuộc tính quan hệ (Lazy Loading) sẽ gây sập ứng dụng ngay lập tức với lỗi `sqlalchemy.exc.MissingGreenlet` trừ khi cấu hình eagerly loading rất phức tạp.
+  Trong [SqlAlchemyWorkspaceRepository](../apps/chat-api/src/chat_api/modules/workspaces/infrastructure/repository.py), các quan hệ thực thể được nạp tự nhiên (ví dụ: `orm.members`). Nếu dùng SQLAlchemy Async (`AsyncSession`), việc truy cập thuộc tính quan hệ (Lazy Loading) sẽ gây sập ứng dụng ngay lập tức với lỗi `sqlalchemy.exc.MissingGreenlet` trừ khi cấu hình eagerly loading rất phức tạp.
 - **Tính trong sáng và tốc độ kiểm thử (Blazing-Fast Testing)**:
   Tầng Domain và Application giữ được tính thuần khiết của mô hình DDD, không bị "ô nhiễm" bởi các từ khóa `async` / `await` ở khắp mọi nơi. Việc triển khai `FakeUnitOfWork` và `FakeWorkspaceRepository` trên bộ nhớ RAM phục vụ Unit Test trở nên cực kỳ đơn giản, không cần bọc coroutine giả lập.
 
