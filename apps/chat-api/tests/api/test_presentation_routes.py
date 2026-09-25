@@ -74,6 +74,17 @@ def test_health_check(client):
     data = response.json()
     assert data["status"] == "ok"
     assert "version" in data
+    assert "components" in data
+    assert "database" in data["components"]
+    assert "message_broker" in data["components"]
+    assert "storage" in data["components"]
+    assert "ai_providers" in data["components"]
+    assert "scheduler" in data["components"]
+
+    # Verify alias /api/v1/healthy
+    res_healthy = tc.get("/api/v1/healthy")
+    assert res_healthy.status_code == 200
+    assert res_healthy.json()["status"] == "ok"
 
     # Verify un-prefixed /health is removed
     assert tc.get("/health").status_code == 404
