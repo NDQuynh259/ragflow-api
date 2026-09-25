@@ -255,6 +255,22 @@ server {
 }
 ```
 
+### 3.4. Vòng Đời & Luồng Xử Lý Request Nội Tại Của Nginx (11 Phases Lifecycle)
+
+Mỗi request khi chạm vào Nginx đều trải qua **11 pha (HTTP Phases)** tuần tự được xử lý ở tốc độ microsecond:
+1. **`POST_READ`**: Tiếp nhận TCP, bóc tách headers, phục hồi IP thật (`CF-Connecting-IP` / `X-Forwarded-For`) vào `$binary_remote_addr`.
+2. **`SERVER_REWRITE`**: Xử lý chuyển hướng tự động HTTP cổng 80 sang HTTPS cổng 443 (`301 Moved Permanently`).
+3. **`FIND_CONFIG`**: Khớp `server_name` và tìm khối `location` (Ưu tiên Regex `~* ^/api/v1/messages/(stream|query)` cho SSE, hoặc Prefix `/api/v1/auth/`).
+4. **`PREACCESS`**: Bộ lọc **Rate Limiting (Leaky Bucket)** tra cứu Shared Memory Zone (`api_limit`, `auth_limit`). Nếu quá ngưỡng burst, **trả về 503 trong 0.1ms**, bảo vệ backend Python không bị nghẽn CPU.
+5. **`ACCESS`**: Kiểm tra **Origin Protection** (`allow`/`deny`). Nếu IP không đi qua Cloudflare, chặn đứng với mã `403 Forbidden` hoặc `444`.
+6. **`CONTENT`**: Điều phối Upstream qua kết nối ấm Keep-Alive:
+   - **Nhánh SSE Streaming (`/messages/stream`)**: `proxy_buffering off;`, đẩy từng token của Gemini vừa sinh ra thẳng về socket client, tạo hiệu ứng gõ chữ trực tiếp.
+   - **Nhánh REST API chuẩn (`/documents`, `/auth`)**: `proxy_buffering on;`, gom response và nén Gzip tối ưu băng thông.
+7. **`LOG`**: Ghi nhận `$request_time`, `$upstream_response_time` vào `access.log` và giải phóng socket descriptor.
+
+> [!TIP]
+> 📖 **Xem tài liệu phân tích chuyên sâu toàn bộ 11 pha và sơ đồ Sequence Diagrams**: [Vòng Đời Và Luồng Xử Lý Request Nội Tại Của Nginx (docs/nginx_request_lifecycle.md)](nginx_request_lifecycle.md).
+
 ---
 
 ## 4. Cloudflare - Lớp Giáp Đám Mây Toàn Cầu
@@ -410,6 +426,7 @@ ssl_verify_client on;
 ---
 
 ## 7. Liên Kết Tài Liệu Liên Quan
+- [Vòng Đời Và Luồng Xử Lý Request Nội Tại Của Nginx (docs/nginx_request_lifecycle.md)](nginx_request_lifecycle.md)
 - [Tài liệu Kiến trúc Tổng thể Master (docs/architecture.md)](architecture.md)
 - [Kiến trúc Triển khai CI/CD Production (docs/cicd_deployment_architecture.md)](cicd_deployment_architecture.md)
 - [Cơ chế Logging Chuẩn hóa Twelve-Factor (core/logging.py)](../core/src/core/logging.py)

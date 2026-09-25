@@ -335,9 +335,6 @@ with self.uow:
 
 ## 4. Các luồng nghiệp vụ cốt lõi (Core End-to-End Workflows)
 
-> [!NOTE]
-> Toàn bộ **8 luồng nghiệp vụ chi tiết kèm sơ đồ tương tác tuần tự (Sequence Diagrams)** từ biên mạng (Edge), xác thực (Auth), bóc tách (Ingestion), hội thoại (Chat SSE Stream), đánh giá (Feedback) đến lập lịch (Scheduler) được tổng hợp tại tài liệu chuyên đề: [docs/end_to_end_workflows.md](end_to_end_workflows.md).
-
 ### 4.1. Luồng Upload và Ingestion tài liệu (Bất đồng bộ)
 
 ```text
@@ -650,6 +647,5 @@ Hệ thống RAG phân bổ chính xác 3 mô hình đa nhiệm của Python cho
 4. ⏰ [Kiến Trúc Động Cơ Lập Lịch Scheduler (docs/scheduler_architecture.md)](scheduler_architecture.md): Động cơ AsyncIOScheduler, cơ chế Storage Sync Retry, Heartbeat Probe và Housekeeping.
 5. 🗄️ [Kiến Trúc Lưu Trữ Storage (docs/storage_architecture.md)](storage_architecture.md): Thiết kế phân tầng lưu trữ S3/MinIO, Local Storage, và cơ chế Outbox Pattern.
 6. 📊 [Thiết Kế Cơ Sở Dữ Liệu & pgvector (docs/database_design.md)](database_design.md): Chi tiết 15 bảng, schema migrations, pgvector HNSW cosine index và Full-Text Search TSVector.
-7. 🔄 [Tổng Hợp Toàn Bộ Luồng End-to-End Của Dự Án (docs/end_to_end_workflows.md)](end_to_end_workflows.md): Sơ đồ chi tiết 8 luồng nghiệp vụ từ Reverse Proxy, Auth, Ingestion, Session, Chat Stream, Feedback đến Scheduler.
-
+7. 🛡️ [Vòng Đời & Luồng Xử Lý Request Nội Tại Của Nginx (docs/nginx_request_lifecycle.md)](nginx_request_lifecycle.md): 11 pha xử lý (Phases), cơ chế Leaky Bucket trong Shared Memory, và phân nhánh SSE Passthrough vs Gzip Buffering.
 
