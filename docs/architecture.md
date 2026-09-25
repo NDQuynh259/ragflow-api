@@ -394,7 +394,19 @@ Hệ thống sử dụng **PostgreSQL 16** tích hợp extension **`pgvector`** 
 
 ## 6. GIẢI THÍCH VÌ SAO: Các quyết định thiết kế cốt lõi (Rationale)
 
-Dưới đây là lời giải thích chi tiết cho từng quyết định kiến trúc được lựa chọn:
+Dưới đây là bảng tổng hợp các mô hình đa nhiệm cốt lõi và lời giải thích chi tiết cho từng quyết định kiến trúc được lựa chọn trong hệ thống:
+
+### 📌 Bảng Tổng Quan So Sánh Các Mô Hình Đa Nhiệm (Concurrency Strategy):
+
+| Tiêu Chí | Multi-threading | Async I/O (`asyncio`) | Multi-processing (Workers) |
+| :--- | :--- | :--- | :--- |
+| **Bản chất** | Nhiều OS thread trong cùng 1 process | 1 OS thread duy nhất (Event Loop) | Nhiều OS process độc lập |
+| **Chia sẻ bộ nhớ** | Có (Chung bộ nhớ RAM của process) | Có (Cùng ngữ cảnh tiến trình) | Không (Bộ nhớ cô lập hoàn toàn) |
+| **Ảnh hưởng của GIL** | Bị khống chế mã Python, **nhả GIL khi I/O** | Chạy 1 thread nên **không xung đột GIL** | **Mỗi process có 1 GIL riêng** (Song song thật) |
+| **Phù hợp nhất** | Thao tác Database đồng bộ, file I/O | Server Web tải cao, Timers, SSE Streaming | Tác vụ CPU-bound nặng (OCR, Chunking, AI) |
+| **Áp dụng trong dự án**| CQRS Handlers + SQLAlchemy Session (`apps/chat-api`) | `apps/scheduler` + FastAPI SSE Router | `apps/worker` (Ingestion Cluster) |
+
+---
 
 ### 6.1. Vì sao chọn Modular Monolith (Vertical Slice) thay vì Layered (Horizontal)?
 - **Vấn đề của Layered Architecture truyền thống**: Khi tổ chức thư mục theo kiểu `domain/`, `application/`, `infrastructure/`, `presentation/` ở cấp cao nhất, khi muốn sửa hoặc thêm một tính năng của `documents`, lập trình viên phải nhảy qua lại giữa 4 thư mục cách xa nhau. Khi dự án phình to lên 20-30 thực thể, code sẽ bị phân mảnh và rất khó kiểm soát.
