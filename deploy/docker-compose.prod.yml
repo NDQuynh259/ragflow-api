@@ -3,8 +3,6 @@ services:
     image: pgvector/pgvector:pg16
     container_name: rag_postgres_prod
     restart: unless-stopped
-    ports:
-      - "45432:5432"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-rag_db}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -41,9 +39,6 @@ services:
     image: rabbitmq:3.13-management-alpine
     container_name: rag_rabbitmq_prod
     restart: unless-stopped
-    ports:
-      - "5672:5672"
-      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
@@ -67,8 +62,6 @@ services:
     image: ${APP_IMAGE:-ghcr.io/ndquynh259/ragflow-api:latest}
     container_name: rag_chat_api_prod
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:${API_PORT:-8000}:8000"
     env_file:
       - ../.env
     environment:
