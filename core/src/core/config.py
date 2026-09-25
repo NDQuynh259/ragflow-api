@@ -21,6 +21,15 @@ class CoreSettings(BaseSettings):
 
     # Storage
     STORAGE_DIR: Path = Path("output/storage")
+    STORAGE_BACKEND: str = "minio_with_local_fallback"
+    STORAGE_SYNC_INTERVAL_SECONDS: int = 60
+    STORAGE_SYNC_MAX_RETRIES: int = 10
+    MINIO_ENDPOINT: str = "localhost:9000"
+    MINIO_ACCESS_KEY: str = "minioadmin"
+    MINIO_SECRET_KEY: str = "minioadmin"
+    MINIO_BUCKET_NAME: str = "rag-documents"
+    MINIO_SECURE: bool = False
+    MINIO_REGION: str | None = None
 
     # Security
     SECRET_KEY: str = "insecure-secret-key-for-development"

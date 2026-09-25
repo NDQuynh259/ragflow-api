@@ -6,10 +6,12 @@ import uuid
 from pathlib import Path
 
 from core.config import settings
-from core.storage.port import ObjectStoragePort
+from core.storage.ports.storage_port import ObjectStoragePort
 
 
 class LocalStorageAdapter(ObjectStoragePort):
+    """Adapter for storing and retrieving objects on the local server file system."""
+
     def __init__(self, base_dir: Path | str | None = None) -> None:
         self.base_dir = Path(base_dir or settings.STORAGE_DIR)
         self.base_dir.mkdir(parents=True, exist_ok=True)
@@ -27,7 +29,12 @@ class LocalStorageAdapter(ObjectStoragePort):
 
     def get(self, storage_uri: str) -> bytes:
         clean_path = storage_uri.replace("file://", "")
-        return Path(clean_path).read_bytes()
+        path = Path(clean_path)
+        if not path.is_file():
+            from core.exceptions import FileNotFoundStorageException
+
+            raise FileNotFoundStorageException(storage_uri)
+        return path.read_bytes()
 
     def delete(self, storage_uri: str) -> bool:
         clean_path = storage_uri.replace("file://", "")
@@ -36,3 +43,19 @@ class LocalStorageAdapter(ObjectStoragePort):
             path.unlink()
             return True
         return False
+
+    def exists(self, storage_uri: str) -> bool:
+        clean_path = storage_uri.replace("file://", "")
+        return Path(clean_path).is_file()
+
+    def get_size(self, storage_uri: str) -> int:
+        clean_path = storage_uri.replace("file://", "")
+        path = Path(clean_path)
+        if not path.is_file():
+            from core.exceptions import FileNotFoundStorageException
+
+            raise FileNotFoundStorageException(storage_uri)
+        return path.stat().st_size
+
+
+__all__ = ["LocalStorageAdapter"]

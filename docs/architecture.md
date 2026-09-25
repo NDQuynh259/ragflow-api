@@ -9,50 +9,59 @@ Tài liệu này cung cấp bức tranh toàn cảnh về kiến trúc hệ th�
 Hệ thống được tổ chức theo mô hình **Monorepo** với nguyên tắc phân chia ranh giới trách nhiệm nghiêm ngặt (*Separation of Concerns*):
 
 ```text
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                                   CLIENT (Web / App)                                   │
-└───────────────────────────────────────────┬────────────────────────────────────────────┘
-                                            │ HTTP / SSE
-                                            ▼
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│ 1. APPS: apps/chat-api (Nghiệp vụ, Phiên chat, Quản trị)                               │
-│    - Kiến trúc: Modular Monolith + Vertical Slice DDD + CQRS                           │
-│    - Phân quyền, Workspace, Session, Chat, Document Metadata                          │
-│    - Quản lý Transaction (Unit of Work) & lưu trữ file gốc                            │
-└───────────────┬────────────────────────────────────────────────────────┬───────────────┘
-                │                                                        │
-         (Query RAG Core)                                         (Push Job Queue)
-                │                                                        │
-                ▼                                                        ▼
-┌──────────────────────────────────────────────┐ ┌───────────────────────────────────────┐
-│ 2. PACKAGES: rag-core (Khả năng RAG lõi)     │ │ 3. WORKERS: workers/document-worker   │
-│    - Vector embedding (Gemini/Cohere/OpenAI) │ │    - Tiến trình xử lý Ingestion dài   │
-│    - Hybrid retrieval (Dense + Sparse FTS)   │ │      hạn chạy ở background            │
-│    - Reranking candidate chunks              │ │    - Nhận job qua hàng đợi Queue      │
-│    - Prompt building & LLM Generation        │ └──────────────────┬────────────────────┘
-│    - Citation mapping                        │                    │
-└──────────────────────────────────────────────┘                    │ (Gọi pipeline)
-                                                                    ▼
-                                                 ┌───────────────────────────────────────┐
-                                                 │ 4. PACKAGES: rag-document-pipeline    │
-                                                 │    - Parse, OCR, Layout extraction    │
-                                                 │    - Normalize elements               │
-                                                 │    - Heading-aware / Semantic Chunking│
-                                                 │    - Bounding-box & Page attribution  │
-                                                 └───────────────────────────────────────┘
-                                                                    │
-                                                 ┌──────────────────┴────────────────────┐
-                                                 │ 5. PACKAGES: rag-contracts            │
-                                                 │    - Chứa DTOs & Protocols chung      │
-                                                 │      (ChunkRecord, DocumentChunk...)  │
-                                                 └───────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                           CLIENT (Web / App)                                           │
+└───────────────────────────────────────────────────┬────────────────────────────────────────────────────┘
+                                                    │ HTTP / SSE
+                                                    ▼
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ 1. APPS: apps/chat-api (Nghiệp vụ, Phiên chat, Quản trị)                                               │
+│    - Kiến trúc: Modular Monolith + Vertical Slice DDD + CQRS                                           │
+│    - Phân quyền, Workspace, Session, Chat, Document Metadata                                          │
+│    - Quản lý Transaction (Unit of Work) & lưu trữ file gốc                                            │
+└───────────────┬───────────────────────────────────┬────────────────────────────────────────────────────┘
+                │                                   │
+         (Query RAG Core)                    (Push Ingestion Job)
+                │                                   │
+                ▼                                   ▼
+┌─────────────────────────────────────────┐ ┌─────────────────────────────────────────┐ ┌─────────────────────────────────────────┐
+│ 2. PACKAGES: rag-core (RAG Engine)      │ │ 3. APPS: apps/worker (Ingestion Worker) │ │ 4. APPS: apps/scheduler (Scheduler)    │
+│    - Vector embedding (Gemini/Cohere)   │ │    - Xử lý Ingestion chạy ngầm (RabbitMQ│ │    - AsyncIOScheduler định kỳ           │
+│    - Hybrid retrieval (Dense + Sparse)  │ │    - Parse PDF, OCR, Chunking, Vectors  │ │    - Storage sync retry, Heartbeat probe│
+│    - Reranking candidate chunks         │ └───────────────────┬─────────────────────┘ └────────────────────┬────────────────────┘
+│    - Prompt building & LLM Generation   │                     │ (Gọi pipeline)                             │ (DB / Storage ops)
+│    - Citation mapping                   │                     ▼                                            │
+└─────────────────────────────────────────┘ ┌─────────────────────────────────────────┐                      │
+                                            │ 5. PACKAGES: rag-document-pipeline      │                      │
+                                            │    - Parse, OCR, Layout extraction      │                      │
+                                            │    - Heading-aware / Semantic Chunking  │                      │
+                                            │    - Bounding-box & Page attribution    │                      │
+                                            └───────────────────┬─────────────────────┘                      │
+                                                                ▼                                            │
+                                            ┌─────────────────────────────────────────┐                      │
+                                            │ 6. PACKAGES: rag-contracts              │                      │
+                                            │    - DTOs & Protocols dùng chung        │                      │
+                                            │      (ChunkRecord, DocumentChunk...)    │                      │
+                                            └───────────────────┬─────────────────────┘                      │
+                                                                │                                            │
+════════════════════════════════════════════════════════════════╧════════════════════════════════════════════╧═══════════════════════════
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ 7. SHARED KERNEL: core (Nền tảng hạ tầng dùng chung cho toàn bộ monorepo)                                                      │
+│    - Database: Base, SessionLocal, SqlAlchemyUnitOfWork (ACID Transaction Gateway)                                             │
+│    - CQRS Bus: CommandBus, QueryBus, Protocols                                                                                 │
+│    - Storage: ObjectStoragePort & S3/MinIO/Local Adapters                                                                      │
+│    - Queue: IngestionQueuePort & RabbitMQ (aio-pika) / InMemory Adapters                                                       │
+│    - Security & Auth: CurrentPrincipal, ExecutionContext, password hashing (bcrypt), token hashing (SHA-256)                   │
+│    - Observability: Logging tập trung ra stdout (Twelve-Factor App) & Ssl/SSE Helpers                                          │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Nguyên tắc ranh giới bất biến (Invariants):
-1. **`chat-api` không chứa thuật toán chunking**: API chỉ làm nhiệm vụ quản lý nghiệp vụ, trạng thái tài liệu và đẩy tác vụ nặng cho worker.
+1. **`chat-api` không chứa thuật toán chunking**: API chỉ làm nhiệm vụ quản lý nghiệp vụ, trạng thái tài liệu và đẩy tác vụ nặng cho worker qua hàng đợi.
 2. **`rag-document-pipeline` không biết FastAPI hay Database**: Đây là thư viện xử lý dữ liệu thuần túy (nhận bytes file -> bóc tách -> trả về chunks).
 3. **`rag-core` không biết model nghiệp vụ `ChatSession`**: `rag-core` chỉ nhận câu hỏi, danh sách `document_ids`, thực hiện truy vấn và sinh câu trả lời kèm citations.
-4. **`document-worker` độc lập tài nguyên**: Không chạy parse/embedding nặng trên cùng tiến trình HTTP API để tránh nghẽn thread và timeout request.
+4. **`apps/worker` và `apps/scheduler` độc lập tài nguyên**: Chạy trên các tiến trình (OS process / container) tách rời hoàn toàn với HTTP API để tác vụ nặng (Docling OCR, embedding) hay timers không bao giờ làm nghẽn thread và timeout request của người dùng.
+5. **`core` là Shared Kernel thuần túy**: Chỉ chứa các abstractions và hạ tầng kỹ thuật dùng chung, không chứa business logic nghiệp vụ cụ thể của từng Bounded Context.
 
 ---
 
@@ -60,31 +69,12 @@ Hệ thống được tổ chức theo mô hình **Monorepo** với nguyên tắ
 
 Hệ thống API được triển khai theo mô hình **Modular Monolith (Vertical Slice DDD + CQRS)**. Code được tổ chức theo từng **Bounded Context (Module nghiệp vụ)** khép kín thay vì dàn trải theo tầng kỹ thuật.
 
-### 2.1. Cấu trúc thư mục
+### 2.1. Cấu trúc thư mục của API (`apps/chat-api/src/chat_api/`)
 
 ```text
 apps/chat-api/src/chat_api/
-├── shared/                                     # TẦNG TÀI NGUYÊN & HẠ TẦNG DÙNG CHUNG
-│   ├── config.py                               # Đọc biến môi trường (pydantic-settings)
-│   ├── exceptions.py                           # Định nghĩa các lỗi nghiệp vụ chuẩn
-│   ├── logging.py                              # Cấu hình log tập trung
-│   ├── middleware.py                           # Exception Handler chuyển đổi Domain Error -> HTTP Status
-│   ├── bus.py                                  # CQRS CommandBus & QueryBus
-│   ├── auth/                                   # TẦNG PHÂN QUYỀN & GUARDS (ViShop-style)
-│   │   ├── permissions.py                      # Permission Catalog, Built-in Roles, Role Permissions
-│   │   └── guards.py                           # RequirePermission, RequireRole, AuthDep dependencies
-│   ├── domain/
-│   │   ├── base_entity.py                      # Base Entity, AggregateRoot (quản lý Domain Events), ValueObject
-│   │   └── uow.py                              # Trừu tượng hóa UnitOfWork (Transaction Gateway)
-│   └── infrastructure/
-│       ├── database/
-│       │   ├── base.py                         # SQLAlchemy Base, TimestampMixin, UUIDPrimaryKeyMixin
-│       │   ├── session.py                      # Engine, SessionLocal, FastAPI get_db dependency
-│       │   ├── models.py                       # Điểm tập hợp metadata của 11 bảng cho Alembic migrations
-│       │   └── uow.py                          # Triển khai SqlAlchemyUnitOfWork
-│       ├── storage/                            # ObjectStoragePort & LocalStorageAdapter (hoặc S3/MinIO)
-│       ├── queue/                              # IngestionQueuePort & BackgroundQueueAdapter
-│       └── rag/                                # RAGEnginePort & RAGEngineAdapter (kết nối rag-core)
+├── config.py                                   # Cấu hình API (ChatApiSettings đọc biến môi trường)
+├── main.py                                     # Điểm khởi động ứng dụng FastAPI, đăng ký middleware & routers
 │
 ├── composition/                                # TẦNG TỔNG HỢP CHÉO MODULE (API Composition Layer)
 │   └── reports/                                # Module Báo cáo & Thống kê đa bảng
@@ -117,7 +107,7 @@ apps/chat-api/src/chat_api/
 │   │   ├── infrastructure/                     # ORM Models (Document, IngestionJob, Chunk), DocumentRepository
 │   │   └── presentation/                       # Request/Response DTOs & FastAPI Router
 │   │
-│   ├── sessions/                               # Bounded Context: Phiên hội thoại (ChatSession)
+│   ├── chat_sessions/                          # Bounded Context: Phiên hội thoại (ChatSession)
 │   │   ├── domain/                             # Aggregate ChatSession, SessionDocument, Repository interface
 │   │   ├── application/                        # Commands (Create, AttachDoc, Delete), Queries, DTOs
 │   │   ├── infrastructure/                     # ORM Models (ChatSession, SessionDocument), SessionRepository
@@ -132,14 +122,62 @@ apps/chat-api/src/chat_api/
 │   └── health/                                 # Module kiểm tra sức khỏe hệ thống
 │       └── presentation/                       # Router GET /health & HealthResponse DTO
 │
-└── main.py                                     # Điểm khởi động ứng dụng FastAPI, đăng ký middleware & routers
+└── shared/                                     # TẦNG DÙNG CHUNG ĐẶC THÙ CỦA CHAT-API
+    ├── auth/                                   # TẦNG PHÂN QUYỀN & GUARDS (ViShop-style)
+    │   ├── permissions.py                      # Permission Catalog, Built-in Roles, Role Permissions
+    │   ├── guards.py                           # RequirePermission, RequireRole, AuthDep dependencies
+    │   └── workspace_resolver.py               # Phân giải workspace_id async từ path/header/payload
+    ├── infrastructure/
+    │   ├── database/
+    │   │   └── models.py                       # Điểm tập hợp metadata của toàn bộ 15 bảng cho Alembic & reflection
+    │   └── rag/
+    │       ├── adapter.py                      # RAGEngineAdapter tích hợp rag-core
+    │       └── ports.py                        # RAGEnginePort protocol
+    └── presentation/
+        ├── dtos/                               # Common API DTOs (ErrorResponse, Pagination)
+        ├── middleware.py                       # Exception Handler chuyển đổi Domain Error -> HTTP Status
+        └── openapi.py                          # Tùy biến OpenAPI documentation, tags, Swagger security
 ```
 
 ---
 
-### 2.2. Chi tiết 4 tầng bên trong mỗi Module nghiệp vụ
+### 2.2. Cấu trúc thư viện nền tảng (`core/src/core/`) - Shared Kernel
 
-Mỗi module (ví dụ `documents` hay `sessions`) là một "tiểu vương quốc" độc lập tuân thủ quy tắc Clean Architecture:
+Toàn bộ các thành phần hạ tầng dùng chung không phụ thuộc nghiệp vụ được đặt tại `core/src/core/` để tái sử dụng xuyên suốt giữa `chat-api`, `worker`, và `scheduler`:
+
+```text
+core/src/core/
+├── config.py                                   # BaseSettings quản lý biến môi trường (.env)
+├── cqrs.py                                     # CQRS CommandBus & QueryBus, Command/Query/Handler protocols
+├── domain.py                                   # BaseEntity, AggregateRoot (quản lý Domain Events), ValueObject
+├── exceptions.py                               # Hệ thống ngoại lệ phân tầng (DomainException, NotFound, Conflict...)
+├── logging.py                                  # Cấu hình log Twelve-Factor chuẩn hóa (setup_logging ra sys.stdout)
+├── uuid7.py                                    # Bộ sinh UUIDv7 chuẩn RFC 9562 tối ưu index B-Tree
+├── database/                                   # Nền tảng truy cập cơ sở dữ liệu
+│   ├── base.py                                 # SQLAlchemy Base, TimestampMixin, UUIDPrimaryKeyMixin
+│   ├── session.py                              # Engine, SessionLocal, get_db dependency
+│   └── uow.py                                  # SqlAlchemyUnitOfWork (Unit of Work Pattern)
+├── queue/                                      # Hàng đợi bất đồng bộ
+│   ├── base.py                                 # IngestionQueuePort
+│   ├── rabbitmq.py                             # RabbitMQ Ingestion Queue (aio-pika)
+│   └── memory.py                               # InMemory Queue cho môi trường test
+├── storage/                                    # Lưu trữ Object Storage
+│   ├── base.py                                 # ObjectStoragePort
+│   ├── s3.py                                   # MinIO / AWS S3 Storage Adapter
+│   └── local.py                                # Local File Storage Adapter
+├── security/                                   # Tiện ích bảo mật độc lập framework
+│   ├── password.py                             # Mã hóa & đối soát mật khẩu bcrypt
+│   ├── tokens.py                               # Sinh & băm SHA-256 session token
+│   └── principal.py                            # CurrentPrincipal & ExecutionContext
+├── events/                                     # Quản lý sự kiện miền (Domain Events)
+└── sse/                                        # Tiện ích streaming dữ liệu Server-Sent Events
+```
+
+---
+
+### 2.3. Chi tiết 4 tầng bên trong mỗi Module nghiệp vụ
+
+Mỗi module (ví dụ `documents` hay `chat_sessions`) là một "tiểu vương quốc" độc lập tuân thủ quy tắc Clean Architecture:
 
 ```text
 [HTTP Request]
@@ -179,29 +217,92 @@ Mỗi module (ví dụ `documents` hay `sessions`) là một "tiểu vương qu�
 
 ---
 
-### 2.3. Tầng Composition (API Composition Layer - Báo cáo & Thống kê đa bảng)
+### 2.4. Tầng Composition (API Composition Layer - Báo cáo & Thống kê đa bảng)
 
-Khi nghiệp vụ đòi hỏi truy vấn tổng hợp từ nhiều Bounded Context khác nhau (ví dụ: Báo cáo không gian làm việc cần đếm số thành viên từ `workspaces`, số file và dung lượng từ `documents`, số chunks, số phiên chat từ `sessions`, số tin nhắn và token usage từ `messages`, tỉ lệ đánh giá từ `message_feedback`):
+Khi nghiệp vụ đòi hỏi truy vấn tổng hợp từ nhiều Bounded Context khác nhau (ví dụ: Báo cáo không gian làm việc cần đếm số thành viên từ `workspaces`, số file và dung lượng từ `documents`, số chunks, số phiên chat từ `chat_sessions`, số tin nhắn và token usage từ `messages`, tỉ lệ đánh giá từ `message_feedback`):
 * **Không nhồi nhét vào các module đơn lẻ**: Đặt báo cáo vào `documents` hay `messages` sẽ làm vỡ ranh giới (boundary pollution) và gây phụ thuộc chéo chằng chịt.
 * **Tách thành tầng `composition/`**:
   * Tầng `composition` nằm ở cấp cao hơn các modules nghiệp vụ, đóng vai trò "nhạc trưởng" (Orchestrator/Aggregator).
-  * **Tối ưu hóa hiệu năng (CQRS Pure Read)**: [ReportQueryRepository](file:///c:/Users/Admin/Documents/Project/ragflow-api/apps/chat-api/src/chat_api/composition/reports/infrastructure/queries.py#L24) thực hiện truy vấn `SELECT` tổng hợp trực tiếp bằng SQLAlchemy Core (`func.count`, `func.sum`, `func.avg`, `case`), bỏ qua việc load ORM Entity để tránh lỗi N+1 và giảm thiểu chiếm dụng bộ nhớ RAM.
+  * **Tối ưu hóa hiệu năng (CQRS Pure Read)**: [ReportQueryRepository](../apps/chat-api/src/chat_api/composition/reports/infrastructure/queries.py#L24) thực hiện truy vấn `SELECT` tổng hợp trực tiếp bằng SQLAlchemy Core (`func.count`, `func.sum`, `func.avg`, `case`), bỏ qua việc load ORM Entity để tránh lỗi N+1 và giảm thiểu chiếm dụng bộ nhớ RAM.
 
 ---
 
-### 2.4. Phân tách An ninh và Phân quyền (`core/security` & `shared/auth`)
+### 2.5. Phân tách An ninh và Phân quyền (`core/security` & `shared/auth`)
 
 Để giữ cho logic nghiệp vụ hoàn toàn thuần khiết, kiến trúc phân tách rõ ràng 2 lớp bảo mật:
 1. **Lớp nền tảng cốt lõi (`core/src/core/security/`):**
    * Độc lập hoàn toàn với FastAPI và database nghiệp vụ.
    * `password.py`: Hash và kiểm tra mật khẩu bằng thuật toán `bcrypt`.
    * `tokens.py`: Sinh session token an toàn bằng `secrets.token_urlsafe` và băm SHA-256 digest lưu database.
-   * `principal.py`: Định nghĩa [CurrentPrincipal](file:///c:/Users/Admin/Documents/Project/ragflow-api/core/src/core/security/principal.py#L13) (chứa `user_id`, `role`, `permissions`, `is_owner`) và [ExecutionContext](file:///c:/Users/Admin/Documents/Project/ragflow-api/core/src/core/security/principal.py#L86).
+   * `principal.py`: Định nghĩa [CurrentPrincipal](../core/src/core/security/principal.py#L13) (chứa `user_id`, `role`, `permissions`, `is_owner`) và [ExecutionContext](../core/src/core/security/principal.py#L86).
 2. **Lớp phân quyền và bảo vệ API (`chat_api/shared/auth/`):**
    * `permissions.py`: Định nghĩa danh mục `Permission` (Workspace, Documents, Sessions, Messages, Reports), bảng ánh xạ quyền theo vai trò (`owner`, `admin`, `member`).
    * `guards.py`: Cung cấp FastAPI Dependencies (`RequirePermission`, `RequireRole`, `AuthDep`) để chặn request không hợp lệ ngay tại tầng Presentation trước khi chạm vào Application Handler.
 3. **Quy tắc ranh giới bất biến:**
-   * Các module nghiệp vụ (`documents`, `messages`, `sessions`) **tuyệt đối không phụ thuộc vào phương thức đăng nhập hay logic tạo session**. Chúng chỉ nhận `CurrentPrincipal` (đã xác thực) từ tầng Presentation truyền vào.
+   * Các module nghiệp vụ (`documents`, `messages`, `chat_sessions`) **tuyệt đối không phụ thuộc vào phương thức đăng nhập hay logic tạo session**. Chúng chỉ nhận `CurrentPrincipal` (đã xác thực) từ tầng Presentation truyền vào.
+
+---
+
+### 2.6. Cơ Chế Logging Chuẩn Hóa Cấp Toàn Hệ Thống (`core/src/core/logging.py`)
+
+Để đảm bảo khả năng quan sát (Observability) và vận hành mượt mà trên môi trường Container theo nguyên lý **Twelve-Factor App (Logs as Event Streams)**, toàn bộ hệ thống sử dụng cấu hình logging tập trung [setup_logging](../core/src/core/logging.py#L9):
+
+```python
+def setup_logging(level: int = logging.INFO) -> None:
+    """Configure root logger with unified formatting."""
+    formatter = logging.Formatter(
+        "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(formatter)
+
+    root = logging.getLogger()
+    root.setLevel(level)
+    root.handlers = [handler]
+```
+
+#### Nguyên Tắc Thiết Kế:
+1. **Xuất trực tiếp ra `sys.stdout` (Chuẩn Twelve-Factor App)**:
+   - Thay vì ghi log vào file cục bộ trên đĩa (dễ làm tràn dung lượng container và khó xoay vòng log), toàn bộ log được đẩy trực tiếp ra `sys.stdout`.
+   - Các Container Runtime (Docker Daemon, Kubernetes Kubelet, Vector, Promtail/Loki) sẽ tự động thu thập luồng log này qua lệnh `docker logs` tiêu chuẩn mà không cần mount volume hay cấu hình daemon phức tạp.
+2. **Khởi tạo duy nhất tại Entrypoint của 3 Ứng dụng Chính**:
+   - `apps/chat-api/src/chat_api/main.py`: Gọi `setup_logging()` khi khởi động FastAPI server.
+   - `apps/worker/src/worker/main.py`: Gọi `setup_logging()` khi bắt đầu lắng nghe hàng đợi RabbitMQ/Memory.
+   - `apps/scheduler/src/scheduler/main.py`: Gọi `setup_logging()` khi khởi chạy APScheduler engine.
+3. **Cơ chế kế thừa phân cấp (Hierarchical Logger)**:
+   - Nhờ cấu hình áp dụng trực tiếp lên `root = logging.getLogger()`, mọi module con trong toàn bộ codebase chỉ cần khai báo:
+     ```python
+     logger = logging.getLogger(__name__)
+     ```
+     sẽ tự động kế thừa format thời gian chuẩn, log level và stream handler mà không phải cấu hình lặp lại.
+4. **Định dạng Log Đồng Nhất Toàn Monorepo**:
+   - Cấu trúc: `YYYY-MM-DD HH:MM:SS [LEVEL] logger_name: Nội dung thông điệp`
+   - Ví dụ thực tế từ các dịch vụ:
+     ```text
+     2026-09-24 17:15:30 [INFO] scheduler.tasks.storage_sync: StorageSyncTask tick completed: 5 synced, 0 failed.
+     2026-09-24 17:15:45 [INFO] worker.dispatcher: Ingestion job 01923e4f-bc1a-7000-... processed successfully.
+     2026-09-24 17:16:00 [INFO] chat_api.modules.chat_sessions: Created session with id: 01923e50-1234-7000-...
+     ```
+
+#### Bảng So Sánh Các Phương Pháp Ghi Log Trong Hệ Thống:
+
+| Tiêu Chí So Sánh | Dùng `print()` Tùy Tiện | Ghi Tệp Cục Bộ (`*.log`) | Chuẩn Stream `sys.stdout` (`core.logging`) |
+| :--- | :--- | :--- | :--- |
+| **Định dạng & Mốc thời gian** | ❌ Không có timestamp, không có format | ⚠️ Có format nhưng cấu hình phân mảnh | ✔️ Chuẩn hóa RFC `%(asctime)s [%(levelname)s]` |
+| **Phân cấp Mức độ (Log Level)** | ❌ Không có (mọi thứ in ra lẫn lộn) | ✔️ Có (DEBUG, INFO, WARN, ERROR) | ✔️ Có đầy đủ, lọc động theo cấu hình môi trường |
+| **Nhận diện Nguồn gốc (Caller)** | ❌ Không biết module/file nào phát sinh | ⚠️ Phải tự viết cấu hình cho từng logger | ✔️ Tự động kế thừa tên module `%(name)s` qua phân cấp |
+| **Vận hành trên Docker/K8s** | ❌ Trộn lẫn stdout/stderr, khó parse | ❌ Nguy cơ đầy đĩa container, mất log khi reboot | ✔️ **Chuẩn Twelve-Factor App**: Container Engine thu thập trực tiếp |
+| **Tích hợp Log Collector (ELK/Loki)**| ❌ Cực kỳ khó khăn và phân mảnh | ⚠️ Phải mount volume, cấu hình Agent đọc file | ✔️ **Tự động streaming** qua stdout driver (Promtail, Fluentbit) |
+| **Hiệu năng & Tranh chấp I/O** | ⚠️ Không tối ưu cho production | ❌ Chậm do I/O đĩa, dễ xung đột lock file giữa các process | ✔️ Cực nhanh, luồng stream chuẩn không gây nghẽn tiến trình |
+
+#### Bảng Ma Trận Áp Dụng Logging Tại 3 Dịch Vụ:
+
+| Dịch Vụ | File Entrypoint | Root Logger | Logger Con Tiêu Biểu | Mục Đích Giám Sát & Vận Hành |
+| :--- | :--- | :--- | :--- | :--- |
+| **`apps/chat-api`** | `chat_api/main.py` | `setup_logging()` | `chat_api.modules.workspaces`<br>`chat_api.shared.auth` | Theo dõi request HTTP, luồng xác thực token, mã lỗi API, latency xử lý. |
+| **`apps/worker`** | `worker/main.py` | `setup_logging()` | `worker.dispatcher`<br>`worker.ingestion` | Giám sát tiến độ parse PDF (Docling), OCR, băm chunks, retry hàng đợi RabbitMQ. |
+| **`apps/scheduler`** | `scheduler/main.py` | `setup_logging()` | `scheduler.tasks.storage_sync`<br>`scheduler.tasks.heartbeat` | Theo dõi chu kỳ retry upload MinIO, liveness probe Docker, dọn dẹp temp cuối tháng. |
 
 ---
 
@@ -237,7 +338,7 @@ with self.uow:
 ### 4.1. Luồng Upload và Ingestion tài liệu (Bất đồng bộ)
 
 ```text
-Client                chat-api                  Storage / Queue               document-worker
+Client                chat-api                  Storage / Queue                 apps/worker
   │                       │                            │                             │
   │── POST /documents ───►│                            │                             │
   │   (file bytes)        │── Lưu file gốc ───────────►│                             │
@@ -259,7 +360,7 @@ Client                chat-api                  Storage / Queue               do
 ```
 
 1. **Idempotent**: Hệ thống băm mã `content_hash` (SHA-256) của file. Nếu trong cùng workspace đã tồn tại file cùng hash, hệ thống tái sử dụng ngay bản ghi cũ, tránh parse và embedding trùng lặp.
-2. **Không chặn HTTP**: Toàn bộ OCR, chunking và embedding nặng do `document-worker` xử lý ngoài background. Client nhận ngay mã `job_id` để polling hoặc theo dõi tiến trình.
+2. **Không chặn HTTP**: Toàn bộ OCR, chunking và embedding nặng do `apps/worker` xử lý ngoài background. Client nhận ngay mã `job_id` để polling hoặc theo dõi tiến trình.
 
 ---
 
@@ -292,31 +393,39 @@ Client                chat-api                  RAG Core (rag-core)          Pos
 
 ## 5. Cơ sở dữ liệu và Phân tầng lưu trữ
 
-Hệ thống sử dụng **PostgreSQL 16** tích hợp extension **`pgvector`** và **Full-Text Search**, gồm 11 bảng chuẩn hóa:
+Hệ thống sử dụng **PostgreSQL 16** tích hợp extension **`pgvector`** và **Full-Text Search**, gồm 15 bảng chuẩn hóa (11 bảng nghiệp vụ RAG cốt lõi + 4 bảng IAM/RBAC):
 
 ```text
 ┌───────────────────────┐         ┌───────────────────────┐
-│      workspaces       │◄────────┤   workspace_members   │
-└───────────┬───────────┘         └───────────────────────┘
-            │
-            ├──────────────────────────────┐
-            ▼                              ▼
-┌───────────────────────┐      ┌───────────────────────┐
-│       documents       │      │     chat_sessions     │
-└───────────┬───────────┘      └───────────┬───────────┘
-            │                              │
-            ├───────────────┐              ├───────────────────────┐
-            ▼               ▼              ▼                       ▼
-┌──────────────────┐ ┌─────────────┐ ┌───────────────────┐ ┌───────────────┐
-│  ingestion_jobs  │ │   chunks    │ │ session_documents │ │   messages    │
-└──────────────────┘ └──────┬──────┘ └───────────────────┘ └───────┬───────┘
-                            │                                      │
-                            │         ┌────────────────────┐       │
-                            └────────►│ message_citations  │◄──────┤
-                                      └────────────────────┘       ▼
+│      workspaces       │◄────────┤   workspace_members   │◄──────────────┐
+└───────────┬───────────┘         └───────────┬───────────┘               │
+            │                                 │                           │
+            ├──────────────────────────────┐  │ (thuộc role)              │
+            ▼                              ▼  ▼                           │
+┌───────────────────────┐      ┌───────────────────────┐      ┌───────────┴───────────┐
+│       documents       │      │     chat_sessions     │      │         roles         │
+└───────────┬───────────┘      └───────────┬───────────┘      └───────────┬───────────┘
+            │                              │                              │
+            ├───────────────┐              ├───────────────────────┐      ▼
+            ▼               ▼              ▼                       ▼  ┌───────────────────────┐
+┌──────────────────┐ ┌─────────────┐ ┌───────────────────┐ ┌───────────────┐ │   role_permissions    │
+│  ingestion_jobs  │ │   chunks    │ │ session_documents │ │   messages    │ └───────────┬───────────┘
+└──────────────────┘ └──────┬──────┘ └───────────────────┘ └───────┬───────┘             │
+                            │                                      │                     ▼
+                            │         ┌────────────────────┐       │          ┌───────────────────────┐
+                            └────────►│ message_citations  │◄──────┤          │      permissions      │
+                                      └────────────────────┘       ▼          └───────────────────────┘
                                                            ┌───────────────┐
                                                            │message_feedback
                                                            └───────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                            HỆ THỐNG XÁC THỰC NGƯỜI DÙNG (IAM)                               │
+├─────────────────────────────────────────────────────────────────────────────────────────────┤
+│   users ──────────────────► user_sessions (Token SHA-256, active_workspace_id, Hạn dùng)    │
+│     │                                                                                       │
+│     └─────────────────────► workspace_members (Liên kết người dùng vào Workspace cụ thể)    │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 1. **Bảng `chunks`**:
@@ -331,7 +440,27 @@ Hệ thống sử dụng **PostgreSQL 16** tích hợp extension **`pgvector`** 
 
 ## 6. GIẢI THÍCH VÌ SAO: Các quyết định thiết kế cốt lõi (Rationale)
 
-Dưới đây là lời giải thích chi tiết cho từng quyết định kiến trúc được lựa chọn:
+Dưới đây là bảng tổng hợp các mô hình đa nhiệm cốt lõi và lời giải thích chi tiết cho từng quyết định kiến trúc được lựa chọn trong hệ thống:
+
+### 📌 Bảng Tổng Quan So Sánh Các Mô Hình Đa Nhiệm (Concurrency Strategy):
+
+> [!IMPORTANT]
+> **Phân biệt rõ 2 cấp độ kiến trúc để không bị nhầm lẫn:**
+> 1. **Cấp độ Hạ tầng / Hệ điều hành (OS Process / Docker Level)**: Cả 3 thành phần (`apps/chat-api`, `apps/scheduler`, `apps/worker`) đều là **3 Tiến trình (Process / Container) độc lập hoàn toàn** (xem file `deploy/docker-compose.prod.yml`). Tiến trình này chết không ảnh hưởng đến tiến trình kia.
+> 2. **Cấp độ Đa nhiệm Bên Trong (In-Process Concurrency)**: Bảng dưới đây phân định **bên trong** mỗi tiến trình độc lập đó, Python sử dụng kỹ thuật đa nhiệm nào để tối ưu hóa tài nguyên phần cứng.
+
+| Tiêu Chí Phân Định | Multi-threading (Luồng) | Async I/O (`asyncio`) | Multi-processing (Tiến trình) |
+| :--- | :--- | :--- | :--- |
+| **Tiến trình OS độc lập (Docker)** | **`apps/chat-api`** (`rag_api_prod`) | **`apps/scheduler`** (`rag_scheduler_prod`) | **`apps/worker`** (`rag_worker_prod`) |
+| **Cơ chế chạy bên trong Process** | FastAPI Threadpool Worker (`def`) | Single-threaded AsyncIOScheduler Event Loop | Child Process Pool / Multi-worker Cluster |
+| **Bản chất luồng thực thi** | Nhiều OS thread trong 1 process | DUY NHẤT 1 OS thread (Event Loop) | Nhiều OS process độc lập (True Parallelism) |
+| **Chia sẻ bộ nhớ (RAM)** | Chung vùng nhớ trong Process API | Chung vùng nhớ trong Process Scheduler | Bộ nhớ cô lập hoàn toàn giữa các worker |
+| **Ảnh hưởng của GIL** | Bị khống chế mã Python, **nhả GIL khi I/O** | Chạy 1 thread nên **không xung đột GIL** | **Mỗi process có 1 GIL riêng** (Song song thật) |
+| **Đặc thù khối lượng công việc** | I/O-Bound (Chờ PostgreSQL, Redis) | I/O & Timers (Đếm giờ 15s/60s, Outbox S3) | CPU-Bound nặng (Docling PDF, OCR, Embeddings) |
+| **Tài nguyên & Trách nhiệm** | Cần phục vụ ngàn kết nối Web, độ trễ thấp | Cực nhẹ (< 50MB RAM), không cần tốn thread | Ngốn CPU/RAM (1.5GB RAM, 1.0 CPU), cần cách ly |
+| **Áp dụng nghiệp vụ cụ thể** | CQRS Handlers + SQLAlchemy SessionLocal | Heartbeat probe, Storage Retry, Cron tháng | Pipeline Ingestion tài liệu lớn, Vectorize |
+
+---
 
 ### 6.1. Vì sao chọn Modular Monolith (Vertical Slice) thay vì Layered (Horizontal)?
 - **Vấn đề của Layered Architecture truyền thống**: Khi tổ chức thư mục theo kiểu `domain/`, `application/`, `infrastructure/`, `presentation/` ở cấp cao nhất, khi muốn sửa hoặc thêm một tính năng của `documents`, lập trình viên phải nhảy qua lại giữa 4 thư mục cách xa nhau. Khi dự án phình to lên 20-30 thực thể, code sẽ bị phân mảnh và rất khó kiểm soát.
@@ -369,12 +498,120 @@ Dưới đây là lời giải thích chi tiết cho từng quyết định ki�
 
 ---
 
-### 6.5. Vì sao tách riêng `chat-api`, `document-worker`, `rag-core` và `rag-document-pipeline`?
+### 6.5. Vì sao tách riêng `apps/chat-api`, `apps/worker`, `apps/scheduler` và các packages lõi?
 - **Khác biệt về vòng đời và tài nguyên**:
-  - `chat-api`: Cần I/O cao, độ trễ thấp, phục vụ người dùng thời gian thực (FastAPI async/threads).
-  - `document-worker`: Cần tính toán CPU/RAM lớn (chạy mô hình OCR, bóc tách bảng biểu, tính toán layout). Tách riêng worker giúp tác vụ parse PDF nặng 500 trang không bao giờ làm đơ hoặc sập API của người dùng đang chat.
+  - `apps/chat-api`: Cần I/O cao, độ trễ thấp, phục vụ người dùng thời gian thực (FastAPI async/threads).
+  - `apps/worker`: Cần tính toán CPU/RAM lớn (chạy mô hình Docling OCR, bóc tách bảng biểu, tính toán layout, vectorize). Tách riêng worker giúp tác vụ parse PDF nặng 500 trang không bao giờ làm đơ hoặc sập API của người dùng đang chat.
+  - `apps/scheduler`: Chạy chu kỳ định kỳ (cron/timers), siêu nhẹ, cách ly hoàn toàn để đảm bảo job định kỳ (retry sync S3, heartbeat) không phụ thuộc vào tình trạng của web server hay worker.
 - **Khả năng tái sử dụng (Reusability)**:
-  - `rag-document-pipeline` và `rag-core` được đóng gói thành các **Python Package chuẩn**. Sau này công ty có thể tái sử dụng 2 package này cho CLI tool, Batch evaluation script, hoặc các sản phẩm khác mà không phải sao chép code.
+  - `rag-document-pipeline`, `rag-core`, và `rag-contracts` được đóng gói thành các **Python Package chuẩn**. Sau này công ty có thể tái sử dụng các package này cho CLI tool, Batch evaluation script, hoặc các sản phẩm khác mà không phải sao chép code.
+- **Shared Kernel (`core`)**:
+  - Cung cấp hạ tầng chung (Database, Queue, Storage, CQRS, Security, Logging) để 3 ứng dụng không bị trùng lặp mã nguồn và tuân thủ chặt chẽ nguyên lý DRY (Don't Repeat Yourself).
+
+---
+
+### 6.6. Vì sao phân định ranh giới Async (Presentation/Guards/Streaming) vs Sync (Domain/UoW/Repositories)?
+
+Một câu hỏi kiến trúc kinh điển là: *"Tại sao trong cùng một dự án, có những chỗ dùng `async def` (như Guard, WorkspaceResolver, Scheduler) nhưng các Repository và CQRS Handler lại dùng `def` đồng bộ?"*
+
+Hệ thống RAG áp dụng mô hình phân tách ranh giới kỹ thuật nghiêm ngặt giữa **I/O Network Stream** và **Database Transactional Business Logic**:
+
+#### 1. Vì sao Tầng Presentation & Auth Guards (`guards.py`, `workspace_resolver.py`) dùng `async def`?
+- **Đọc luồng HTTP Network Stream từ Socket**:
+  Trong [workspace_resolver.py](../apps/chat-api/src/chat_api/shared/auth/workspace_resolver.py), để phân giải `workspace_id` từ JSON Payload của các request `POST` / `PUT`, hệ thống phải đọc raw bytes:
+  ```python
+  body_bytes = await request.body()
+  ```
+  FastAPI (dựa trên ASGI Starlette) quản lý việc nhận dữ liệu từ client dưới dạng bất đồng bộ qua mạng. Phương thức `request.body()` là một Coroutine bắt buộc phải `await` (Starlette không hỗ trợ đọc body đồng bộ). Khi bên trong có `await`, hàm bao bọc `resolve_workspace_id` **bắt buộc phải là `async def`**.
+- **FastAPI Guard & Dependency Injection Pipeline**:
+  Các Dependency Guard như [RequirePermission](../apps/chat-api/src/chat_api/shared/auth/guards.py) thực thi phương thức `async def __call__(self, request: Request, ...)` để có thể gọi `await resolve_workspace_id(request, auth)`. Điều này giúp việc xác thực và trích xuất ngữ cảnh diễn ra bất đồng bộ ngay trên luồng ASGI trước khi dispatch vào controller.
+- **Realtime SSE Streaming**:
+  Endpoint sinh câu trả lời chat stream từng token chữ về giao diện qua Server-Sent Events (SSE). Bắt buộc dùng `async def` để giữ đồng thời hàng nghìn kết nối socket mở mà không làm cạn kiệt thread pool.
+
+#### 2. Vì sao Tầng Domain, CQRS Handlers, UnitOfWork và Repositories dùng `def` đồng bộ?
+- **Cơ chế Threadpool tự động của FastAPI**:
+  Khi một route handler hoặc dependency được khai báo là `def` (đồng bộ), FastAPI tự động chuyển nó sang một luồng riêng trong **Worker Threadpool** (`anyio.to_thread.run_sync`). Do đó, các tác vụ tính toán hoặc truy vấn CSDL đồng bộ **hoàn toàn không làm nghẽn (non-blocking) Event Loop chính**.
+- **Tính an toàn tuyệt đối với SQLAlchemy ORM & Tránh lỗi `MissingGreenlet`**:
+  Trong [SqlAlchemyWorkspaceRepository](../apps/chat-api/src/chat_api/modules/workspaces/infrastructure/repository.py), các quan hệ thực thể được nạp tự nhiên (ví dụ: `orm.members`). Nếu dùng SQLAlchemy Async (`AsyncSession`), việc truy cập thuộc tính quan hệ (Lazy Loading) sẽ gây sập ứng dụng ngay lập tức với lỗi `sqlalchemy.exc.MissingGreenlet` trừ khi cấu hình eagerly loading rất phức tạp.
+- **Tính trong sáng và tốc độ kiểm thử (Blazing-Fast Testing)**:
+  Tầng Domain và Application giữ được tính thuần khiết của mô hình DDD, không bị "ô nhiễm" bởi các từ khóa `async` / `await` ở khắp mọi nơi. Việc triển khai `FakeUnitOfWork` và `FakeWorkspaceRepository` trên bộ nhớ RAM phục vụ Unit Test trở nên cực kỳ đơn giản, không cần bọc coroutine giả lập.
+
+#### Bảng Ma Trận Phân Định Ranh Giới Kỹ Thuật (Async vs Sync Matrix):
+
+| Thành Phần Hệ Thống | Mô Hình | Thư Viện / Cơ Chế | Lý Do Thiết Kế |
+| :--- | :---: | :--- | :--- |
+| **Auth Guards (`RequirePermission`)** | **`async`** | ASGI Starlette Request | Cần `await request.body()` để bóc tách payload JSON từ luồng mạng. |
+| **Workspace Resolver** | **`async`** | `await request.body()` | Đọc socket stream bất đồng bộ trước khi vào Controller. |
+| **SSE Streaming (Chat RAG)** | **`async`** | `EventSourceResponse` | Giữ hàng ngàn kết nối stream câu trả lời realtime với chi phí RAM cực thấp. |
+| **Scheduler Engine (`apps/scheduler`)** | **`async`** | `APScheduler (AsyncIOScheduler)` | Quản lý timers (15s, 60s, Cron), heartbeat không tốn tài nguyên thread. |
+| **CQRS Handlers (`commands`, `queries`)** | **`sync`** | FastAPI Threadpool | Chạy trên worker thread, tập trung vào nghiệp vụ, logic giao dịch ACID rõ ràng. |
+| **Unit of Work & Repositories** | **`sync`** | SQLAlchemy `SessionLocal` | Tránh `MissingGreenlet`, lazy-loading an toàn, unit test siêu tốc với Fake UoW. |
+| **Ingestion Worker (`apps/worker`)** | **`worker`** | Tiến trình nền riêng (Process) | Xử lý CPU-bound (Docling, OCR, Vectorize) tách rời hoàn toàn khỏi API. |
+
+---
+
+### 6.7. Python có phải ngôn ngữ đa luồng? Bản chất GIL và Chiến lược Đa nhiệm (Concurrency Strategy)
+
+Một thắc mắc nền tảng thường gặp khi làm việc với Python: *"Python có thực sự là ngôn ngữ đa luồng (Multi-threaded) hay không? Tại sao nhiều tài liệu lại nói Python chỉ chạy đơn luồng?"*
+
+Câu trả lời chính xác về mặt kỹ thuật: **Python hỗ trợ Multi-threading thật sự của hệ điều hành (Native OS Threads), nhưng bị kiểm soát bởi cơ chế GIL (Global Interpreter Lock).**
+
+#### 1. Ổ khóa GIL (Global Interpreter Lock) là gì?
+Trong trình thông dịch CPython chuẩn:
+- Mặc dù bạn có thể tạo hàng trăm thread bằng thư viện `threading`, **tại một thời điểm chỉ có duy nhất 1 thread được phép thực thi bytecode Python trên 1 tiến trình**.
+- **Đối với tác vụ CPU-Bound (tính toán nặng, AI, bóc tách tài liệu)**: Các luồng phải xếp hàng tranh chấp ổ khóa GIL, khiến đa luồng không thể tận dụng nhiều lõi CPU thật sự, thậm chí còn chạy chậm hơn do chi phí chuyển ngữ cảnh (context switching).
+
+#### 2. Vì sao FastAPI Threadpool Worker (`def`) lại đạt hiệu năng cao với Database? (Cơ chế Release GIL)
+Điểm mấu chốt nằm ở chỗ: **Khi đụng đến các tác vụ I/O (Mạng Socket, Ổ đĩa, Database), Python sẽ TỰ ĐỘNG NHẢ KHÓA GIL (Release GIL)!**
+1. **Thread 1** trong Worker Pool thực thi câu lệnh SQL: `session.query(ORMWorkspace)...` và gửi gói tin qua mạng tới PostgreSQL.
+2. Trong toàn bộ khoảng thời gian **chờ PostgreSQL tính toán và trả về kết quả**, Thread 1 **nhả ngay khóa GIL ra**.
+3. **Thread 2** lập tức chiếm lấy GIL để xử lý logic Python của một request khác từ người dùng.
+4. Khi PostgreSQL trả dữ liệu về qua socket, Thread 1 mới xin lại GIL để parse kết quả thành Python Entity.
+
+👉 Nhờ cơ chế này, **FastAPI Threadpool Worker (`anyio.to_thread.run_sync`) xử lý hàng ngàn truy vấn Database đồng thời cực kỳ mượt mà**, các luồng cùng nhau "chờ" I/O mạng mà không hề làm đóng băng nhau.
+
+#### 3. Ba Trụ Cột Đa Nhiệm Được Áp Dụng Trong Hệ Thống RAG
+
+Hệ thống RAG phân bổ chính xác 3 mô hình đa nhiệm của Python cho 3 phân hệ chuyên biệt:
+
+```text
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                               BA TRỤ CỘT ĐA NHIỆM TRONG RAG PLATFORM                             │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 1. Multi-threading (Threadpool Workers)                                                          │
+│    • Vị trí: apps/chat-api (CQRS Command/Query Handlers, Database Repositories)                  │
+│    • Cơ chế: Luồng OS thật, tự động nhả GIL khi chờ PostgreSQL socket                             │
+│    • Ưu điểm: Tận dụng hoàn hảo SQLAlchemy ORM Session đồng bộ, tránh lỗi MissingGreenlet         │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 2. Async I/O (Single-threaded Event Loop - Cooperative Multitasking)                             │
+│    • Vị trí: apps/scheduler (APScheduler) và FastAPI SSE Streaming (Chat RAG)                    │
+│    • Cơ chế: Duy nhất 1 luồng OS, dùng từ khóa await để nhường quyền khi chờ mạng                │
+│    • Ưu điểm: Siêu nhẹ (< 50MB RAM), giữ hàng ngàn kết nối stream realtime và bộ đếm giờ (timers)│
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 3. Multi-processing (True Parallelism - Đa tiến trình độc lập)                                   │
+│    • Vị trí: apps/worker (Ingestion Worker Cluster)                                              │
+│    • Cơ chế: Mỗi worker là 1 OS Process độc lập, có Python Interpreter và GIL riêng biệt         │
+│    • Ưu điểm: Chạy song song thực sự trên nhiều CPU Core cho tác vụ CPU-bound nặng (Docling PDF, │
+│               OCR, Chunking, Embedding) mà không bao giờ làm đơ hay nghẽn Web API                │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Bảng So Sánh Chi Tiết (OS Process vs In-Process Concurrency):
+
+| Tiêu Chí Phân Định | Multi-threading (Luồng) | Async I/O (`asyncio`) | Multi-processing (Tiến trình) |
+| :--- | :--- | :--- | :--- |
+| **Tiến trình OS độc lập (Docker)** | **`apps/chat-api`** (`rag_api_prod`) | **`apps/scheduler`** (`rag_scheduler_prod`) | **`apps/worker`** (`rag_worker_prod`) |
+| **Cơ chế chạy bên trong Process** | FastAPI Threadpool Worker (`def`) | Single-threaded AsyncIOScheduler Event Loop | Child Process Pool / Multi-worker Cluster |
+| **Bản chất luồng thực thi** | Nhiều OS thread trong 1 process | DUY NHẤT 1 OS thread (Event Loop) | Nhiều OS process độc lập (True Parallelism) |
+| **Chia sẻ bộ nhớ (RAM)** | Chung vùng nhớ trong Process API | Chung vùng nhớ trong Process Scheduler | Bộ nhớ cô lập hoàn toàn giữa các worker |
+| **Ảnh hưởng của GIL** | Bị khống chế mã Python, **nhả GIL khi I/O** | Chạy 1 thread nên **không xung đột GIL** | **Mỗi process có 1 GIL riêng** (Song song thật) |
+| **Đặc thù khối lượng công việc** | I/O-Bound (Chờ PostgreSQL, Redis) | I/O & Timers (Đếm giờ 15s/60s, Outbox S3) | CPU-Bound nặng (Docling PDF, OCR, Embeddings) |
+| **Tài nguyên & Trách nhiệm** | Cần phục vụ ngàn kết nối Web, độ trễ thấp | Cực nhẹ (< 50MB RAM), không cần tốn thread | Ngốn CPU/RAM (1.5GB RAM, 1.0 CPU), cần cách ly |
+| **Áp dụng nghiệp vụ cụ thể** | CQRS Handlers + SQLAlchemy SessionLocal | Heartbeat probe, Storage Retry, Cron tháng | Pipeline Ingestion tài liệu lớn, Vectorize |
+
+> [!NOTE]
+> **Xu hướng tương lai (Python 3.13+ Free-threaded PEP 703)**:
+> Từ Python 3.13, phiên bản thử nghiệm gỡ bỏ hoàn toàn GIL (`python -X gil=0`) đã được giới thiệu. Trong các phiên bản tương lai (Python 3.14 - 3.15), Multi-threading trong Python sẽ chính thức đạt khả năng chạy song song mã Python thực thụ trên nhiều lõi CPU mà không còn bị rào cản bởi GIL.
 
 ---
 
@@ -387,6 +624,28 @@ Dưới đây là lời giải thích chi tiết cho từng quyết định ki�
 | **ORM & Database** | SQLAlchemy 2.0 + PostgreSQL 16 | ORM hiện đại, type-hint đầy đủ, quản lý transaction an toàn. |
 | **Vector Search** | `pgvector` (HNSW Index) | Tìm kiếm vector cosine tốc độ cao tích hợp sẵn ngay trong PostgreSQL, giảm thiểu chi phí vận hành cụm vector DB riêng biệt. |
 | **Full-Text Search** | PostgreSQL TSVector + GIN Index | Tìm kiếm từ khóa chuẩn xác kết hợp với Dense Search tạo nên Hybrid Search. |
+| **Hàng Đợi Thông Điệp** | RabbitMQ (`aio-pika`) / Memory | Xử lý hàng đợi Ingestion bất đồng bộ giữa `chat-api` và `worker`, hỗ trợ retry và ack an toàn. |
+| **Lưu Trữ Tệp Tin** | MinIO / AWS S3 & Local Storage | Object Storage lưu trữ file gốc (PDF, DOCX, TXT) an toàn ngoài cơ sở dữ liệu. |
+| **Background Scheduler** | APScheduler (`AsyncIOScheduler`) | Động cơ lập lịch định kỳ độc lập: đồng bộ MinIO retry, Docker heartbeat probe, dọn rác temp. |
+| **Bóc Tách & OCR Tài Liệu** | Docling / PyMuPDF + Chunking Engine | Trích xuất văn bản, bảng biểu, bounding-box tọa độ trang, phân đoạn semantic / heading-aware chunking. |
+| **Mô Hình AI & LLM** | Google Gemini (`gemini-2.5-flash`) / Embeddings | Sinh câu trả lời RAG, trích dẫn citation chính xác và tạo vector biểu diễn 768 chiều (`text-embedding-004`). |
+| **Reverse Proxy & Web Server** | Nginx | Reverse Proxy xử lý SSL termination, Rate Limiting, tắt buffer cho SSE Realtime Streaming (xem chi tiết tại [docs/nginx_cloudflare_architecture.md](nginx_cloudflare_architecture.md)). |
+| **Edge Network & Bảo Vệ** | Cloudflare | Anycast DNS, Global CDN, WAF, Chống DDoS và bảo vệ giấu IP gốc (Origin Protection). |
 | **Di chuyển cấu trúc DB**| Alembic | Quản lý phiên bản migration cơ sở dữ liệu rõ ràng, có thể rollback. |
 | **Quản lý cấu hình** | `pydantic-settings` | Tự động parse và validate biến môi trường `.env`. |
+| **Logging Tập Trung** | `core.logging (setup_logging)` | Chuẩn hóa định dạng log RFC ra `stdout`, phục vụ container logging (Twelve-Factor App). |
 | **Kiểm thử** | `pytest` + `FastAPI TestClient` | Kiểm thử tự động từ cấp độ Unit test Handler đến Integration test REST endpoints. |
+
+---
+
+## 8. Danh mục tài liệu kiến trúc chuyên sâu (Architecture Deep-Dives)
+
+Để tìm hiểu chi tiết các khía cạnh kỹ thuật cụ thể, tham khảo các tài liệu chuyên đề sau:
+1. 🌐 [Kiến Trúc Mạng Ngoại Vi: Nginx & Cloudflare (docs/nginx_cloudflare_architecture.md)](nginx_cloudflare_architecture.md): Hướng dẫn cấu hình Reverse Proxy, SSE streaming buffering, WAF, và 4 giải pháp Origin Protection.
+2. 🚀 [Kiến Trúc Triển Khai CI/CD & Production (docs/cicd_deployment_architecture.md)](cicd_deployment_architecture.md): Quy trình GitHub Actions Runner, Docker Buildx, GHCR và Zero-Overhead Rollout trên VPS 1 Core.
+3. 📬 [Kiến Trúc Hàng Đợi RabbitMQ (docs/rabbitmq_architecture.md)](rabbitmq_architecture.md): Thiết kế Ingestion Queue, cơ chế Retry Dead-Letter, và Worker Dispatching.
+4. ⏰ [Kiến Trúc Động Cơ Lập Lịch Scheduler (docs/scheduler_architecture.md)](scheduler_architecture.md): Động cơ AsyncIOScheduler, cơ chế Storage Sync Retry, Heartbeat Probe và Housekeeping.
+5. 🗄️ [Kiến Trúc Lưu Trữ Storage (docs/storage_architecture.md)](storage_architecture.md): Thiết kế phân tầng lưu trữ S3/MinIO, Local Storage, và cơ chế Outbox Pattern.
+6. 📊 [Thiết Kế Cơ Sở Dữ Liệu & pgvector (docs/database_design.md)](database_design.md): Chi tiết 15 bảng, schema migrations, pgvector HNSW cosine index và Full-Text Search TSVector.
+7. 🛡️ [Vòng Đời & Luồng Xử Lý Request Nội Tại Của Nginx (docs/nginx_request_lifecycle.md)](nginx_request_lifecycle.md): 11 pha xử lý (Phases), cơ chế Leaky Bucket trong Shared Memory, và phân nhánh SSE Passthrough vs Gzip Buffering.
+

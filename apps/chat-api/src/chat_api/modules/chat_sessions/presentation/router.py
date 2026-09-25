@@ -37,7 +37,7 @@ from chat_api.shared.auth import (
 )
 from core.exceptions import ForbiddenException
 from core.queue.port import IngestionQueuePort
-from core.storage.port import ObjectStoragePort
+from core.storage import ObjectStoragePort
 
 router = APIRouter(
     prefix="/chat-sessions",

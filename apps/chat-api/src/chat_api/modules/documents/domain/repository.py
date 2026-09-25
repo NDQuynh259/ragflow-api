@@ -44,3 +44,8 @@ class DocumentRepository(ABC):
     @abstractmethod
     def delete(self, document_id: uuid.UUID) -> bool:
         pass
+
+    @abstractmethod
+    def update_storage_uri(self, old_uri: str, new_uri: str) -> bool:
+        """Update storage_uri for any documents matching old_uri upon synchronization."""
+        pass

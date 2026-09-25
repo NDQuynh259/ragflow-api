@@ -13,11 +13,12 @@ logger = logging.getLogger("worker")
 
 
 async def run_worker() -> None:
-    """Initialize logging, setup dispatcher, and start robust consumer."""
+    """Initialize logging, setup dispatcher, and start robust RabbitMQ consumer."""
     setup_logging()
     dispatcher = build_dispatcher()
     consumer = AsyncRabbitMQConsumer(dispatcher=dispatcher)
-    logger.info("Starting unified background worker...")
+
+    logger.info("Starting background ingestion worker...")
     await consumer.run()
 
 

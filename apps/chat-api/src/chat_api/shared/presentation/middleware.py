@@ -9,6 +9,7 @@ from core.exceptions import (
     DomainException,
     DomainValidationException,
     EntityNotFoundException,
+    FileTooLargeException,
     ForbiddenException,
     ResourceConflictException,
     UnauthenticatedException,
@@ -46,6 +47,13 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def forbidden_handler(request: Request, exc: ForbiddenException) -> JSONResponse:
         return JSONResponse(
             status_code=403,
+            content={"error": exc.message, "details": exc.details},
+        )
+
+    @app.exception_handler(FileTooLargeException)
+    async def file_too_large_handler(request: Request, exc: FileTooLargeException) -> JSONResponse:
+        return JSONResponse(
+            status_code=413,
             content={"error": exc.message, "details": exc.details},
         )
 

@@ -37,13 +37,12 @@ from chat_api.modules.workspaces.infrastructure.repository import (
 from chat_api.shared.infrastructure.database.uow import register_repository
 from chat_api.shared.infrastructure.rag import RAGEngineAdapter, RAGEnginePort
 from core.queue import BackgroundQueueAdapter, IngestionQueuePort, RabbitMQQueueAdapter
-from core.storage.local import LocalStorageAdapter
-from core.storage.port import ObjectStoragePort
+from core.storage import ObjectStoragePort, create_storage_adapter
 
 # ---------------------------------------------------------------------------
 # Singleton adapter instances (created once at import time)
 # ---------------------------------------------------------------------------
-_storage = LocalStorageAdapter()
+_storage = create_storage_adapter(settings)
 _queue: IngestionQueuePort = (
     RabbitMQQueueAdapter() if getattr(settings, "RABBITMQ_URL", None) else BackgroundQueueAdapter()
 )

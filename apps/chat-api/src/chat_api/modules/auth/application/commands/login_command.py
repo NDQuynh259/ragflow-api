@@ -8,11 +8,7 @@ from datetime import UTC, datetime, timedelta
 
 from chat_api.modules.auth.domain.entity import UserSession
 from chat_api.modules.users.domain.entity import User
-from chat_api.modules.workspaces.domain.entity import (
-    Workspace,
-    WorkspaceMember,
-    WorkspaceRole,
-)
+from chat_api.modules.workspaces.application import WorkspaceProvisioningService
 from chat_api.shared.infrastructure.database import UnitOfWork
 from core.cqrs import Command, command_handler
 from core.exceptions import UnauthenticatedException
@@ -66,20 +62,7 @@ class LoginHandler:
         if user_workspaces:
             return user_workspaces[0].id
 
-        clean_name = user.full_name or user.email.split("@")[0]
-        ws = Workspace(
-            name=f"{clean_name}'s Workspace",
-            slug=f"workspace-{user.id.hex[:8]}",
-            members=[],
-        )
-        ws.members.append(
-            WorkspaceMember(
-                workspace_id=ws.id,
-                user_id=user.id,
-                role=WorkspaceRole.OWNER,
-            )
-        )
-        self.uow.workspaces.save(ws)
+        ws = WorkspaceProvisioningService(self.uow).create_default_workspace(user)
         return ws.id
 
     def _create_session(
