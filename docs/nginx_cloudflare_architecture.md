@@ -51,14 +51,66 @@ flowchart TD
 
 ---
 
-## 2. Nginx - Reverse Proxy Cốt Lõi Tại Máy Chủ
+## 2. Ba Triết Lý Vàng Của Kiến Trúc Web Server & Bất Đồng Bộ Hiện Đại
 
-### 2.1. Bản Chất Kỹ Thuật Của Nginx
+Để một hệ thống web có thể phục vụ hàng vạn kết nối đồng thời trên cấu hình phần cứng khiêm tốn (như VPS 1-2 vCPU), toàn bộ kiến trúc từ **Nginx** đến **FastAPI / Uvicorn** đều được xây dựng dựa trên 3 trụ cột cốt tử:
+
+```text
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│              BA TRIẾT LÝ VÀNG CỦA KIẾN TRÚC WEB SERVER & ASYNC HIỆN ĐẠI                          │
+├──────────────────────────────┬──────────────────────────────┬────────────────────────────────────┤
+│ 1. TỐI GIẢN PROCESS          │ 2. NON-BLOCKING I/O          │ 3. CÔ LẬP BLOCKING                 │
+│ "Đừng tạo ra thứ không cần.  │ "Đừng chờ đợi, tận dụng      │ "Khi bắt buộc phải chờ, đẩy nó     │
+│ Vài Worker gánh vác toàn bộ  │ thời gian rảnh để phục vụ    │ ra khỏi đường đi chính             │
+│ Server."                     │ hàng nghìn kết nối khác."    │ (Thread Pool)."                    │
+└──────────────────────────────┴──────────────────────────────┴────────────────────────────────────┘
+```
+
+### 2.1. Trụ Cột 1: TỐI GIẢN PROCESS
+> *"Đừng tạo ra thứ không cần. Vài Worker gánh vác toàn bộ Server."*
+
+- **Cách làm cũ (Sai lầm kinh điển - Apache mpm_prefork / CGI)**:
+  - Cứ mỗi người dùng kết nối tới, hệ điều hành lại tạo ra một Process hoặc Thread mới.
+  - Khi có 1.000 người kết nối đồng thời, hệ điều hành phải gánh 1.000 Process riêng biệt.
+  - **Hậu quả**: Tràn bộ nhớ RAM (Out Of Memory - OOM), và CPU mất tới 70-80% năng lực chỉ để làm việc vô ích là "chuyển đổi ngữ cảnh" (Context Switching) giữa các tiến trình thay vì xử lý dữ liệu thực tế.
+- **Triết lý hiện đại (Nginx & Uvicorn)**:
+  - **Nginx**: Chỉ tạo số lượng Worker Process bằng đúng số nhân CPU (`worker_processes auto;`). Máy 2 Core thì chạy đúng 2 Worker, máy 4 Core chạy 4 Worker.
+  - **FastAPI trong Docker**: Container `rag_chat_api_prod` chỉ chạy duy nhất 1 tiến trình Uvicorn phục vụ ứng dụng.
+  - **Hiệu quả**: Loại bỏ hoàn toàn chi phí tạo process vô tội vạ, RAM tiêu tốn chỉ vài chục MB nhưng một Worker có thể giữ hàng vạn kết nối socket mở liên tục.
+
+### 2.2. Trụ Cột 2: NON-BLOCKING I/O
+> *"Đừng chờ đợi, tận dụng thời gian rảnh để phục vụ hàng nghìn kết nối khác."*
+
+- **Bản chất**: 90% thời gian hoạt động của một Web Server là **ngồi chờ đợi**:
+  - Chờ mạng truyền tải gói tin từ điện thoại người dùng (mạng 3G/4G/WiFi chập chờn).
+  - Chờ cơ sở dữ liệu PostgreSQL thực thi câu lệnh SQL.
+  - Chờ mô hình AI/LLM (Gemini Flash) suy nghĩ và sinh câu trả lời.
+- **Cơ chế hoạt động**:
+  - **Nếu dùng Blocking (Đồng bộ truyền thống)**: Một luồng ngồi "đóng băng" chờ dữ liệu đến thì không thể làm việc khác, gây lãng phí tài nguyên nghiêm trọng.
+  - **Dùng Non-blocking (Event Loop + `epoll` trên Linux / `kqueue` trên BSD)**: Khi kết nối đang chờ dữ liệu, Nginx hoặc Uvicorn đăng ký sự kiện vào nhân Linux rồi **lập tức quay sang xử lý request của người khác**. Khi nào có dữ liệu về, hệ điều hành sẽ "gõ cửa" báo để quay lại xử lý tiếp.
+  - **Hiệu quả**: Một luồng duy nhất có thể luân phiên phục vụ hàng ngàn kết nối cùng lúc mà không một kết nối nào phải xếp hàng chờ đợi vô ích.
+
+### 2.3. Trụ Cột 3: CÔ LẬP BLOCKING
+> *"Khi bắt buộc phải chờ, đẩy nó ra khỏi đường đi chính (Thread Pool)."*
+
+- **Tử huyệt của Non-blocking I/O**:
+  - Vì cả server chỉ vận hành dựa trên 1 Event Loop chính (Single Thread), nếu bạn lỡ viết một đoạn code "chạy nặng" hoặc "bắt buộc phải chờ" (ví dụ: băm mật khẩu `bcrypt`, đọc ghi file nặng trên đĩa, truy vấn database đồng bộ), **toàn bộ Event Loop sẽ bị đóng băng (Freeze)**! Lúc này, hàng ngàn người dùng khác đang kết nối vào server đều bị đứng hình theo.
+- **Giải pháp "Cô lập"**:
+  - Bất kỳ tác vụ nào mang tính chất Blocking hoặc CPU-bound nặng **bắt buộc phải bị đẩy ra khỏi làn đường chính**, đưa vào một **Worker Thread Pool riêng** chạy ngầm ở làn phụ.
+- **Ứng dụng cụ thể trong dự án RAG của chúng ta**:
+  1. **Tầng API (FastAPI)**: Khi bạn viết các hàm Repositories và CQRS Handlers bằng `def` đồng bộ (thao tác SQLAlchemy với PostgreSQL), FastAPI **tự động đẩy chúng sang Thread Pool riêng** (`anyio.to_thread.run_sync`), giữ cho Event Loop chính luôn thông thoáng để stream SSE token realtime cho người dùng.
+  2. **Tầng Ingestion Worker**: Toàn bộ việc bóc tách tài liệu nặng (Docling PDF, OCR, Vectorize) được **cô lập hoàn toàn sang một tiến trình riêng (`apps/worker`)**, không bao giờ để nó chạm vào luồng xử lý Web API.
+
+---
+
+## 3. Nginx - Reverse Proxy Cốt Lõi Tại Máy Chủ
+
+### 3.1. Bản Chất Kỹ Thuật Của Nginx
 - **Kiến trúc hướng sự kiện (Event-driven Non-blocking)**: Nginx được viết bằng ngôn ngữ C thuần túy. Khác với kiến trúc cũ (mỗi request tạo một process/thread), Nginx sử dụng `epoll` (Linux) hoặc `kqueue` (BSD) trên một số ít worker process tương ứng với số lõi CPU.
 - **Tiêu tốn tài nguyên cực thấp**: Một tiến trình Nginx chỉ tốn **15MB – 30MB RAM** nhưng có thể duy trì **50.000 – 100.000 kết nối đồng thời** mà không làm tăng tải CPU.
 - **Tách biệt ranh giới**: Nginx chịu trách nhiệm bảo vệ ứng dụng, quản lý SSL, nén gzip/brotli, ghi access log, rate limit, giúp mã nguồn Python (FastAPI) chỉ thuần túy tập trung vào nghiệp vụ.
 
-### 2.2. Xử Lý Sống Còn Cho Ứng Dụng RAG: Server-Sent Events (SSE) Streaming
+### 3.2. Xử Lý Sống Còn Cho Ứng Dụng RAG: Server-Sent Events (SSE) Streaming
 Trong hệ thống RAG, khi người dùng gửi câu hỏi, mô hình LLM (Gemini Flash) sẽ sinh câu trả lời và stream từng token chữ về giao diện qua Server-Sent Events (SSE). 
 
 > [!CAUTION]
@@ -73,7 +125,7 @@ proxy_http_version 1.1;
 chunked_transfer_encoding on;
 ```
 
-### 2.3. File Cấu Hình Nginx Hoàn Chỉnh Chuẩn Production (`rag-api.conf`)
+### 3.3. File Cấu Hình Nginx Hoàn Chỉnh Chuẩn Production (`rag-api.conf`)
 
 Dưới đây là cấu hình hoàn chỉnh đặt tại `/etc/nginx/sites-available/rag-api.conf`:
 
@@ -205,7 +257,7 @@ server {
 
 ---
 
-## 3. Cloudflare - Lớp Giáp Đám Mây Toàn Cầu
+## 4. Cloudflare - Lớp Giáp Đám Mây Toàn Cầu
 
 Cloudflare đóng vai trò là **Edge Network** đứng chắn trước Nginx.
 
@@ -234,7 +286,7 @@ Cloudflare đóng vai trò là **Edge Network** đứng chắn trước Nginx.
 
 ---
 
-## 4. Bốn Giải Pháp Khóa Chặt Bảo Mật: "Chỉ Cloudflare Mới Được Kết Nối Server"
+## 5. Bốn Giải Pháp Khóa Chặt Bảo Mật: "Chỉ Cloudflare Mới Được Kết Nối Server"
 
 Nếu bạn dùng Cloudflare nhưng để hở IP máy chủ, kẻ xấu có thể bỏ qua Cloudflare và tấn công thẳng vào Nginx. Dưới đây là 4 phương án từ cơ bản đến cao cấp nhất:
 
@@ -347,7 +399,7 @@ ssl_verify_client on;
 
 ---
 
-## 5. Ma Trận So Sánh & Hướng Dẫn Chọn Lựa Theo Kịch Bản Thực Tế
+## 6. Ma Trận So Sánh & Hướng Dẫn Chọn Lựa Theo Kịch Bản Thực Tế
 
 | Kịch Bản Ứng Dụng | Kiến Trúc Khuyến Nghị | Lý Do & Điểm Mạnh |
 | :--- | :--- | :--- |
@@ -357,7 +409,7 @@ ssl_verify_client on;
 
 ---
 
-## 6. Liên Kết Tài Liệu Liên Quan
+## 7. Liên Kết Tài Liệu Liên Quan
 - [Tài liệu Kiến trúc Tổng thể Master (docs/architecture.md)](architecture.md)
 - [Kiến trúc Triển khai CI/CD Production (docs/cicd_deployment_architecture.md)](cicd_deployment_architecture.md)
 - [Cơ chế Logging Chuẩn hóa Twelve-Factor (core/logging.py)](../core/src/core/logging.py)
