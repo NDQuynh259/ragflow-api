@@ -63,6 +63,30 @@ services:
     networks:
       - rag_dev_net
 
+  worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: rag_worker_dev
+    environment:
+      - DATABASE_URL=postgresql+psycopg://postgres:postgrespassword@postgres:5432/rag_db
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - DEBUG=true
+      - STORAGE_DIR=/app/output/storage
+    volumes:
+      - ../apps/worker/src:/app/apps/worker/src
+      - ../core/src:/app/core/src
+      - ../packages:/app/packages
+      - ../output/storage:/app/output/storage
+    command: ["python", "-m", "worker.main"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - rag_dev_net
+
 volumes:
   pgdata_dev:
   rabbitmq_data_dev:

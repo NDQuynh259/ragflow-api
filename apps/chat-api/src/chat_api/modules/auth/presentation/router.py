@@ -36,6 +36,7 @@ COOKIE_NAME = "session_token"
 COOKIE_MAX_AGE_SECONDS = 7 * 24 * 3600  # 7 days
 
 
+# region register
 @router.post(
     "/register",
     response_model=UserResponse,
@@ -62,6 +63,10 @@ def register(
     )
 
 
+# endregion
+
+
+# region login
 @router.post(
     "/login",
     response_model=AuthResponse,
@@ -110,6 +115,10 @@ def login(
     )
 
 
+# endregion
+
+
+# region switch_workspace
 @router.post(
     "/switch-workspace",
     response_model=SwitchWorkspaceResponse,
@@ -133,6 +142,10 @@ def switch_workspace(
     )
 
 
+# endregion
+
+
+# region logout
 @router.post(
     "/logout",
     response_model=MessageResponse,
@@ -152,6 +165,10 @@ def logout(
     return MessageResponse(message="Successfully logged out.")
 
 
+# endregion
+
+
+# region get_me
 @router.get(
     "/me",
     response_model=UserMeResponse,
@@ -187,3 +204,6 @@ def get_me(
         active_workspace_id=auth.session.active_workspace_id,
         workspaces=workspace_infos,
     )
+
+
+# endregion

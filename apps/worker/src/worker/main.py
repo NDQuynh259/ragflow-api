@@ -5,9 +5,13 @@ from __future__ import annotations
 import asyncio
 import logging
 
+from dotenv import load_dotenv
+
 from core.logging import setup_logging
 from core.queue import AsyncRabbitMQConsumer
 from worker.dispatcher import build_dispatcher
+
+load_dotenv()
 
 logger = logging.getLogger("worker")
 

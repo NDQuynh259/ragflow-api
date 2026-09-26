@@ -48,12 +48,13 @@ if (-not (Test-Path $VenvPython)) {
     uv sync
 }
 
-# 3. Optional DB & RabbitMQ Container Check
+# 3. Optional DB, RabbitMQ & MinIO Container Check
 if ($WithDb) {
-    Write-Host "[INFO] Starting PostgreSQL pgvector & RabbitMQ containers..." -ForegroundColor Yellow
+    Write-Host "[INFO] Starting PostgreSQL pgvector, RabbitMQ & MinIO containers..." -ForegroundColor Yellow
     $composeFile = Join-Path $RepoRoot "deploy\docker-compose.yml"
-    docker compose -f $composeFile up -d postgres rabbitmq
+    docker compose -f $composeFile up -d postgres rabbitmq minio
     Write-Host "[INFO] RabbitMQ Web UI: http://localhost:15672 (user: guest / pass: guest)" -ForegroundColor Yellow
+    Write-Host "[INFO] MinIO Web UI: http://localhost:9001 (user: minioadmin / pass: minioadmin)" -ForegroundColor Yellow
 }
 
 Set-Location $RepoRoot
@@ -70,6 +71,7 @@ if ($Worker) {
     Write-Host "[INFO] Swagger Docs: http://${Hostname}:${Port}/docs" -ForegroundColor Green
     Write-Host "[INFO] Press Ctrl+C to stop the server." -ForegroundColor Gray
     Write-Host "----------------------------------------------------" -ForegroundColor Gray
-    $Uvicorn = Join-Path $RepoRoot ".venv\Scripts\uvicorn.exe"
-    & $Uvicorn "chat_api.main:app" --reload --host $Hostname --port $Port
+    $Python = Join-Path $RepoRoot ".venv\Scripts\python.exe"
+    $DevScript = Join-Path $RepoRoot "scripts\dev.py"
+    & $Python $DevScript $Port
 }

@@ -24,7 +24,7 @@ class WorkspaceProvisioningService:
     def create_default_workspace(self, user: User) -> Workspace:
         """Create and persist a default workspace with OWNER role for a given user."""
         clean_name = user.full_name or user.email.split("@")[0]
-        ws_slug = f"workspace-{user.id.hex[:8]}"
+        ws_slug = f"workspace-{user.id.hex[-8:]}"
         workspace = Workspace(
             name=f"{clean_name}'s Workspace",
             slug=ws_slug,

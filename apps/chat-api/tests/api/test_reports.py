@@ -150,7 +150,7 @@ def test_reports_overview_requires_auth():
 
 def test_get_workspace_overview_report(auth_client_with_reports):
     client, ws_id = auth_client_with_reports
-    resp = client.get(f"/api/v1/reports/overview?workspace_id={ws_id}")
+    resp = client.get("/api/v1/reports/overview")
     assert resp.status_code == 200
 
     data = resp.json()
@@ -167,7 +167,7 @@ def test_get_workspace_overview_report(auth_client_with_reports):
 
 def test_get_workspace_daily_activity(auth_client_with_reports):
     client, ws_id = auth_client_with_reports
-    resp = client.get(f"/api/v1/reports/activity?workspace_id={ws_id}&days=7")
+    resp = client.get("/api/v1/reports/activity?days=7")
     assert resp.status_code == 200
 
     data = resp.json()

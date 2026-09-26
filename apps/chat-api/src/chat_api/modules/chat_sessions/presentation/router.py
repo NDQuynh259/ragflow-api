@@ -35,7 +35,6 @@ from chat_api.shared.auth import (
     RequirePermission,
     auth_openapi,
 )
-from core.exceptions import ForbiddenException
 from core.queue.port import IngestionQueuePort
 from core.storage import ObjectStoragePort
 
@@ -46,10 +45,12 @@ router = APIRouter(
 )
 
 
+# region create_session
 @router.post(
     "",
     response_model=SessionResponse,
     status_code=status.HTTP_201_CREATED,
+    summary="Create a new chat session",
     dependencies=[Depends(RequirePermission(Permission.SESSION_CREATE))],
     openapi_extra=auth_openapi(Permission.SESSION_CREATE),
 )
@@ -57,18 +58,8 @@ def create_session(
     payload: CreateSessionRequest,
     auth: CurrentAuth,
 ) -> SessionResponse:
-    target_workspace_id = (
-        payload.workspace_id
-        or auth.principal.active_workspace_id
-        or auth.session.active_workspace_id
-    )
-    if not target_workspace_id:
-        raise ForbiddenException(
-            "Active workspace is not set. Please switch or select an active workspace."
-        )
-
     cmd = CreateSessionCommand(
-        workspace_id=target_workspace_id,
+        workspace_id=auth.active_workspace_id,
         user_id=auth.principal.user_id,
         title=payload.title,
         rag_config=payload.rag_config,
@@ -77,31 +68,25 @@ def create_session(
     return SessionResponse(**result.__dict__)
 
 
+# endregion
+
+
+# region list_sessions
 @router.get(
     "",
     response_model=list[SessionResponse],
+    summary="List chat sessions in active workspace",
     dependencies=[Depends(RequirePermission(Permission.SESSION_READ))],
     openapi_extra=auth_openapi(Permission.SESSION_READ),
 )
 def list_sessions(
     auth: CurrentAuth,
-    workspace_id: uuid.UUID | None = Query(
-        None, description="Tùy chọn ghi đè Workspace ID, mặc định lấy từ active workspace"
-    ),
     user_id: uuid.UUID | None = Query(None, description="Filter by User ID"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ) -> list[SessionResponse]:
-    target_workspace_id = (
-        workspace_id or auth.principal.active_workspace_id or auth.session.active_workspace_id
-    )
-    if not target_workspace_id:
-        raise ForbiddenException(
-            "Active workspace is not set. Please switch or select an active workspace."
-        )
-
     query = ListSessionsQuery(
-        workspace_id=target_workspace_id,
+        workspace_id=auth.active_workspace_id,
         user_id=user_id,
         limit=limit,
         offset=offset,
@@ -110,9 +95,14 @@ def list_sessions(
     return [SessionResponse(**r.__dict__) for r in results]
 
 
+# endregion
+
+
+# region get_session
 @router.get(
     "/{session_id}",
     response_model=SessionResponse,
+    summary="Get chat session details by ID",
     dependencies=[Depends(RequirePermission(Permission.SESSION_READ))],
     openapi_extra=auth_openapi(Permission.SESSION_READ),
 )
@@ -125,9 +115,14 @@ def get_session(
     return SessionResponse(**result.__dict__)
 
 
+# endregion
+
+
+# region delete_session
 @router.delete(
     "/{session_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a chat session by ID",
     dependencies=[Depends(RequirePermission(Permission.SESSION_DELETE))],
     openapi_extra=auth_openapi(Permission.SESSION_DELETE),
 )
@@ -139,9 +134,14 @@ def delete_session(
     auth.command_bus.execute(cmd)
 
 
+# endregion
+
+
+# region attach_document
 @router.post(
     "/{session_id}/documents/attach",
     response_model=SessionResponse,
+    summary="Attach an existing document to session",
     dependencies=[Depends(RequirePermission(Permission.SESSION_UPDATE, Permission.DOCUMENT_READ))],
     openapi_extra=auth_openapi(
         Permission.SESSION_UPDATE,
@@ -158,9 +158,14 @@ def attach_document(
     return SessionResponse(**result.__dict__)
 
 
+# endregion
+
+
+# region upload_and_attach_document
 @router.post(
     "/{session_id}/documents",
     response_model=UploadDocumentResponse,
+    summary="Upload and attach a new document to session",
     dependencies=[
         Depends(RequirePermission(Permission.SESSION_UPDATE, Permission.DOCUMENT_CREATE))
     ],
@@ -185,6 +190,7 @@ async def upload_and_attach_document(
         filename=file.filename or "uploaded_document.pdf",
         content=content,
         mime_type=file.content_type or "application/pdf",
+        uploaded_by=auth.principal.user_id,
     )
     doc_dto = auth.command_bus.execute(
         upload_cmd,
@@ -200,3 +206,6 @@ async def upload_and_attach_document(
         document=DocumentResponse.model_validate(doc_dto),
         message="Tài liệu đã được tải lên, lập job xử lý và gắn vào phiên chat.",
     )
+
+
+# endregion

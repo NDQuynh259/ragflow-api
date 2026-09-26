@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
-
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
@@ -20,7 +18,6 @@ from chat_api.shared.auth import (
     auth_openapi,
 )
 from core.database import get_db
-from core.exceptions import ForbiddenException
 
 router = APIRouter(
     prefix="/reports",
@@ -34,6 +31,7 @@ def get_report_service(db: Session = Depends(get_db)) -> ReportService:
     return ReportService(db)
 
 
+# region get_workspace_overview_report
 @router.get(
     "/overview",
     response_model=WorkspaceOverviewReportResponse,
@@ -44,23 +42,15 @@ def get_report_service(db: Session = Depends(get_db)) -> ReportService:
 )
 def get_workspace_overview_report(
     auth: CurrentAuth,
-    workspace_id: uuid.UUID | None = Query(
-        None,
-        description="Tùy chọn Workspace ID cần xem báo cáo. Mặc định là active workspace của phiên làm việc.",
-    ),
     report_service: ReportService = Depends(get_report_service),
 ) -> WorkspaceOverviewReportResponse:
-    target_workspace_id = (
-        workspace_id or auth.principal.active_workspace_id or auth.session.active_workspace_id
-    )
-    if not target_workspace_id:
-        raise ForbiddenException(
-            "Active workspace is not set. Please switch or select an active workspace."
-        )
-
-    return report_service.get_workspace_overview(target_workspace_id)
+    return report_service.get_workspace_overview(auth.active_workspace_id)
 
 
+# endregion
+
+
+# region get_workspace_daily_activity_report
 @router.get(
     "/activity",
     response_model=WorkspaceDailyActivityResponse,
@@ -71,19 +61,10 @@ def get_workspace_overview_report(
 )
 def get_workspace_daily_activity_report(
     auth: CurrentAuth,
-    workspace_id: uuid.UUID | None = Query(
-        None,
-        description="Tùy chọn Workspace ID cần xem báo cáo. Mặc định là active workspace của phiên làm việc.",
-    ),
     days: int = Query(30, ge=1, le=90, description="Số ngày cần thống kê (1 - 90 ngày)"),
     report_service: ReportService = Depends(get_report_service),
 ) -> WorkspaceDailyActivityResponse:
-    target_workspace_id = (
-        workspace_id or auth.principal.active_workspace_id or auth.session.active_workspace_id
-    )
-    if not target_workspace_id:
-        raise ForbiddenException(
-            "Active workspace is not set. Please switch or select an active workspace."
-        )
+    return report_service.get_workspace_daily_activity(auth.active_workspace_id, days=days)
 
-    return report_service.get_workspace_daily_activity(target_workspace_id, days=days)
+
+# endregion

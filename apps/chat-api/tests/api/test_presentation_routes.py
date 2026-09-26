@@ -36,32 +36,57 @@ def workspace_for_current_user(workspace_id: uuid.UUID, name: str, slug: str) ->
     )
 
 
+DEFAULT_WS_ID = uuid.uuid4()
+
+
 @pytest.fixture
 def client(fake_uow, fake_storage, fake_queue, fake_rag):
     app.dependency_overrides[get_uow] = lambda: fake_uow
     app.dependency_overrides[get_storage] = lambda: fake_storage
     app.dependency_overrides[get_queue] = lambda: fake_queue
     app.dependency_overrides[get_rag_engine] = lambda: fake_rag
-    principal = CurrentPrincipal(
+
+    fake_uow.workspaces.save(workspace_for_current_user(DEFAULT_WS_ID, "Default WS", "default-ws"))
+    user_session = UserSession(
+        id=TEST_SESSION_ID,
+        user_id=TEST_USER.id,
+        token="test-session-token",
+        expires_at=datetime.now(UTC) + timedelta(hours=1),
+        active_workspace_id=DEFAULT_WS_ID,
+    )
+    current_principal = CurrentPrincipal(
         user_id=TEST_USER.id,
         session_id=TEST_SESSION_ID,
-    )
-    execution = ExecutionContext(principal=principal)
-    app.dependency_overrides[get_auth_context] = lambda: AuthContext(
-        user=TEST_USER,
-        session=UserSession(
-            id=TEST_SESSION_ID,
-            user_id=TEST_USER.id,
-            token="test-session-token",
-            expires_at=datetime.now(UTC) + timedelta(hours=1),
-        ),
-        principal=principal,
-        command_bus=CommandBus(fake_uow, execution_context=execution),
-        query_bus=QueryBus(fake_uow, execution_context=execution),
-        uow=fake_uow,
+        active_workspace_id=DEFAULT_WS_ID,
+        role="owner",
     )
 
+    def _auth_factory():
+        execution = ExecutionContext(principal=current_principal)
+        return AuthContext(
+            user=TEST_USER,
+            session=user_session,
+            principal=current_principal,
+            command_bus=CommandBus(fake_uow, execution_context=execution),
+            query_bus=QueryBus(fake_uow, execution_context=execution),
+            uow=fake_uow,
+        )
+
+    app.dependency_overrides[get_auth_context] = _auth_factory
+
     with TestClient(app) as test_client:
+
+        def set_active_workspace(ws_id: uuid.UUID | None, role: str = "owner"):
+            nonlocal current_principal
+            user_session.active_workspace_id = ws_id
+            current_principal = CurrentPrincipal(
+                user_id=TEST_USER.id,
+                session_id=TEST_SESSION_ID,
+                active_workspace_id=ws_id,
+                role=role,
+            )
+
+        test_client.set_active_workspace = set_active_workspace  # type: ignore[attr-defined]
         yield test_client, fake_uow
 
     app.dependency_overrides.clear()
@@ -111,12 +136,9 @@ def test_openapi_declares_route_permissions(client):
 
 def test_create_and_get_session_api(client):
     tc, uow = client
-    ws_id = uuid.uuid4()
-    uow.workspaces.save(workspace_for_current_user(ws_id, "Workspace 1", "ws-1"))
 
-    # 1. Create session
+    # 1. Create session (no workspace_id in payload)
     payload = {
-        "workspace_id": str(ws_id),
         "title": "Chính sách nghỉ phép",
         "rag_config": {"top_k": 3, "rerank": True},
     }
@@ -134,10 +156,9 @@ def test_create_and_get_session_api(client):
 
 def test_send_message_api(client):
     tc, uow = client
-    ws_id = uuid.uuid4()
-    uow.workspaces.save(workspace_for_current_user(ws_id, "Workspace 1", "ws-1"))
 
-    create_res = tc.post("/chat-sessions", json={"workspace_id": str(ws_id), "title": "Test"})
+    create_res = tc.post("/chat-sessions", json={"title": "Test"})
+    assert create_res.status_code == 201
     session_id = create_res.json()["id"]
 
     # Send message
@@ -161,10 +182,11 @@ def test_workspace_routes_reject_non_member(client):
     tc, uow = client
     workspace_id = uuid.uuid4()
     uow.workspaces.save(Workspace(id=workspace_id, name="Private", slug="private"))
+    tc.set_active_workspace(workspace_id, role="guest")
 
     response = tc.post(
         "/chat-sessions",
-        json={"workspace_id": str(workspace_id), "title": "Unauthorized"},
+        json={"title": "Unauthorized"},
     )
 
     assert response.status_code == 403
@@ -211,10 +233,9 @@ def test_route_guard_denies_member_lacking_permission(client):
 
 
 def test_documents_api_uses_active_workspace(client):
-    """GET /documents and POST /documents work directly without requiring /workspaces/{id} in path."""
+    """GET /documents and POST /documents work directly without requiring workspace_id in query."""
     tc, uow = client
-    ws_id = uuid.uuid4()
-    uow.workspaces.save(workspace_for_current_user(ws_id, "Active WS", "active-ws"))
+    ws_id = DEFAULT_WS_ID
 
     from chat_api.modules.documents.domain.entity import Document, DocumentStatus
 
@@ -232,17 +253,29 @@ def test_documents_api_uses_active_workspace(client):
         )
     )
 
-    # 1. GET /documents with workspace_id
-    resp = tc.get(f"/documents?workspace_id={ws_id}")
+    # 1. GET /documents without workspace_id
+    resp = tc.get("/documents")
     assert resp.status_code == 200
     docs = resp.json()
     assert len(docs) == 1
     assert docs[0]["filename"] == "handbook.pdf"
 
-    # 2. POST /documents upload
+    # 2. POST /documents upload without workspace_id
     upload_resp = tc.post(
-        f"/documents?workspace_id={ws_id}",
+        "/documents",
         files={"file": ("guide.pdf", b"dummy pdf content", "application/pdf")},
     )
     assert upload_resp.status_code == 201
     assert upload_resp.json()["document"]["filename"] == "guide.pdf"
+
+    # 3. POST /chat-sessions/{session_id}/documents upload and attach
+    sess_res = tc.post("/chat-sessions", json={"title": "Session Upload"})
+    assert sess_res.status_code == 201
+    sess_id = sess_res.json()["id"]
+
+    attach_resp = tc.post(
+        f"/chat-sessions/{sess_id}/documents",
+        files={"file": ("attachment.pdf", b"another dummy pdf content", "application/pdf")},
+    )
+    assert attach_resp.status_code == 200
+    assert attach_resp.json()["document"]["filename"] == "attachment.pdf"

@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 from chat_api.modules.auth.domain.entity import UserSession
 from chat_api.modules.users.domain.entity import User
 from chat_api.modules.workspaces.application import WorkspaceProvisioningService
+from chat_api.modules.workspaces.domain.entity import WorkspaceRole
 from chat_api.shared.infrastructure.database import UnitOfWork
 from core.cqrs import Command, command_handler
 from core.exceptions import UnauthenticatedException
@@ -60,6 +61,9 @@ class LoginHandler:
     def _resolve_active_workspace_id(self, user: User) -> uuid.UUID:
         user_workspaces = self.uow.workspaces.list_by_user_id(user.id)
         if user_workspaces:
+            for ws in user_workspaces:
+                if ws.get_member_role(user.id) == WorkspaceRole.OWNER:
+                    return ws.id
             return user_workspaces[0].id
 
         ws = WorkspaceProvisioningService(self.uow).create_default_workspace(user)

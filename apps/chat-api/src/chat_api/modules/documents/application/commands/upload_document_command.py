@@ -45,7 +45,16 @@ class UploadDocumentHandler:
     ) -> None:
         self.uow = uow
         self.storage = storage
-        self.uploader = uploader or FileUploader(storage=storage)
+        if uploader is not None:
+            self.uploader = uploader
+        else:
+            from chat_api.config import settings
+            from core.storage import FileValidator
+
+            max_size = getattr(settings, "MAX_UPLOAD_SIZE_MB", 20) * 1024 * 1024
+            self.uploader = FileUploader(
+                storage=storage, validator=FileValidator(max_size_bytes=max_size)
+            )
 
     def handle(self, cmd: UploadDocumentCommand) -> DocumentDTO:
         validated = self.uploader.validator.validate(

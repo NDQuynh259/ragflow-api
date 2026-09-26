@@ -93,6 +93,15 @@ class AuthContext:
     query_bus: QueryBus
     uow: UnitOfWork
 
+    @property
+    def active_workspace_id(self) -> uuid.UUID:
+        ws_id = self.principal.active_workspace_id or self.session.active_workspace_id
+        if not ws_id:
+            raise ForbiddenException(
+                "Active workspace is not set. Please switch or select an active workspace."
+            )
+        return ws_id
+
 
 def get_auth_context(
     request: Request,

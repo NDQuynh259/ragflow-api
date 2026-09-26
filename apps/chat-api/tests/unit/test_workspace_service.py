@@ -23,7 +23,7 @@ def test_create_default_workspace_with_fullname() -> None:
     workspace = service.create_default_workspace(user)
 
     assert workspace.name == "John Doe's Workspace"
-    assert workspace.slug == f"workspace-{user.id.hex[:8]}"
+    assert workspace.slug == f"workspace-{user.id.hex[-8:]}"
     assert len(workspace.members) == 1
     assert workspace.members[0].user_id == user.id
     assert workspace.members[0].role == WorkspaceRole.OWNER
@@ -43,6 +43,6 @@ def test_create_default_workspace_without_fullname_uses_email_prefix() -> None:
     workspace = service.create_default_workspace(user)
 
     assert workspace.name == "alice's Workspace"
-    assert workspace.slug == f"workspace-{user.id.hex[:8]}"
+    assert workspace.slug == f"workspace-{user.id.hex[-8:]}"
     assert workspace.members[0].role == WorkspaceRole.OWNER
     uow.workspaces.save.assert_called_once_with(workspace)
