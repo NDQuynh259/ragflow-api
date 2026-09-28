@@ -245,7 +245,9 @@ Khi nghiệp vụ đòi hỏi truy vấn tổng hợp từ nhiều Bounded Conte
 
 ### 2.6. Cơ Chế Logging Chuẩn Hóa Cấp Toàn Hệ Thống (`core/src/core/logging.py`)
 
-Để đảm bảo khả năng quan sát (Observability) và vận hành mượt mà trên môi trường Container theo nguyên lý **Twelve-Factor App (Logs as Event Streams)**, toàn bộ hệ thống sử dụng cấu hình logging tập trung [setup_logging](../core/src/core/logging.py#L9):
+> 📖 **Tài liệu chi tiết**: Xem đầy đủ tiêu chuẩn phân cấp log, correlation ID, cấu hình môi trường Dev/Prod tại [docs/logging_architecture.md](logging_architecture.md).
+
+Để đảm bảo khả năng quan sát (Observability) và vận hành mượt mà trên môi trường Container theo nguyên lý **Twelve-Factor App (Logs as Event Streams)**, toàn bộ hệ thống sử dụng cấu hình logging tập trung [setup_logging](../core/src/core/logging.py#L64):
 
 ```python
 def setup_logging(level: int = logging.INFO) -> None:
