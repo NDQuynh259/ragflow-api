@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 import uuid
@@ -189,15 +190,22 @@ class IndexDocumentHandler:
                         ),
                         {"now": completed_at, "elapsed": elapsed, "job_id": cmd.job_id},
                     )
+                    metadata_patch = (
+                        json.dumps({"layout_uri": str(pipeline_result.layout_uri)})
+                        if pipeline_result.layout_uri
+                        else "{}"
+                    )
                     session.execute(
                         text(
                             "UPDATE documents "
-                            "SET status = 'ready', page_count = :pages, file_size = :size "
+                            "SET status = 'ready', page_count = :pages, file_size = :size, "
+                            "metadata = COALESCE(metadata, '{}'::jsonb) || CAST(:metadata_patch AS jsonb) "
                             "WHERE id = :doc_id"
                         ),
                         {
                             "pages": pipeline_result.page_count,
                             "size": pipeline_result.file_size,
+                            "metadata_patch": metadata_patch,
                             "doc_id": cmd.document_id,
                         },
                     )

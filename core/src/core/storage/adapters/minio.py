@@ -70,9 +70,12 @@ class MinioStorageAdapter(ObjectStoragePort):
 
     def save(self, filename: str, content: bytes, workspace_id: uuid.UUID) -> str:
         self._ensure_bucket()
-        file_id = uuid.uuid4().hex[:8]
         clean_name = filename.split("/")[-1].split("\\")[-1]
-        object_key = f"workspaces/{workspace_id}/{file_id}_{clean_name}"
+        if clean_name.endswith("_layout.json"):
+            object_key = f"workspaces/{workspace_id}/{clean_name}"
+        else:
+            file_id = uuid.uuid4().hex[:8]
+            object_key = f"workspaces/{workspace_id}/{file_id}_{clean_name}"
 
         content_stream = io.BytesIO(content)
         self._client.put_object(

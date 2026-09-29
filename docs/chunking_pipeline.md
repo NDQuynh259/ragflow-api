@@ -1,8 +1,10 @@
-﻿# Chunking Pipeline: Luồng xử lý và cấu trúc kết quả
+# Chunking Pipeline: Luồng xử lý và cấu trúc kết quả
 
 Tài liệu này mô tả riêng luồng **parse → normalize → structure → chunk → validate → index** cho tài liệu PDF có text, bảng, hình ảnh và layout không đồng nhất.
 
 > Phạm vi: `packages/rag-document-pipeline`. Pipeline không phụ thuộc FastAPI, PostgreSQL, pgvector hay nghiệp vụ phiên chat.
+>
+> 📖 **Kiến trúc chuyên sâu**: Xem chi tiết Mô hình Lai 2 tầng (Heading-Aware + Semantic) và cơ chế chống Memory Leak tại [docs/chunking_architecture.md](chunking_architecture.md).
 
 ---
 

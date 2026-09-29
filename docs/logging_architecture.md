@@ -58,6 +58,27 @@ Hệ thống tự động điều chỉnh định dạng log dựa trên biến 
 Trong hệ thống xử lý bất đồng bộ (API $\rightarrow$ RabbitMQ $\rightarrow$ Worker), một yêu cầu upload tài liệu đi qua nhiều tiến trình độc lập. Để truy vết toàn diện một tài liệu, hệ thống gắn kèm **`correlation_id`** (chính là `job_id` hoặc `document_id`) qua toàn bộ các bước:
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'darkMode': true,
+    'signalTextColor': '#ffffff',
+    'signalColor': '#60a5fa',
+    'textColor': '#ffffff',
+    'actorTextColor': '#ffffff',
+    'actorBorder': '#60a5fa',
+    'actorBkg': '#1e293b',
+    'actorLineColor': '#94a3b8',
+    'labelBoxBkgColor': '#1e293b',
+    'labelBoxBorderColor': '#60a5fa',
+    'labelTextColor': '#ffffff',
+    'loopTextColor': '#f8fafc',
+    'noteBkgColor': '#fef08a',
+    'noteTextColor': '#0f172a',
+    'noteBorderColor': '#eab308',
+    'sequenceNumberColor': '#ffffff'
+  }
+}}%%
 sequenceDiagram
     autonumber
     actor Client

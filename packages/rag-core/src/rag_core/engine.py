@@ -58,10 +58,11 @@ class RAGEngine:
             generation=generation,
         )
 
-    def index(self, chunks: list[DocumentChunk]) -> int:
-        """Embed and store document chunks in the vector store.
+    def index(self, chunks: list[DocumentChunk], batch_size: int = 50) -> int:
+        """Embed and store document chunks in the vector store in micro-batches.
 
         Only indexable chunks with content are embedded.
+        Processes in batches of `batch_size` (default: 50) to prevent RAM spikes and memory bloat.
         Returns the number of chunks stored.
         """
         indexable = [c for c in chunks if c.indexable and c.content.strip()]
@@ -69,15 +70,21 @@ class RAGEngine:
             logger.info("No indexable chunks to store.")
             return 0
 
-        # Batch embed
-        texts = [c.content for c in indexable]
-        logger.info("Embedding %d chunks...", len(texts))
-        vectors = self.embedder.embed(texts)
+        total_indexed = 0
+        total_chunks = len(indexable)
 
-        # Build records
-        records: list[ChunkRecord] = []
-        for chunk, vector in zip(indexable, vectors, strict=False):
-            records.append(
+        for i in range(0, total_chunks, batch_size):
+            batch = indexable[i : i + batch_size]
+            texts = [c.content for c in batch]
+            logger.info(
+                "Embedding batch %d-%d of %d chunks...",
+                i + 1,
+                min(i + batch_size, total_chunks),
+                total_chunks,
+            )
+            vectors = self.embedder.embed(texts)
+
+            records: list[ChunkRecord] = [
                 ChunkRecord(
                     id=chunk.id,
                     document_id=chunk.document_id,
@@ -94,12 +101,14 @@ class RAGEngine:
                     indexable=chunk.indexable,
                     metadata=chunk.metadata,
                 )
-            )
+                for chunk, vector in zip(batch, vectors, strict=False)
+            ]
 
-        # Store
-        count = self.vector_store.upsert(records)
-        logger.info("Indexed %d chunks.", count)
-        return count
+            count = self.vector_store.upsert(records)
+            total_indexed += count
+
+        logger.info("Indexed %d chunks in total.", total_indexed)
+        return total_indexed
 
     def answer(
         self,

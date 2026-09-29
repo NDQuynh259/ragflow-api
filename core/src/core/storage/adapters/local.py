@@ -20,8 +20,12 @@ class LocalStorageAdapter(ObjectStoragePort):
         workspace_dir = self.base_dir / str(workspace_id)
         workspace_dir.mkdir(parents=True, exist_ok=True)
 
-        file_id = uuid.uuid4().hex[:8]
-        safe_name = f"{file_id}_{Path(filename).name}"
+        clean_name = Path(filename).name
+        if clean_name.endswith("_layout.json"):
+            safe_name = clean_name
+        else:
+            file_id = uuid.uuid4().hex[:8]
+            safe_name = f"{file_id}_{clean_name}"
         target_path = workspace_dir / safe_name
         target_path.write_bytes(content)
 

@@ -10,6 +10,9 @@ specialized chunker:
 
 from __future__ import annotations
 
+from typing import Any
+
+from rag_document_pipeline.chunkers.base import Chunker
 from rag_document_pipeline.chunkers.figure import ImageChunker
 from rag_document_pipeline.chunkers.recursive import TextChunker
 from rag_document_pipeline.chunkers.table import TableChunker
@@ -36,13 +39,41 @@ class HeadingAwareChunker:
         *,
         chunk_size: int = 1200,
         chunk_overlap: int = 200,
+        text_chunker: Chunker | None = None,
+        table_chunker: TableChunker | None = None,
+        image_chunker: ImageChunker | None = None,
     ) -> None:
-        self.text_chunker = TextChunker(
+        self.text_chunker = text_chunker or TextChunker(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
         )
-        self.table_chunker = TableChunker(chunk_size=chunk_size)
-        self.image_chunker = ImageChunker()
+        self.table_chunker = table_chunker or TableChunker(chunk_size=chunk_size)
+        self.image_chunker = image_chunker or ImageChunker()
+
+    @classmethod
+    def hybrid_semantic(
+        cls,
+        *,
+        embed_fn: Any = None,
+        min_chunk_size: int = 300,
+        max_chunk_size: int = 1500,
+        threshold_percentile: float = 80.0,
+    ) -> HeadingAwareChunker:
+        """Create a Hybrid Heading-Aware + Semantic chunker.
+
+        Maintains layout structure, table markdown with repeated headers,
+        and uses semantic topic shift boundaries for text blocks.
+        """
+        from rag_document_pipeline.chunkers.semantic import SemanticTextChunker
+
+        return cls(
+            text_chunker=SemanticTextChunker(
+                embed_fn=embed_fn,
+                min_chunk_size=min_chunk_size,
+                max_chunk_size=max_chunk_size,
+                threshold_percentile=threshold_percentile,
+            )
+        )
 
     def chunk(
         self,
