@@ -17,6 +17,7 @@ RAG/
 ├── apps/
 │   ├── chat-api/                   # FastAPI Web API (Auth, Sessions, Workspaces, Documents, Chat)
 │   └── worker/                     # Async background processing worker
+├── frontend/                       # React 19 + Vite + TypeScript Multimodal RAG Studio
 ├── migrations/                     # Alembic database schema migrations
 ├── deploy/                         # Production & Development Docker Compose configurations
 ├── docs/                           # Architecture docs, specifications, openapi.json
@@ -109,6 +110,8 @@ Use `uv run poe <command>` (or activate `.venv` and run `poe <command>`):
 | `poe migrate` | Apply latest Alembic database migrations |
 | `poe openapi` | Export OpenAPI specification to `docs/openapi.json` |
 | `poe worker` | Start RabbitMQ background document ingestion worker |
+| `poe fe:dev` | Start Frontend Vite development server (`http://localhost:3000`) |
+| `poe fe:build` | Build optimized production bundle for Frontend |
 
 ---
 

@@ -121,6 +121,8 @@ seed = "python scripts/seed.py"
 openapi = "python scripts/export_openapi.py"
 worker = "python -m worker.main"
 scheduler = "python -m scheduler.main"
+"fe:dev" = { cmd = "npm run dev", cwd = "frontend" }
+"fe:build" = { cmd = "npm run build", cwd = "frontend" }
 
 [tool.poe.tasks.check]
 sequence = ["lint", "format:check", "typecheck", "test"]
