@@ -239,3 +239,11 @@ for chunk in processed.chunks:
 | **Độ thuần khiết chủ đề** | ❌ Trộn lẫn ý | 🟡 Tương đối | ⭐⭐⭐⭐⭐ Tuyệt đối |
 | **Tiêu tốn bộ nhớ RAM** | ⚠️ Dễ OOM | ⚠️ Dễ OOM nếu file to | 🟢 **$O(1)$ Không lo Memory Leak** |
 | **Chi phí API lúc băm** | 🟢 0đ | 🟢 0đ | 🟢 **0đ (Chế độ Lexical)** |
+
+---
+
+## 7. Tài Liệu Tham Chiếu & Phân Tích Chuyên Sâu
+
+- [Phân tích Chuyên sâu: Hiện tượng Phân mảnh Ngữ cảnh trong Multimodal RAG](file:///c:/Users/ndquynh/Documents/RAG/docs/multimodal_context_fragmentation_analysis.md): So sánh chi tiết Anti-pattern tách rời phần tử (như trong `langchain_multimodal.ipynb`) với kiến trúc bảo toàn ngữ cảnh của hệ thống.
+- [Chi tiết Luồng Chunking Pipeline](file:///c:/Users/ndquynh/Documents/RAG/docs/chunking_pipeline.md)
+
