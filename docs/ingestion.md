@@ -1,4 +1,4 @@
-﻿# Luồng ingestion tài liệu
+# Luồng ingestion tài liệu
 
 ## Pipeline
 
@@ -45,26 +45,26 @@ Mỗi chunk cần có `chunk_id`, `document_id`, `content`, `page_start`, `page_
 - Embedding/index lỗi: retry idempotent, không đánh dấu `ready` khi index chưa hoàn tất.
 - Không có text/chunk: `failed` với lỗi có thể hiển thị cho người dùng.
 
-## Parser m?c ??nh: OpenDataLoader PDF
+## Parser mặc định: OpenDataLoader PDF
 
-`rag-document-pipeline` d?ng `OpenDataLoaderParser` l?m parser m?c ??nh cho PDF. Parser g?i SDK local, nh?n JSON c? element/page/bounding box r?i chuy?n v? contract `LayoutElement`.
+`rag-document-pipeline` dùng `OpenDataLoaderParser` làm parser mặc định cho PDF. Parser gọi SDK local, nhận JSON có element/page/bounding box rồi chuyển về contract `LayoutElement`.
 
-Y?u c?u runtime:
+Yêu cầu runtime:
 
 - Python 3.11+
 - Java 11+ (`java -version`)
 - `opendataloader-pdf`
 
-OpenDataLoader kh?ng ???c g?i tr?c ti?p t? `chat-api`; worker s? d?ng `DocumentPipeline`. N?u SDK ch?a c?i ho?c output kh?ng h?p l?, job chuy?n sang `failed` v?i `ParserError`.
+OpenDataLoader không được gọi trực tiếp từ `chat-api`; worker sẽ sử dụng `DocumentPipeline`. Nếu SDK chưa cài hoặc output không hợp lệ, job chuyển sang `failed` với `ParserError`.
 
 ```python
 from rag_document_pipeline import DocumentPipeline
 
-result = DocumentPipeline().process(
+result = DocumentPipeline(semantic_grouping=True).process(
     pdf_bytes,
     filename="contract.pdf",
     document_id=document_id,
 )
 ```
 
-Schema parser ???c c? l?p trong `parsers/opendataloader.py`, v? v?y c? th? thay b?ng Docling ho?c parser kh?c m? kh?ng ??i API ph?a tr?n.
+> 📖 **Xem tài liệu chi tiết**: Kiến trúc đầy đủ, API, chiến lược Caption Binding và Semantic Grouping được mô tả tại [docs/document_pipeline.md](document_pipeline.md).

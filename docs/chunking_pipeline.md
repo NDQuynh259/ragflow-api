@@ -5,6 +5,8 @@ Tài liệu này mô tả riêng luồng **parse → normalize → structure →
 > Phạm vi: `packages/rag-document-pipeline`. Pipeline không phụ thuộc FastAPI, PostgreSQL, pgvector hay nghiệp vụ phiên chat.
 >
 > 📖 **Kiến trúc chuyên sâu**: Xem chi tiết Mô hình Lai 2 tầng (Heading-Aware + Semantic) và cơ chế chống Memory Leak tại [docs/chunking_architecture.md](chunking_architecture.md).
+>
+> 📘 **Tài liệu API & Orchestrator**: Xem chi tiết class `DocumentPipeline` và các chiến lược Caption/Footnote Binding tại [docs/document_pipeline.md](document_pipeline.md).
 
 ---
 

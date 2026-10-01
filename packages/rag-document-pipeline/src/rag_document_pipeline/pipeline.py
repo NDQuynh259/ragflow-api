@@ -20,6 +20,7 @@ from rag_document_pipeline.models import (
     ParsedDocument,
     ProcessedDocument,
 )
+from rag_document_pipeline.normalizers.layout import LayoutNormalizer
 from rag_document_pipeline.parsers.base import Parser
 
 
@@ -30,7 +31,7 @@ class DocumentPipeline:
 
         PDF bytes
           → Parser (OpenDataLoader)
-          → Normalize (Unicode NFC, mojibake repair, whitespace)
+          → Normalize (Unicode NFC, mojibake repair, whitespace, caption/footnote binding)
           → Type-aware chunking (text / table / image)
           → Validate chunks
           → ProcessedDocument
@@ -43,6 +44,7 @@ class DocumentPipeline:
         *,
         chunk_size: int = 1200,
         chunk_overlap: int = 200,
+        semantic_grouping: bool = False,
     ) -> None:
         if chunk_size <= 0 or not 0 <= chunk_overlap < chunk_size:
             raise ValueError("Invalid chunk window")
@@ -56,9 +58,11 @@ class DocumentPipeline:
         self.chunker: Chunker = chunker or HeadingAwareChunker(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
+            semantic_grouping=semantic_grouping,
         )
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
+        self.semantic_grouping = semantic_grouping
 
     def process(
         self,
@@ -71,7 +75,7 @@ class DocumentPipeline:
         """Run the full pipeline: parse → normalize → chunk → validate."""
 
         # 1. Parse
-        if hasattr(self.parser, "parse") and image_dir:
+        if image_dir:
             try:
                 elements = self.parser.parse(content, filename=filename, image_dir=image_dir)
             except TypeError:
@@ -109,7 +113,7 @@ class DocumentPipeline:
         Useful for inspecting intermediate results or for custom
         chunking strategies.
         """
-        if hasattr(self.parser, "parse") and image_dir:
+        if image_dir:
             try:
                 elements = self.parser.parse(content, filename=filename, image_dir=image_dir)
             except TypeError:
@@ -148,13 +152,16 @@ class DocumentPipeline:
 
     @classmethod
     def _normalize(cls, elements: list[LayoutElement]) -> list[LayoutElement]:
-        """Unicode NFC normalization, mojibake repair, whitespace cleanup."""
+        """Unicode NFC normalization, mojibake repair, whitespace cleanup, and layout binding."""
         for el in elements:
             el.text = cls._clean_text(el.text)
             if el.caption:
                 el.caption = cls._clean_text(el.caption)
             if el.image_data and el.image_data.caption:
                 el.image_data.caption = cls._clean_text(el.image_data.caption)
+
+        # Bind standalone captions and footnotes to their adjacent target elements
+        elements = LayoutNormalizer.bind_captions_and_footnotes(elements)
         return elements
 
     @staticmethod

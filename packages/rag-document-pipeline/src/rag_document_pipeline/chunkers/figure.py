@@ -54,6 +54,10 @@ class ImageChunker:
         if element.text.strip() and element.text.strip() not in parts:
             parts.append(element.text.strip())
 
+        footnote = element.metadata.get("footnote")
+        if footnote:
+            parts.append(f"Note: {footnote}")
+
         if len(parts) <= 1 and img and img.uri:
             parts.append(
                 f"Visual image/diagram on page {element.page_number} ({Path(img.uri).name})"

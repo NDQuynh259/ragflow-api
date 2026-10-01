@@ -42,7 +42,11 @@ class HeadingAwareChunker:
         text_chunker: Chunker | None = None,
         table_chunker: TableChunker | None = None,
         image_chunker: ImageChunker | None = None,
+        semantic_grouping: bool = False,
     ) -> None:
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+        self.semantic_grouping = semantic_grouping
         self.text_chunker = text_chunker or TextChunker(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
@@ -50,6 +54,7 @@ class HeadingAwareChunker:
         self.table_chunker = table_chunker or TableChunker(chunk_size=chunk_size)
         self.image_chunker = image_chunker or ImageChunker()
 
+    # region hybrid_semantic
     @classmethod
     def hybrid_semantic(
         cls,
@@ -58,6 +63,7 @@ class HeadingAwareChunker:
         min_chunk_size: int = 300,
         max_chunk_size: int = 1500,
         threshold_percentile: float = 80.0,
+        semantic_grouping: bool = False,
     ) -> HeadingAwareChunker:
         """Create a Hybrid Heading-Aware + Semantic chunker.
 
@@ -72,9 +78,12 @@ class HeadingAwareChunker:
                 min_chunk_size=min_chunk_size,
                 max_chunk_size=max_chunk_size,
                 threshold_percentile=threshold_percentile,
-            )
+            ),
+            semantic_grouping=semantic_grouping,
         )
+    # endregion
 
+    #region chunk
     def chunk(
         self,
         elements: list[LayoutElement],
@@ -85,6 +94,9 @@ class HeadingAwareChunker:
 
         # Propagate section context from headings to subsequent elements
         elements = self._propagate_sections(elements)
+
+        if self.semantic_grouping:
+            return self._chunk_semantic_grouping(elements, document_id=document_id)
 
         # Separate into lanes
         text_elements: list[LayoutElement] = []
@@ -117,7 +129,102 @@ class HeadingAwareChunker:
             c.index = idx
 
         return chunks
+    # endregion
 
+    #region _chunk_semantic_grouping
+    def _chunk_semantic_grouping(
+        self,
+        elements: list[LayoutElement],
+        *,
+        document_id: str,
+    ) -> list[DocumentChunk]:
+        """Group elements by section while preserving reading order and context.
+
+        - Small tables are kept inline with their surrounding section text.
+        - Large tables exceeding threshold are chunked with TableChunker (repeated headers).
+        - Images are processed with ImageChunker.
+        """
+        groups = self._group_by_section(elements)
+        chunks: list[DocumentChunk] = []
+
+        for group in groups:
+            text_batch: list[LayoutElement] = []
+
+            def flush_text_batch():
+                nonlocal text_batch
+                if not text_batch:
+                    return
+                non_headings = [
+                    el
+                    for el in text_batch
+                    if el.type.lower() != "heading" and (el.text.strip() or el.table_data)
+                ]
+                if non_headings:
+                    text_chunks = self.text_chunker.chunk(text_batch, document_id=document_id)
+                    chunks.extend(text_chunks)
+                text_batch = []
+
+            for el in group:
+                el_type = el.type.lower()
+                if el_type in SKIP_TYPES:
+                    continue
+
+                if el_type in TABLE_TYPES:
+                    if TableChunker.is_small_table(el, max_chars=self.chunk_size // 2, max_rows=8):
+                        el_copy = el.model_copy()
+                        el_copy.text = TableChunker.render_markdown(el)
+                        text_batch.append(el_copy)
+                    else:
+                        flush_text_batch()
+                        table_chunks = self.table_chunker.chunk([el], document_id=document_id)
+                        chunks.extend(table_chunks)
+
+                elif el_type in IMAGE_TYPES:
+                    flush_text_batch()
+                    img_chunks = self.image_chunker.chunk([el], document_id=document_id)
+                    chunks.extend(img_chunks)
+
+                else:
+                    text_batch.append(el)
+
+            flush_text_batch()
+
+        # Sort by page and re-index
+        chunks.sort(key=lambda c: (c.page_start, c.page_end))
+        for idx, c in enumerate(chunks):
+            c.index = idx
+
+        return chunks
+    
+    # endregion
+
+    # region _group_by_section  
+    @staticmethod
+    def _group_by_section(
+        elements: list[LayoutElement],
+    ) -> list[list[LayoutElement]]:
+        """Group adjacent elements sharing the same section path and page."""
+        if not elements:
+            return []
+
+        groups: list[list[LayoutElement]] = []
+        current: list[LayoutElement] = [elements[0]]
+
+        for el in elements[1:]:
+            prev = current[-1]
+            same_section = el.section_path == prev.section_path
+            same_page = el.page_number == prev.page_number
+            if same_section and same_page:
+                current.append(el)
+            else:
+                groups.append(current)
+                current = [el]
+        groups.append(current)
+        return groups
+    
+    # endregion
+
+    #region _propagate_sections
     @staticmethod
     def _propagate_sections(
         elements: list[LayoutElement],

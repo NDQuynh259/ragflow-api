@@ -11,6 +11,7 @@ import math
 import re
 import uuid
 from collections.abc import Callable
+from typing import Any
 
 from rag_document_pipeline.chunkers.base import estimate_tokens
 from rag_document_pipeline.chunkers.recursive import TextChunker
@@ -58,7 +59,9 @@ class SemanticTextChunker:
         for group in groups:
             heading_prefix = self._heading_prefix(group)
             body = "\n\n".join(
-                el.text.strip() for el in group if el.text.strip() and el.type != "heading"
+                self._element_text(el)
+                for el in group
+                if self._element_text(el) and el.type.lower() != "heading"
             )
             if not body:
                 continue
@@ -67,6 +70,14 @@ class SemanticTextChunker:
             all_ids = [el.id for el in group]
             all_bboxes = [el.bbox for el in group if el.bbox]
             section_path = group[0].section_path if group else []
+
+            has_table = any(el.type.lower() in ("table", "data_table") for el in group)
+            metadata: dict[str, Any] = {"chunker": "semantic_hybrid"}
+            if has_table:
+                metadata["contains_table"] = True
+                metadata["table_ids"] = [
+                    el.id for el in group if el.type.lower() in ("table", "data_table")
+                ]
 
             # Segment the body text semantically
             text_segments = self._split_semantically(body)
@@ -93,11 +104,20 @@ class SemanticTextChunker:
                         kind="text",
                         section_path=section_path,
                         token_count=estimate_tokens(full_content),
-                        metadata={"chunker": "semantic_hybrid"},
+                        metadata=metadata,
                     )
                 )
 
         return chunks
+
+    @classmethod
+    def _element_text(cls, el: LayoutElement) -> str:
+        """Extract text representation of an element, rendering tables if needed."""
+        if el.type.lower() in ("table", "data_table") and el.table_data:
+            from rag_document_pipeline.chunkers.table import TableChunker
+
+            return TableChunker.render_markdown(el)
+        return el.text.strip()
 
     def _split_semantically(self, text: str) -> list[str]:
         """Split text into semantic segments based on topic shift boundaries."""

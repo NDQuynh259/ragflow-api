@@ -66,11 +66,14 @@ class TableChunker:
 
         # Build the full markdown table
         header = td.headers
-        caption_prefix = f"### {td.caption}\n\n" if td.caption else ""
+        caption = td.caption or element.caption or ""
+        caption_prefix = f"### {caption}\n\n" if caption else ""
         header_md = self._render_header(header)
+        footnote = element.metadata.get("footnote")
+        footnote_suffix = f"\n\n_{footnote}_" if footnote else ""
 
         # Try single chunk first
-        full_content = caption_prefix + header_md + self._render_rows(td.rows)
+        full_content = caption_prefix + header_md + self._render_rows(td.rows) + footnote_suffix
         if len(full_content) <= self.chunk_size:
             return [
                 self._make_chunk(
@@ -104,9 +107,14 @@ class TableChunker:
                 row_start = i
                 current_rows = [row]
 
-        # Flush remaining
+        # Flush remaining (append footnote to the final chunk)
         if current_rows:
-            remaining_content = caption_prefix + header_md + self._render_rows(current_rows)
+            remaining_content = (
+                caption_prefix
+                + header_md
+                + self._render_rows(current_rows)
+                + footnote_suffix
+            )
             chunks.append(
                 self._make_chunk(
                     document_id=document_id,
@@ -121,6 +129,39 @@ class TableChunker:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    @classmethod
+    def render_markdown(cls, element: LayoutElement) -> str:
+        """Render a table LayoutElement into a Markdown string."""
+        td = element.table_data
+        if not td or (not td.headers and not td.rows):
+            return element.text.strip()
+        caption = td.caption or element.caption or ""
+        caption_prefix = f"### {caption}\n\n" if caption else ""
+        header_md = cls._render_header(td.headers)
+        rows_md = cls._render_rows(td.rows)
+        footnote = element.metadata.get("footnote")
+        footnote_suffix = f"\n\n_{footnote}_" if footnote else ""
+        return (caption_prefix + header_md + rows_md + footnote_suffix).strip()
+
+    @classmethod
+    def is_small_table(
+        cls,
+        element: LayoutElement,
+        *,
+        max_chars: int = 800,
+        max_rows: int = 10,
+    ) -> bool:
+        """Check if table is compact enough to be kept inline with text."""
+        if element.type.lower() not in ("table", "data_table"):
+            return False
+        td = element.table_data
+        if not td:
+            return len(element.text.strip()) <= max_chars
+        if len(td.rows) > max_rows:
+            return False
+        md = cls.render_markdown(element)
+        return len(md) <= max_chars
 
     @staticmethod
     def _render_header(headers: list[str]) -> str:

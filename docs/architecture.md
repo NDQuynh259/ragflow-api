@@ -650,4 +650,6 @@ Hệ thống RAG phân bổ chính xác 3 mô hình đa nhiệm của Python cho
 5. 🗄️ [Kiến Trúc Lưu Trữ Storage (docs/storage_architecture.md)](storage_architecture.md): Thiết kế phân tầng lưu trữ S3/MinIO, Local Storage, và cơ chế Outbox Pattern.
 6. 📊 [Thiết Kế Cơ Sở Dữ Liệu & pgvector (docs/database_design.md)](database_design.md): Chi tiết 15 bảng, schema migrations, pgvector HNSW cosine index và Full-Text Search TSVector.
 7. 🛡️ [Vòng Đời & Luồng Xử Lý Request Nội Tại Của Nginx (docs/nginx_request_lifecycle.md)](nginx_request_lifecycle.md): 11 pha xử lý (Phases), cơ chế Leaky Bucket trong Shared Memory, và phân nhánh SSE Passthrough vs Gzip Buffering.
+8. 📄 [Kiến Trúc & Hướng Dẫn Document Pipeline (docs/document_pipeline.md)](document_pipeline.md): Orchestrator Parse → Normalize (Caption Binding) → Type-aware / Semantic Chunking → Validate.
+9. 🧩 [Kiến Trúc Chunking Đa Tầng & Chống Rò Rỉ Bộ Nhớ (docs/chunking_architecture.md)](chunking_architecture.md): Mô hình Lai 2 tầng (Heading-Aware + Semantic Topic Shifts) và quản lý tài nguyên.
 

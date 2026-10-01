@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Protocol
 
 from rag_document_pipeline.models import LayoutElement
@@ -10,4 +11,10 @@ class ParserError(RuntimeError):
 
 
 class Parser(Protocol):
-    def parse(self, content: bytes, *, filename: str) -> list[LayoutElement]: ...
+    def parse(
+        self,
+        content: bytes,
+        *,
+        filename: str,
+        image_dir: str | Path | None = None,
+    ) -> list[LayoutElement]: ...

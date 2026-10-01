@@ -7,6 +7,7 @@ context, then splits using LangChain's recursive strategy.
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
@@ -57,7 +58,9 @@ class TextChunker:
         for group in groups:
             heading_prefix = self._heading_prefix(group)
             body = "\n\n".join(
-                el.text.strip() for el in group if el.text.strip() and el.type != "heading"
+                self._element_text(el)
+                for el in group
+                if self._element_text(el) and el.type.lower() != "heading"
             )
             full_text = f"{heading_prefix}\n\n{body}".strip() if heading_prefix else body.strip()
 
@@ -69,6 +72,14 @@ class TextChunker:
             all_ids = [el.id for el in group]
             all_bboxes = [el.bbox for el in group if el.bbox]
             section_path = group[0].section_path if group else []
+
+            has_table = any(el.type.lower() in ("table", "data_table") for el in group)
+            metadata: dict[str, Any] = {"chunker": "text_recursive"}
+            if has_table:
+                metadata["contains_table"] = True
+                metadata["table_ids"] = [
+                    el.id for el in group if el.type.lower() in ("table", "data_table")
+                ]
 
             # Split using LangChain
             split_texts = self._splitter.split_text(full_text)
@@ -89,11 +100,20 @@ class TextChunker:
                         kind="text",
                         section_path=section_path,
                         token_count=estimate_tokens(text_piece),
-                        metadata={"chunker": "text_recursive"},
+                        metadata=metadata,
                     )
                 )
 
         return chunks
+
+    @classmethod
+    def _element_text(cls, el: LayoutElement) -> str:
+        """Extract text representation of an element, rendering tables if needed."""
+        if el.type.lower() in ("table", "data_table") and el.table_data:
+            from rag_document_pipeline.chunkers.table import TableChunker
+
+            return TableChunker.render_markdown(el)
+        return el.text.strip()
 
     # ------------------------------------------------------------------
     # Helpers
