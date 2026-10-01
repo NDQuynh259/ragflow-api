@@ -21,3 +21,8 @@ dist/
 # Generated parser outputs
 outputs/
 output/
+
+# Frontend & Dependencies
+**/node_modules/
+node_modules/
+dist/
