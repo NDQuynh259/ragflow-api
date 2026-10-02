@@ -48,6 +48,13 @@ class CoreSettings(BaseSettings):
     RABBITMQ_ROUTING_KEY: str = "document.ingestion"
     RABBITMQ_EVENTS_EXCHANGE: str = "rag.events"
 
+    # Document Pipeline & Chunking Strategy
+    CHUNK_STRATEGY: str = "hybrid_semantic"
+    CHUNK_SEMANTIC_GROUPING: bool = True
+    CHUNK_MIN_SIZE: int = 300
+    CHUNK_MAX_SIZE: int = 1500
+    CHUNK_THRESHOLD_PERCENTILE: float = 80.0
+
 
 # Backward-compatible alias
 Settings = CoreSettings

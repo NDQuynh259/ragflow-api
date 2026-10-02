@@ -3,7 +3,6 @@ from .models import (
     ElementType,
     ImageData,
     LayoutElement,
-    ParsedDocument,
     ProcessedDocument,
     TableData,
 )
@@ -15,7 +14,6 @@ __all__ = [
     "ElementType",
     "ImageData",
     "LayoutElement",
-    "ParsedDocument",
     "ProcessedDocument",
     "TableData",
 ]

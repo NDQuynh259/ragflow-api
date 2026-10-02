@@ -256,10 +256,13 @@ class OpenDataLoaderParser:
                 value = None
         if isinstance(value, dict):
             value = [value.get(k) for k in ("left", "bottom", "right", "top")]
-        if not isinstance(value, (list, tuple)) or len(value) != 4:
+        if not isinstance(value, (list, tuple)) or len(value) != 4 or any(v is None for v in value):
             return None
         try:
-            x0, y0, x1, y1 = (float(v) for v in value)
+            coords = [float(v) for v in value if v is not None]
+            if len(coords) != 4:
+                return None
+            x0, y0, x1, y1 = coords
             return (min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
         except (TypeError, ValueError):
             return None

@@ -11,13 +11,13 @@ from __future__ import annotations
 import re
 import unicodedata
 from pathlib import Path
+from typing import Any
 
 from rag_document_pipeline.chunkers.base import Chunker
 from rag_document_pipeline.chunkers.heading_aware import HeadingAwareChunker
 from rag_document_pipeline.models import (
     DocumentChunk,
     LayoutElement,
-    ParsedDocument,
     ProcessedDocument,
 )
 from rag_document_pipeline.normalizers.layout import LayoutNormalizer
@@ -44,7 +44,9 @@ class DocumentPipeline:
         *,
         chunk_size: int = 1200,
         chunk_overlap: int = 200,
-        semantic_grouping: bool = False,
+        semantic_grouping: bool = True,
+        use_semantic_chunking: bool = True,
+        embed_fn: Any = None,
     ) -> None:
         if chunk_size <= 0 or not 0 <= chunk_overlap < chunk_size:
             raise ValueError("Invalid chunk window")
@@ -55,15 +57,63 @@ class DocumentPipeline:
         else:
             self.parser = self._default_parser()
 
-        self.chunker: Chunker = chunker or HeadingAwareChunker(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-            semantic_grouping=semantic_grouping,
-        )
+        if chunker is not None:
+            self.chunker = chunker
+        elif use_semantic_chunking:
+            self.chunker = HeadingAwareChunker.hybrid_semantic(
+                embed_fn=embed_fn,
+                min_chunk_size=min(300, chunk_size // 4),
+                max_chunk_size=chunk_size,
+                semantic_grouping=semantic_grouping,
+            )
+        else:
+            self.chunker = HeadingAwareChunker(
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap,
+                semantic_grouping=semantic_grouping,
+            )
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.semantic_grouping = semantic_grouping
 
+    @classmethod
+    def hybrid_semantic(
+        cls,
+        *,
+        parser: Parser | None = None,
+        embed_fn: Any = None,
+        min_chunk_size: int = 300,
+        max_chunk_size: int = 1500,
+        threshold_percentile: float = 80.0,
+        semantic_grouping: bool = True,
+    ) -> DocumentPipeline:
+        """Tạo DocumentPipeline cấu hình sẵn Mô hình Lai (Heading-Aware + Semantic Topic Shifts).
+
+        Kết hợp:
+        1. Gộp phần nhỏ cùng ý:
+           - Hấp thụ Caption & Footnote vào Bảng biểu / Hình ảnh.
+           - Giữ Bảng nhỏ inline cùng văn bản dẫn giải.
+           - Lũy tiến gộp các câu ngắn trong cùng Section nếu < min_chunk_size.
+        2. Cắt phần dài đổi ý:
+           - Tách câu tiếng Việt chuẩn hóa (bảo vệ viết tắt, số thập phân).
+           - Đo khoảng cách ngữ nghĩa qua Sliding Window Buffer.
+           - Cắt ranh giới chunk mới tại điểm nhảy vọt chủ đề (threshold_percentile).
+        """
+        chunker = HeadingAwareChunker.hybrid_semantic(
+            embed_fn=embed_fn,
+            min_chunk_size=min_chunk_size,
+            max_chunk_size=max_chunk_size,
+            threshold_percentile=threshold_percentile,
+            semantic_grouping=semantic_grouping,
+        )
+        return cls(
+            parser=parser,
+            chunker=chunker,
+            chunk_size=max_chunk_size,
+            semantic_grouping=semantic_grouping,
+        )
+
+    # region process
     def process(
         self,
         content: bytes,
@@ -98,52 +148,6 @@ class DocumentPipeline:
             page_count=max((el.page_number for el in elements), default=0),
             elements=elements,
             chunks=chunks,
-        )
-
-    def parse_and_separate(
-        self,
-        content: bytes,
-        *,
-        filename: str,
-        document_id: str,
-        image_dir: str | Path | None = None,
-    ) -> ParsedDocument:
-        """Parse and separate elements by type without chunking.
-
-        Useful for inspecting intermediate results or for custom
-        chunking strategies.
-        """
-        if image_dir:
-            try:
-                elements = self.parser.parse(content, filename=filename, image_dir=image_dir)
-            except TypeError:
-                elements = self.parser.parse(content, filename=filename)
-        else:
-            elements = self.parser.parse(content, filename=filename)
-        elements = self._normalize(elements)
-
-        text_elements = [
-            el
-            for el in elements
-            if el.type in {"text", "heading", "paragraph", "list", "caption", "formula"}
-        ]
-        table_elements = [el for el in elements if el.type == "table"]
-        image_elements = [el for el in elements if el.type in {"image", "figure"}]
-
-        return ParsedDocument(
-            document_id=document_id,
-            filename=filename,
-            page_count=max((el.page_number for el in elements), default=0),
-            text_elements=text_elements,
-            table_elements=table_elements,
-            image_elements=image_elements,
-            all_elements=elements,
-            metadata={
-                "parser": type(self.parser).__name__,
-                "text_count": len(text_elements),
-                "table_count": len(table_elements),
-                "image_count": len(image_elements),
-            },
         )
 
     # ------------------------------------------------------------------

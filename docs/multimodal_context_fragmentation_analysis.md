@@ -178,7 +178,7 @@ flowchart LR
 
 ### Chiến lược 1: Gom nhóm phần tử theo ngữ nghĩa (Semantic Grouping)
 - Không phân loại cứng ngắc theo kiểu dữ liệu rồi tống vào các mảng khác nhau như trong notebook.
-- Giữ nguyên luồng đọc tự nhiên (Reading Order) của văn bản. Các phần tử văn bản ngắn, bảng biểu nhỏ, hoặc chú thích nằm trong cùng một Section được gom chung vào một Chunk cho đến khi chạm ngưỡng Token Limit (`semantic.py` và `recursive.py`).
+- Giữ nguyên luồng đọc tự nhiên (Reading Order) của văn bản. Các phần tử văn bản ngắn, bảng biểu nhỏ, hoặc chú thích nằm trong cùng một Section được gom chung vào một Chunk cho đến khi chạm ngưỡng Token Limit (`semantic.py`).
 
 ### Chiến lược 2: Buộc ngữ cảnh Caption & Chú thích (Caption & Footnote Binding)
 - Bộ trích xuất Layout nhận diện các khối `Caption` hoặc `Footnote` đi liền với `Table` hoặc `Image` và gộp chúng vào cùng một `LayoutElement` hoặc cùng một `DocumentChunk`.

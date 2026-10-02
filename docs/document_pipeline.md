@@ -192,19 +192,20 @@ pipeline = DocumentPipeline(chunker=chunker)
 result = pipeline.process(pdf_bytes, filename="paper.pdf", document_id="doc_999")
 ```
 
-### 4.3. Bóc tách không Chunking (Dùng cho Debug hoặc Custom downstream)
-Phương thức `parse_and_separate` giúp kiểm tra dữ liệu trung gian:
+### 4.3. Kiểm tra các phần tử sau khi bóc tách (Elements Inspection)
+Đối tượng `ProcessedDocument` trả về từ `pipeline.process()` đã bao gồm toàn bộ danh sách `elements` sau khi chuẩn hóa và các `chunks`:
 
 ```python
-parsed = pipeline.parse_and_separate(
+result = pipeline.process(
     pdf_bytes,
     filename="bao-cao.pdf",
     document_id="doc_123",
 )
 
-print(f"Số đoạn văn/heading: {len(parsed.text_elements)}")
-print(f"Số bảng biểu: {len(parsed.table_elements)}")
-print(f"Số hình ảnh: {len(parsed.image_elements)}")
+# Thống kê trực tiếp từ danh sách elements
+print(f"Tổng số trang: {result.page_count}")
+print(f"Tổng số phần tử layout: {len(result.elements)}")
+print(f"Tổng số chunk RAG: {len(result.chunks)}")
 ```
 
 ---

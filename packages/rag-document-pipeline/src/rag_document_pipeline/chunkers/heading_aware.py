@@ -3,7 +3,7 @@
 This chunker classifies elements by type and delegates to the appropriate
 specialized chunker:
 
-- Text/heading/list/paragraph → TextChunker (LangChain recursive)
+- Text/heading/list/paragraph → SemanticTextChunker (topic shift boundaries & sentence buffer)
 - Table → TableChunker (structure-preserving, header-repeating)
 - Image/figure → ImageChunker (caption-based)
 """
@@ -12,9 +12,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from rag_document_pipeline.chunkers.base import Chunker
+from rag_document_pipeline.chunkers.base import Chunker, group_by_section
 from rag_document_pipeline.chunkers.figure import ImageChunker
-from rag_document_pipeline.chunkers.recursive import TextChunker
+from rag_document_pipeline.chunkers.semantic import SemanticTextChunker
 from rag_document_pipeline.chunkers.table import TableChunker
 from rag_document_pipeline.models import DocumentChunk, LayoutElement
 
@@ -42,14 +42,14 @@ class HeadingAwareChunker:
         text_chunker: Chunker | None = None,
         table_chunker: TableChunker | None = None,
         image_chunker: ImageChunker | None = None,
-        semantic_grouping: bool = False,
+        semantic_grouping: bool = True,
     ) -> None:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.semantic_grouping = semantic_grouping
-        self.text_chunker = text_chunker or TextChunker(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
+        self.text_chunker = text_chunker or SemanticTextChunker(
+            min_chunk_size=min(300, chunk_size // 4),
+            max_chunk_size=chunk_size,
         )
         self.table_chunker = table_chunker or TableChunker(chunk_size=chunk_size)
         self.image_chunker = image_chunker or ImageChunker()
@@ -63,16 +63,15 @@ class HeadingAwareChunker:
         min_chunk_size: int = 300,
         max_chunk_size: int = 1500,
         threshold_percentile: float = 80.0,
-        semantic_grouping: bool = False,
+        semantic_grouping: bool = True,
     ) -> HeadingAwareChunker:
         """Create a Hybrid Heading-Aware + Semantic chunker.
 
         Maintains layout structure, table markdown with repeated headers,
         and uses semantic topic shift boundaries for text blocks.
         """
-        from rag_document_pipeline.chunkers.semantic import SemanticTextChunker
-
         return cls(
+            chunk_size=max_chunk_size,
             text_chunker=SemanticTextChunker(
                 embed_fn=embed_fn,
                 min_chunk_size=min_chunk_size,
@@ -199,28 +198,7 @@ class HeadingAwareChunker:
     # endregion
 
     # region _group_by_section  
-    @staticmethod
-    def _group_by_section(
-        elements: list[LayoutElement],
-    ) -> list[list[LayoutElement]]:
-        """Group adjacent elements sharing the same section path and page."""
-        if not elements:
-            return []
-
-        groups: list[list[LayoutElement]] = []
-        current: list[LayoutElement] = [elements[0]]
-
-        for el in elements[1:]:
-            prev = current[-1]
-            same_section = el.section_path == prev.section_path
-            same_page = el.page_number == prev.page_number
-            if same_section and same_page:
-                current.append(el)
-            else:
-                groups.append(current)
-                current = [el]
-        groups.append(current)
-        return groups
+    _group_by_section = staticmethod(group_by_section)
     
     # endregion
 

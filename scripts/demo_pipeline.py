@@ -51,31 +51,34 @@ def main() -> int:
     image_dir.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------
-    # Step 1: Parse PDF and separate by type
+    # Step 1: Process PDF via DocumentPipeline (Parse -> Normalize -> Chunk)
     # ------------------------------------------------------------------
-    print(f"\n📄 [1/5] Parsing PDF: {pdf_path.name}")
+    print(f"\n📄 [1/5] Processing PDF: {pdf_path.name}")
     from rag_document_pipeline import DocumentPipeline
 
-    pipeline = DocumentPipeline()
-
-    # Show intermediate result — parsed and separated
-    parsed = pipeline.parse_and_separate(
-        content, filename=pdf_path.name, document_id=document_id, image_dir=image_dir
-    )
-    print(f"   ✅ Pages: {parsed.page_count}")
-    print(f"   📝 Text elements:  {len(parsed.text_elements)}")
-    print(f"   📊 Table elements: {len(parsed.table_elements)}")
-    print(f"   🖼️  Image elements: {len(parsed.image_elements)}")
-    print(f"   📦 Total elements: {len(parsed.all_elements)}")
-
-    # ------------------------------------------------------------------
-    # Step 2: Type-aware chunking
-    # ------------------------------------------------------------------
-    print("\n✂️  [2/5] Chunking by type (text/table/image)...")
+    pipeline = DocumentPipeline(semantic_grouping=True)
     result = pipeline.process(
         content, filename=pdf_path.name, document_id=document_id, image_dir=image_dir
     )
 
+    text_elements = [
+        el
+        for el in result.elements
+        if el.type in {"text", "heading", "paragraph", "list", "caption", "formula"}
+    ]
+    table_elements = [el for el in result.elements if el.type == "table"]
+    image_elements = [el for el in result.elements if el.type in {"image", "figure"}]
+
+    print(f"   ✅ Pages: {result.page_count}")
+    print(f"   📝 Text elements:  {len(text_elements)}")
+    print(f"   📊 Table elements: {len(table_elements)}")
+    print(f"   🖼️  Image elements: {len(image_elements)}")
+    print(f"   📦 Total elements: {len(result.elements)}")
+
+    # ------------------------------------------------------------------
+    # Step 2: Inspect Chunks
+    # ------------------------------------------------------------------
+    print("\n✂️  [2/5] Chunk summary...")
     text_chunks = [c for c in result.chunks if c.kind == "text"]
     table_chunks = [c for c in result.chunks if c.kind == "table"]
     figure_chunks = [c for c in result.chunks if c.kind == "figure"]
