@@ -239,6 +239,10 @@ class LayoutNormalizer:
                 text = candidate.text.strip()
                 if cls._caption.match(text) and not element.caption:
                     element.caption = text
+                    if element.table_data and not element.table_data.caption:
+                        element.table_data.caption = text
+                    if element.image_data and not element.image_data.caption:
+                        element.image_data.caption = text
                     consumed.add(j)
                 elif cls._footnote.match(text):
                     element.metadata.setdefault("footnote", text)
