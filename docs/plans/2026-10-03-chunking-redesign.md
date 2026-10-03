@@ -23,6 +23,78 @@
 7. Metadata dictionaries are copied per chunk and never shared between output objects.
 8. Existing callers can continue using `chunk(elements, document_id=...)` while new options are injectable through constructors/factories.
 
+### Sơ đồ chunking từng bước
+
+Sơ đồ dưới đây mô tả luồng xử lý từ các phần tử layout sau khi parse đến chunk sẵn sàng để embedding và lưu vào vector store.
+
+```mermaid
+flowchart TD
+    A["1. Tài liệu đầu vào<br/>PDF / bytes"] --> B["2. Parser<br/>Trích xuất LayoutElement"]
+    B --> C["3. Chuẩn hóa layout<br/>NFC, whitespace, control chars"]
+    C --> D["4. Xác định thứ tự đọc<br/>page, bbox, reading_order"]
+    D --> E["5. Lan truyền ngữ cảnh heading<br/>section_path cho từng element"]
+    E --> F{"6. Phân loại element"}
+
+    F -->|text / paragraph / list / formula / heading| G["7A. TextUnit có provenance<br/>Gắn element_id, page, bbox, order"]
+    F -->|table / data_table| H["7B. TableChunker<br/>Bảo toàn header và row provenance"]
+    F -->|image / figure| I["7C. FigureChunker<br/>caption / description / OCR"]
+    F -->|header / footer| J["7D. Bỏ qua<br/>Page furniture"]
+    F -->|unknown type| K{"Chính sách unknown type"}
+    K -->|skip| J
+    K -->|text compatibility| G
+
+    G --> L["8. Tách câu / atomic block<br/>Bảo toàn bảng Markdown và công thức"]
+    L --> M["9. Tính semantic distance<br/>Embedding hoặc lexical fallback có kiểm soát"]
+    M --> N["10. Xác định breakpoint<br/>Theo percentile và topic shift"]
+    N --> O["11. Gom cluster<br/>Gộp cluster ngắn"]
+    O --> P["12. Cắt cluster dài<br/>Theo token budget"]
+    P --> Q["13. Áp dụng overlap<br/>Theo cấu hình, không hardcode"]
+
+    H --> R["14. Đóng gói chunk bảng<br/>Token-aware row packing"]
+    I --> S["15. Đóng gói chunk hình<br/>Giới hạn text caption/OCR"]
+    J --> T["16. Không tạo chunk indexable"]
+
+    Q --> U["17. Gộp kết quả các lane<br/>Không làm mất provenance"]
+    R --> U
+    S --> U
+    T --> U
+    U --> V["18. Sắp xếp deterministic<br/>source_order → page → bbox"]
+    V --> W["19. Validate contract<br/>ID, page, token, provenance, index"]
+    W --> X{"Hợp lệ?"}
+    X -->|Không| Y["20A. Báo lỗi cụ thể<br/>Không sửa âm thầm dữ liệu"]
+    X -->|Có| Z["20B. DocumentChunk[]<br/>Sẵn sàng embedding / indexing"]
+```
+
+### Luồng dữ liệu rút gọn
+
+```text
+Tài liệu
+  → Parser
+  → LayoutElement[]
+  → Chuẩn hóa + thứ tự đọc + section_path
+  → Phân loại theo loại element
+  → TextUnit / TableChunk / FigureChunk
+  → Tách semantic + giới hạn token + overlap
+  → Gắn provenance chính xác
+  → Gộp và sắp xếp deterministic
+  → Validate
+  → DocumentChunk[]
+  → Embedding và vector store
+```
+
+### Quy tắc quan trọng ở từng bước
+
+| Bước | Quy tắc bắt buộc |
+|---|---|
+| Chuẩn hóa | Không làm thay đổi nội dung Unicode hợp lệ; giữ thứ tự đọc của parser/layout normalizer. |
+| Provenance | Chunk chỉ chứa `element_ids`, `bboxes`, trang và order của phần nội dung thực sự đóng góp. |
+| Semantic split | Không ghép bảng Markdown hoặc atomic unit vào giữa câu; embedding lỗi không được fallback âm thầm. |
+| Giới hạn kích thước | Dùng token count của tokenizer; một atomic unit quá lớn phải được đánh dấu rõ bằng metadata. |
+| Overlap | Lấy từ cuối chunk trước, dùng đúng cấu hình, ghi `overlap_tokens` vào metadata. |
+| Table/Figure | Table giữ header/row mapping; hình chỉ có metadata thì `indexable=False` và không đưa vào text embedding. |
+| Ordering | Sort theo `source_order`, sau đó page và bbox; không chỉ sort bằng `page_start`. |
+| Validation | Không tự sửa `document_id`, duplicate ID hoặc provenance sai; phải báo lỗi có mã cụ thể. |
+
 ### Proposed data flow
 
 ```text
