@@ -437,7 +437,7 @@ Ghi lại nhật ký các lần chạy background worker xử lý tài liệu (p
 | `status` | `VARCHAR(30)` | `NOT NULL, CHECK` | `'queued'` | Trạng thái: `queued`, `running`, `completed`, `failed` |
 | `retry_count` | `INTEGER` | `NOT NULL` | `0` | Số lần đã thử lại khi gặp sự cố mạng/LLM |
 | `parser_name` | `VARCHAR(50)` | `NOT NULL` | `'opendataloader'` | Tên bộ bóc tách (`docling`, `opendataloader`, `pypdf`) |
-| `chunker_name` | `VARCHAR(50)` | `NOT NULL` | `'heading_aware'` | Tên thuật toán phân mảnh (`heading_aware`, `semantic`) |
+| `chunker_name` | `VARCHAR(50)` | `NOT NULL` | `'multimodal'` | Tên thuật toán phân mảnh (`multimodal`, `semantic`) |
 | `elapsed_seconds` | `FLOAT` | `NULL` | `NULL` | Tổng thời gian hoàn thành (giây) |
 | `error_details` | `TEXT` | `NULL` | `NULL` | Stack trace khi gặp exception |
 | `started_at` | `TIMESTAMPTZ` | `NULL` | `NULL` | Thời điểm bắt đầu thực thi trên worker |

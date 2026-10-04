@@ -1,10 +1,10 @@
-from rag_document_pipeline.chunking.multimodal import HeadingAwareChunker
-from rag_document_pipeline.chunking.text import SemanticTextChunker
+from rag_document_pipeline.chunking.multimodal import MultimodalChunker
+from rag_document_pipeline.chunking.text import TextChunker
 from rag_document_pipeline.models import LayoutElement, TableData
 
 
 def test_semantic_text_chunker_basic():
-    chunker = SemanticTextChunker(min_chunk_size=50, max_chunk_size=300)
+    chunker = TextChunker(min_chunk_size=50, max_chunk_size=300)
     elements = [
         LayoutElement(
             id="e1",
@@ -37,8 +37,8 @@ def test_semantic_text_chunker_basic():
         assert c.metadata["chunker"] == "semantic_hybrid"
 
 
-def test_heading_aware_hybrid_semantic():
-    hybrid_chunker = HeadingAwareChunker.hybrid_semantic(
+def test_multimodal_hybrid_semantic():
+    hybrid_chunker = MultimodalChunker.hybrid_semantic(
         min_chunk_size=50,
         max_chunk_size=500,
     )
@@ -77,9 +77,9 @@ def test_heading_aware_hybrid_semantic():
     assert text_chunk.metadata["table_ids"] == ["e3"]
 
 
-def test_heading_aware_hybrid_semantic_inline():
+def test_multimodal_hybrid_semantic_inline():
     """Verify that the multimodal router inlines small tables into text chunks."""
-    hybrid_chunker = HeadingAwareChunker.hybrid_semantic(
+    hybrid_chunker = MultimodalChunker.hybrid_semantic(
         min_chunk_size=50,
         max_chunk_size=500,
     )
@@ -123,7 +123,7 @@ def test_vietnamese_sentence_boundary_detection_abbreviations():
         "Tổng kinh phí dự án là 1.500.000 VNĐ (tương đương 1.5% ngân sách quý). "
         "Các tài liệu kèm theo gồm báo cáo, phụ lục, v.v. cần nộp trước ngày 15.10.2026."
     )
-    sentences = SemanticTextChunker._split_sentences(text)
+    sentences = TextChunker._split_sentences(text)
     # Phải tách thành đúng 3 câu hoàn chỉnh, không bị xé vụn ở TP., ThS., 1.500.000, 1.5%, v.v.
     assert len(sentences) == 3
     assert "TP. Hồ Chí Minh" in sentences[0]
@@ -143,7 +143,7 @@ def test_vietnamese_sentence_boundary_detection_with_markdown_table():
         "| T2 | 15 tỷ |\n\n"
         "Kết quả trên cho thấy mức tăng trưởng ổn định trong quý 1."
     )
-    sentences = SemanticTextChunker._split_sentences(text)
+    sentences = TextChunker._split_sentences(text)
     assert len(sentences) == 3
     # Bảng markdown phải nằm nguyên vẹn trong câu thứ 2
     assert "| Tháng | Doanh số |" in sentences[1]
@@ -166,7 +166,7 @@ def test_semantic_topic_shift_detection():
     )
     combined = f"{finance_text} {weather_text}"
 
-    chunker = SemanticTextChunker(min_chunk_size=100, max_chunk_size=500, threshold_percentile=70.0)
+    chunker = TextChunker(min_chunk_size=100, max_chunk_size=500, threshold_percentile=70.0)
     segments = chunker._split_semantically(combined)
 
     # Phải nhận diện được điểm chuyển dịch chủ đề và tách thành ít nhất 2 phân đoạn riêng biệt

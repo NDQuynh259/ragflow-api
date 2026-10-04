@@ -7,7 +7,7 @@
   - `docs/plans/2026-10-03-chunking-redesign.md` — kế hoạch triển khai tiếng Việt
   - `docs/chunking-redesign/architecture-review-and-redesign-plan.md` — review kiến trúc
   - `docs/chunking-redesign/chunking-implementation-roadmap.md` — roadmap 4 tuần
-- **Cơ sở kiểm chứng:** đã đọc mã nguồn thực tế `chunkers/semantic.py`, `heading_aware.py`, `table.py`, `figure.py`, `base.py`, `pipeline.py`
+- **Cơ sở kiểm chứng:** đã đọc mã nguồn thực tế `chunking/text.py`, `multimodal.py`, `table.py`, `figure.py`, `base.py`, `pipeline.py`
 
 ## Đánh giá tổng quan
 

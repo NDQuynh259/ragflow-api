@@ -2,7 +2,7 @@
 
 Orchestrates: parse → normalize → type-aware chunking → validate.
 
-The pipeline uses OpenDataLoader as the default parser and HeadingAwareChunker
+The pipeline uses OpenDataLoader as the default parser and MultimodalChunker
 as the default chunker.  Both can be replaced via constructor injection.
 """
 
@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from rag_document_pipeline.chunking.base import Chunker
-from rag_document_pipeline.chunking.multimodal import HeadingAwareChunker
+from rag_document_pipeline.chunking.multimodal import MultimodalChunker
 from rag_document_pipeline.models import (
     DocumentChunk,
     LayoutElement,
@@ -59,7 +59,7 @@ class DocumentPipeline:
             self.chunker = chunker
         else:
             # The multimodal reading-order router is always used.
-            self.chunker = HeadingAwareChunker.hybrid_semantic(
+            self.chunker = MultimodalChunker.hybrid_semantic(
                 embed_fn=embed_fn,
                 min_chunk_size=min(300, chunk_size // 4),
                 max_chunk_size=chunk_size,
@@ -89,7 +89,7 @@ class DocumentPipeline:
            - Đo khoảng cách ngữ nghĩa qua Sliding Window Buffer.
            - Cắt ranh giới chunk mới tại điểm nhảy vọt chủ đề (threshold_percentile).
         """
-        chunker = HeadingAwareChunker.hybrid_semantic(
+        chunker = MultimodalChunker.hybrid_semantic(
             embed_fn=embed_fn,
             min_chunk_size=min_chunk_size,
             max_chunk_size=max_chunk_size,
@@ -124,7 +124,7 @@ class DocumentPipeline:
         # 2. Normalize
         elements = self._normalize(elements)
 
-        # 3. Chunk (type-aware via HeadingAwareChunker)
+        # 3. Chunk (type-aware via MultimodalChunker)
         chunks = self.chunker.chunk(elements, document_id=document_id)
 
         # 4. Validate

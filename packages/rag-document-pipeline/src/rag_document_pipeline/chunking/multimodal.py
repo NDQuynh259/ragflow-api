@@ -85,8 +85,5 @@ class MultimodalChunker:
         return self.text_chunker.chunk(elements, document_id=document_id)
 
 
-# Backward-compatible alias.
-HeadingAwareChunker = MultimodalChunker
-
-__all__ = ["MultimodalChunker", "HeadingAwareChunker"]
+__all__ = ["MultimodalChunker"]
 

@@ -95,14 +95,14 @@ Mô hình lai kết hợp: **Heading-Aware ở tầng vĩ mô (Macro)** để b�
   }
 }}%%
 flowchart TD
-    A["File PDF (Đa thể thức)"] --> B["TẦNG 1: HeadingAwareChunker (Macro - Bố cục)"]
+    A["File PDF (Đa thể thức)"] --> B["TẦNG 1: MultimodalChunker (Macro - Bố cục)"]
     
     B --> C["Làn Bảng -> TableChunker (Markdown + Repeated Header)"]
     B --> D["Làn Hình ảnh -> ImageChunker (Caption / OCR text)"]
     B --> E["Lược bỏ Header / Footer (Số trang, tiêu đề lặp)"]
     
     B --> F["Làn Văn bản (Dưới cùng một Tiêu đề)"]
-    F --> G["TẦNG 2: SemanticTextChunker (Micro - Ngữ nghĩa)"]
+    F --> G["TẦNG 2: TextChunker (Micro - Ngữ nghĩa)"]
     
     subgraph Thuật toán Semantic bên trong
         G --> H["1. Tách văn bản thành các câu: S1, S2, S3..."]
@@ -122,20 +122,20 @@ flowchart TD
 ---
 
 ### 3.1. Tầng 1: Vĩ mô (Heading-Aware Orchestrator)
-File mã nguồn: [`packages/rag-document-pipeline/src/rag_document_pipeline/chunkers/heading_aware.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunkers/heading_aware.py)
+File mã nguồn: [`packages/rag-document-pipeline/src/rag_document_pipeline/chunking/multimodal.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/multimodal.py)
 
 - **Heading Stack Propagation (`_propagate_sections`)**:
   - Theo dõi cây tiêu đề cha con ($H_1 \rightarrow H_2 \rightarrow H_3$).
   - Tự động gán mảng `section_path` (ví dụ: `["Chương 1", "1.1 Phạm vi"]`) cho tất cả các đoạn văn, bảng biểu, hình ảnh bên dưới.
 - **Phân làn chuyên biệt (Type Routing)**:
   - Không băm lẫn lộn: Bảng biểu giữ nguyên dạng bảng Markdown; Hình ảnh giữ nguyên chú thích caption.
-- **Repeated Header cho Bảng biểu dài ([`table.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunkers/table.py))**:
+- **Repeated Header cho Bảng biểu dài ([`table.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/table.py))**:
   - Với các bảng dữ liệu vượt quá 1200 ký tự, khi cắt theo nhóm hàng, hệ thống **tự động lặp lại dòng tiêu đề cột** ở đầu mỗi chunk con để LLM không bị mất ý nghĩa cột.
 
 ---
 
 ### 3.2. Tầng 2: Vi mô (Semantic Text Chunker)
-File mã nguồn: [`packages/rag-document-pipeline/src/rag_document_pipeline/chunkers/semantic.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunkers/semantic.py)
+File mã nguồn: [`packages/rag-document-pipeline/src/rag_document_pipeline/chunking/semantic.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/semantic.py)
 
 Bên dưới một tiêu đề có thể có nhiều đoạn văn dài. Thay vì cắt cơ học theo độ dài ký tự cứng:
 
@@ -198,10 +198,10 @@ CREATE TABLE IF NOT EXISTS chunks (
 
 ### 5.1. Khởi tạo trực tiếp Chunker Lai (Hybrid Semantic)
 ```python
-from rag_document_pipeline.chunking.multimodal import HeadingAwareChunker
+from rag_document_pipeline.chunking.multimodal import MultimodalChunker
 
 # Khởi tạo mô hình Lai: Heading-Aware + Semantic Text Chunker
-chunker = HeadingAwareChunker.hybrid_semantic(
+chunker = MultimodalChunker.hybrid_semantic(
     min_chunk_size=300,        # Kích thước tối thiểu (tránh chunk 1 câu)
     max_chunk_size=1500,       # Kích thước tối đa (tránh chunk quá dài)
     threshold_percentile=80.0, # Độ nhạy phát hiện đổi chủ đề (80%)
@@ -213,7 +213,7 @@ chunker = HeadingAwareChunker.hybrid_semantic(
 from rag_document_pipeline.pipeline import DocumentPipeline
 
 pipeline = DocumentPipeline(
-    chunker=HeadingAwareChunker.hybrid_semantic(),
+    chunker=MultimodalChunker.hybrid_semantic(),
 )
 
 # Chạy bóc tách, chuẩn hóa, và băm nhỏ

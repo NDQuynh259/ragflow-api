@@ -21,18 +21,18 @@
 ### Phát Hiện Quan Trọng Cần Làm Rõ ⚠️
 1. **Khoảng trống logic trong xử lý Bảng nhỏ Inline**: Tài liệu nói bảng nhỏ ≤ chunk_size/2 và ≤ 8 dòng được inline, nhưng mã nguồn dùng max_chars=chunk_size//2 (default 600) và max_rows=8 — giá trị mặc định có thể không khớp với chunk_size người dùng truyền vào
 2. **Thiếu ví dụ thực tế về Lexical Jaccard Fallback**: Tài liệu tuyên bố "Zero-cost < 1ms", nhưng chưa có benchmark chứng minh hiệu năng thực tế
-3. **Không có unit test cho tầng Macro**: Tất cả test trong `test_semantic_chunker.py` chỉ test tầng Micro, thiếu test cho `_propagate_sections` và `_group_by_section`
+3. **Không có unit test cho tầng Macro**: Tất cả test trong `test_text_chunking.py` chỉ test tầng Micro, thiếu test cho `_propagate_sections` và `_group_by_section`
 
 ---
 
 ## PHẦN I: XÁC MINH CÁC TUYÊN BỐ KIẾN TRÚC
 
-### 1.1. Tầng 1 — HeadingAwareChunker (Macro Orchestrator)
+### 1.1. Tầng 1 — MultimodalChunker (Macro Orchestrator)
 
 **Tuyên bố trong tài liệu** (Mục 2):
-> `HeadingAwareChunker` đóng vai trò nhạc trưởng phân loại và xử lý các phần tử tài liệu... Duy trì ngăn xếp tiêu đề (`heading_stack`), gán `section_path` cho toàn bộ phần tử đoạn văn, bảng, hình ảnh.
+> `MultimodalChunker` đóng vai trò nhạc trưởng phân loại và xử lý các phần tử tài liệu... Duy trì ngăn xếp tiêu đề (`heading_stack`), gán `section_path` cho toàn bộ phần tử đoạn văn, bảng, hình ảnh.
 
-**Xác minh từ mã nguồn** [`heading_aware.py:206-227`](../packages/rag-document-pipeline/src/rag_document_pipeline/chunkers/heading_aware.py#L206-L227):
+**Xác minh từ mã nguồn** [`multimodal.py:206-227`](../packages/rag-document-pipeline/src/rag_document_pipeline/chunking/multimodal.py#L206-L227):
 ```python
 @staticmethod
 def _propagate_sections(elements: list[LayoutElement]) -> list[LayoutElement]:
@@ -60,7 +60,7 @@ def _propagate_sections(elements: list[LayoutElement]) -> list[LayoutElement]:
 > - **Bảng nhỏ giữ Inline**: ≤ chunk_size/2 và ≤ 8 dòng chuyển Markdown inline  
 > - **Bảng lớn & Hình ảnh**: Chuyển giao độc lập
 
-**Xác minh từ mã nguồn** [`heading_aware.py:172-180`](../packages/rag-document-pipeline/src/rag_document_pipeline/chunkers/heading_aware.py#L172-L180):
+**Xác minh từ mã nguồn** [`multimodal.py:172-180`](../packages/rag-document-pipeline/src/rag_document_pipeline/chunking/multimodal.py#L172-L180):
 ```python
 if el_type in TABLE_TYPES:
     if TableChunker.is_small_table(el, max_chars=self.chunk_size // 2, max_rows=8):
@@ -75,7 +75,7 @@ if el_type in TABLE_TYPES:
 
 ⚠️ **PHÁT HIỆN**: 
 - Tài liệu nói "≤ chunk_size/2" — mã nguồn dùng `self.chunk_size // 2` ✅ ĐÚNG
-- **NHƯNG**: Khi người dùng gọi `HeadingAwareChunker.hybrid_semantic(max_chunk_size=1500)`, thuộc tính `self.chunk_size` được set là `max_chunk_size` (xem `heading_aware.py:74`), do đó `is_small_table` sẽ kiểm tra với `max_chars=750` — **hợp lý**.
+- **NHƯNG**: Khi người dùng gọi `MultimodalChunker.hybrid_semantic(max_chunk_size=1500)`, thuộc tính `self.chunk_size` được set là `max_chunk_size` (xem `multimodal.py:74`), do đó `is_small_table` sẽ kiểm tra với `max_chars=750` — **hợp lý**.
 - ✅ Logic đúng, nhưng tài liệu nên làm rõ `chunk_size` ở đây là `max_chunk_size` để tránh nhầm lẫn.
 
 ---
@@ -85,7 +85,7 @@ if el_type in TABLE_TYPES:
 **Tuyên bố trong tài liệu** (Mục 2.4):
 > Toàn bộ chunks từ 3 làn được merge và sắp xếp lại theo thứ tự đọc tự nhiên (page_start, page_end), sau đó đánh số lại thuộc tính `index`.
 
-**Xác minh từ mã nguồn** [`heading_aware.py:191-194`](../packages/rag-document-pipeline/src/rag_document_pipeline/chunkers/heading_aware.py#L191-L194):
+**Xác minh từ mã nguồn** [`multimodal.py:191-194`](../packages/rag-document-pipeline/src/rag_document_pipeline/chunking/multimodal.py#L191-L194):
 ```python
 # Sort by page and re-index
 chunks.sort(key=lambda c: (c.page_start, c.page_end))
@@ -104,7 +104,7 @@ for idx, c in enumerate(chunks):
 **Tuyên bố trong tài liệu** (Mục 3.1, Bước 1):
 > Dùng ký tự Private Use Area Unicode `` để che (mask) dấu chấm... viết tắt chức danh: ThS., TS., GS., PGS., BS., DS., KTS., đ/c... số thập phân: 1.5, 1.500.000...
 
-**Xác minh từ mã nguồn** [`semantic.py:179-230`](../packages/rag-document-pipeline/src/rag_document_pipeline/chunkers/semantic.py#L179-L230):
+**Xác minh từ mã nguồn** [`semantic.py:179-230`](../packages/rag-document-pipeline/src/rag_document_pipeline/chunking/semantic.py#L179-L230):
 ```python
 # Che dấu chấm trong số thập phân và phân cách hàng nghìn
 masked_block = re.sub(r"(?<=\d)\.(?=\d)", "", block)
@@ -136,7 +136,7 @@ for pat in abbrev_patterns:
 **Tuyên bố trong tài liệu** (Mục 3.1, Bước 1):
 > Bảo toàn bảng Markdown: Nhận diện các dòng bắt đầu và kết thúc bằng `|`, cô lập thành các khối nguyên tử (atomic block), không bị băm vụn thành từng dòng câu.
 
-**Xác minh từ mã nguồn** [`semantic.py:154-169`](../packages/rag-document-pipeline/src/rag_document_pipeline/chunkers/semantic.py#L154-L169):
+**Xác minh từ mã nguồn** [`semantic.py:154-169`](../packages/rag-document-pipeline/src/rag_document_pipeline/chunking/semantic.py#L154-L169):
 ```python
 lines = text.split("\n")
 blocks: list[str] = []
@@ -158,7 +158,7 @@ if table_lines:
 
 ✅ **ĐÚNG**: Bảng Markdown được nhận diện và giữ nguyên khối, không bị tách rời theo từng dòng.
 
-**Test xác nhận** [`test_semantic_chunker.py:139-154`](../packages/rag-document-pipeline/tests/test_semantic_chunker.py#L139-L154):
+**Test xác nhận** [`test_text_chunking.py:139-154`](../packages/rag-document-pipeline/tests/test_text_chunking.py#L139-L154):
 ```python
 def test_vietnamese_sentence_boundary_detection_with_markdown_table():
     text = (
@@ -169,7 +169,7 @@ def test_vietnamese_sentence_boundary_detection_with_markdown_table():
         "| T2 | 15 tỷ |\n\n"
         "Kết quả trên cho thấy..."
     )
-    sentences = SemanticTextChunker._split_sentences(text)
+    sentences = TextChunker._split_sentences(text)
     assert len(sentences) == 3
     # Bảng markdown phải nằm nguyên vẹn trong câu thứ 2
     assert "| Tháng | Doanh số |" in sentences[1]
@@ -187,7 +187,7 @@ def test_vietnamese_sentence_boundary_detection_with_markdown_table():
 > - **Right Buffer**: Gom $W$ câu bắt đầu tại vị trí $i + 1$  
 > Hệ thống hỗ trợ 2 chế độ: Vector Cosine Distance hoặc Lexical Jaccard Overlap Fallback.
 
-**Xác minh từ mã nguồn** [`semantic.py:299-362`](../packages/rag-document-pipeline/src/rag_document_pipeline/chunkers/semantic.py#L299-L362):
+**Xác minh từ mã nguồn** [`semantic.py:299-362`](../packages/rag-document-pipeline/src/rag_document_pipeline/chunking/semantic.py#L299-L362):
 ```python
 def _compute_distances(self, sentences: list[str], window_size: int = 2) -> list[float]:
     # Xây dựng các cặp Buffer trượt
@@ -230,7 +230,7 @@ def _compute_distances(self, sentences: list[str], window_size: int = 2) -> list
 > - **Gộp phần nhỏ (< min_chunk_size = 300)**: Lũy tiến ghép các cụm câu liền kề  
 > - **Cắt phần dài (> max_chunk_size = 1500)**: Dùng `RecursiveCharacterTextSplitter` đệ quy
 
-**Xác minh từ mã nguồn** [`semantic.py:381-413`](../packages/rag-document-pipeline/src/rag_document_pipeline/chunkers/semantic.py#L381-L413):
+**Xác minh từ mã nguồn** [`semantic.py:381-413`](../packages/rag-document-pipeline/src/rag_document_pipeline/chunking/semantic.py#L381-L413):
 ```python
 def _enforce_bounds(self, clusters: list[str]) -> list[str]:
     merged: list[str] = []
@@ -332,9 +332,9 @@ def index(self, chunks: list[DocumentChunk], batch_size: int = 50) -> int:
 
 ### 4.1. Thiếu Unit Test Cho Tầng Macro
 
-**Hiện trạng**: File [`test_semantic_chunker.py`](../packages/rag-document-pipeline/tests/test_semantic_chunker.py) chỉ test:
+**Hiện trạng**: File [`test_text_chunking.py`](../packages/rag-document-pipeline/tests/test_text_chunking.py) chỉ test:
 - `test_semantic_text_chunker_basic`
-- `test_heading_aware_hybrid_semantic`
+- `test_multimodal_hybrid_semantic`
 - `test_vietnamese_sentence_boundary_detection_*`
 - `test_semantic_topic_shift_detection`
 
@@ -355,7 +355,7 @@ def test_heading_stack_propagation():
         LayoutElement(id="p2", type="paragraph", text="Content under Chapter 2", page_number=2),
     ]
     
-    chunker = HeadingAwareChunker()
+    chunker = MultimodalChunker()
     propagated = chunker._propagate_sections(elements)
     
     assert propagated[2].section_path == ["Chapter 1", "Section 1.1"]  # p1
@@ -372,7 +372,7 @@ def test_heading_stack_propagation():
 **Nhưng**: Tài liệu không nói rõ đây là **chế độ mặc định** khi người dùng không cấu hình embedding function.
 
 **Khuyến nghị**: Bổ sung vào tài liệu:
-> Nếu không truyền `embed_fn` khi khởi tạo `SemanticTextChunker`, hệ thống tự động dùng **Lexical Jaccard Overlap** (không tốn chi phí API). Chế độ này phù hợp cho môi trường phát triển, testing, hoặc khi muốn cắt giảm chi phí embedding.
+> Nếu không truyền `embed_fn` khi khởi tạo `TextChunker`, hệ thống tự động dùng **Lexical Jaccard Overlap** (không tốn chi phí API). Chế độ này phù hợp cho môi trường phát triển, testing, hoặc khi muốn cắt giảm chi phí embedding.
 
 ---
 
@@ -403,7 +403,7 @@ def test_heading_stack_propagation():
 ```python
 import json
 from rag_document_pipeline.models import LayoutElement
-from rag_document_pipeline.chunking.multimodal import HeadingAwareChunker
+from rag_document_pipeline.chunking.multimodal import MultimodalChunker
 
 # Tải layout JSON từ S3 (đã parse trước đó)
 layout_json = storage.get("s3://rag-documents/.../doc_layout.json")
@@ -411,7 +411,7 @@ elements_data = json.loads(layout_json)
 elements = [LayoutElement(**el) for el in elements_data]
 
 # Re-chunk với cấu hình mới (không cần parse lại PDF)
-chunker_v2 = HeadingAwareChunker.hybrid_semantic(
+chunker_v2 = MultimodalChunker.hybrid_semantic(
     min_chunk_size=400,  # Tăng từ 300 lên 400
     max_chunk_size=2000, # Tăng từ 1500 lên 2000
     threshold_percentile=75.0  # Giảm từ 80% xuống 75%
@@ -478,7 +478,7 @@ if hasattr(processed, "elements") and processed.elements:
 
 ### 4.6. Metadata `has_repeated_header` Được Set Cho Tất Cả Bảng Có `row_range`
 
-**Xác minh từ mã nguồn** [`table.py:189-193`](../packages/rag-document-pipeline/src/rag_document_pipeline/chunkers/table.py#L189-L193):
+**Xác minh từ mã nguồn** [`table.py:189-193`](../packages/rag-document-pipeline/src/rag_document_pipeline/chunking/table.py#L189-L193):
 ```python
 metadata: dict = {"chunker": "table"}
 if row_range:
@@ -508,7 +508,7 @@ if row_range:
 
 ### 4.7. Oversized Table Row Có Thể Vượt Quá `chunk_size`
 
-**Xác minh từ mã nguồn** [`table.py:92-108`](../packages/rag-document-pipeline/src/rag_document_pipeline/chunkers/table.py#L92-L108):
+**Xác minh từ mã nguồn** [`table.py:92-108`](../packages/rag-document-pipeline/src/rag_document_pipeline/chunking/table.py#L92-L108):
 ```python
 for i, row in enumerate(td.rows):
     current_rows.append(row)
@@ -570,8 +570,8 @@ count = self.vector_store.upsert(records)  # Gọi 50 records/lần
 | `_enforce_bounds` | ⚠️ Gián tiếp qua test_semantic_text_chunker_basic | 50% |
 | `_propagate_sections` | ❌ Không có | 0% |
 | `_group_by_section` | ❌ Không có | 0% |
-| TableChunker repeated headers | ✅ test_heading_aware_hybrid_semantic | 80% |
-| Inline small table | ✅ test_heading_aware_hybrid_semantic_inline | 85% |
+| TableChunker repeated headers | ✅ test_multimodal_hybrid_semantic | 80% |
+| Inline small table | ✅ test_multimodal_hybrid_semantic_inline | 85% |
 
 **Khuyến nghị**: Tăng coverage lên 90%+ bằng cách bổ sung test cho tầng Macro.
 

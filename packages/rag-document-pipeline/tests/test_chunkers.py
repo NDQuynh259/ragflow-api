@@ -1,5 +1,5 @@
 import pytest
-from rag_document_pipeline.chunking.multimodal import HeadingAwareChunker
+from rag_document_pipeline.chunking.multimodal import MultimodalChunker
 from rag_document_pipeline.chunking.table import TableChunker
 from rag_document_pipeline.models import ImageData, LayoutElement, TableData
 from rag_document_pipeline.normalizers.layout import LayoutNormalizer
@@ -79,7 +79,7 @@ def test_figure_caption_binding():
 
 def test_small_table_is_inlined_with_adjacent_text():
     """Verify that a small table is kept inline with its leading text paragraph."""
-    chunker = HeadingAwareChunker.hybrid_semantic(
+    chunker = MultimodalChunker.hybrid_semantic(
         min_chunk_size=300,
         max_chunk_size=1500,
     )
@@ -134,7 +134,7 @@ def test_small_table_is_inlined_with_adjacent_text():
 
 def test_large_table_is_chunked_independently():
     """Verify that a large table exceeding the small table threshold is chunked by TableChunker."""
-    chunker = HeadingAwareChunker(
+    chunker = MultimodalChunker(
         chunk_size=300,
     )
 

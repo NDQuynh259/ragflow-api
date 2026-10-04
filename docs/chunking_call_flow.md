@@ -9,8 +9,8 @@ chunking/
 ├── __init__.py          # Public exports và compatibility aliases
 ├── base.py              # Protocol, estimate_tokens, group_by_section
 ├── section.py           # propagate_sections, group_by_section
-├── multimodal.py        # MultimodalChunker router (HeadingAwareChunker alias)
-├── text.py              # TextChunker (SemanticTextChunker alias)
+├── multimodal.py        # MultimodalChunker router (MultimodalChunker alias)
+├── text.py              # TextChunker (TextChunker alias)
 ├── table.py             # TableChunker
 └── image.py             # ImageChunker
 ```
@@ -22,11 +22,11 @@ flowchart TD
     A[DocumentPipeline.process] --> B[parser.parse]
     B --> C[DocumentPipeline._normalize]
     C --> D[LayoutNormalizer.bind_captions_and_footnotes]
-    D --> E[HeadingAwareChunker.chunk]
+    D --> E[MultimodalChunker.chunk]
     E --> F[Multimodal reading-order router]
 
     F -->|Text / List / Formula| G[Accumulate adjacent text]
-    G --> H[SemanticTextChunker.chunk]
+    G --> H[TextChunker.chunk]
 
     F -->|Bảng nhỏ| I[TableChunker.render_markdown]
     I --> G
@@ -47,7 +47,7 @@ flowchart TD
 
 ```mermaid
 sequenceDiagram
-    participant C as HeadingAwareChunker.chunk
+    participant C as MultimodalChunker.chunk
     participant P as _propagate_sections
     participant G as _group_by_section
     participant L as LayoutElement[]
@@ -83,7 +83,7 @@ H1: Chương 2
 
 ```mermaid
 flowchart TD
-    A[SemanticTextChunker.chunk] --> B[_group_by_section]
+    A[TextChunker.chunk] --> B[_group_by_section]
     B --> C[Cho từng group]
     C --> D[_heading_prefix]
     C --> E[_group_text từng element]
@@ -159,7 +159,7 @@ sequenceDiagram
 flowchart LR
     A[LayoutElement] --> B{type}
     B -->|text/list/formula| C[Accumulate adjacent text]
-    C --> D[SemanticTextChunker]
+    C --> D[TextChunker]
 
     B -->|bảng nhỏ| E[TableChunker.render_markdown]
     E --> C
@@ -189,13 +189,13 @@ DocumentPipeline.process
 ├── DocumentPipeline._normalize
 │   ├── _clean_text (từng element)
 │   └── LayoutNormalizer.bind_captions_and_footnotes
-├── HeadingAwareChunker.chunk
+├── MultimodalChunker.chunk
 │   ├── _propagate_sections
 │   └── Multimodal reading-order router
 │       ├── _group_by_section
 │       ├── TableChunker.is_small_table
 │       ├── TableChunker.render_markdown (bảng nhỏ)
-│       ├── SemanticTextChunker.chunk
+│       ├── TextChunker.chunk
 │       │   ├── _heading_prefix
 │       │   ├── _group_text
 │       │   └── _split_semantically
@@ -224,7 +224,7 @@ Hệ thống luôn dùng một router multimodal theo reading order:
 | Image/figure | Chunk độc lập từ caption/OCR/description/footnote |
 | Header/footer | Bỏ qua |
 
-Không còn tham số `semantic_grouping`: router multimodal là luồng duy nhất. Cấu hình chỉ gồm `chunk_size`, `min_chunk_size`, `max_chunk_size`, `threshold_percentile` và `embed_fn`.
+Không còn tham số `multimodal_routing`: router multimodal là luồng duy nhất. Cấu hình chỉ gồm `chunk_size`, `min_chunk_size`, `max_chunk_size`, `threshold_percentile` và `embed_fn`.
 
 ## 8. Các hàm tiện ích
 

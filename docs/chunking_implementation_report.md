@@ -14,11 +14,11 @@ Hệ thống áp dụng kiến trúc **Mô hình Lai 2 tầng**:
 flowchart TD
     PDF["Tài liệu đầu vào (PDF / DOCX)"] --> Parser["1. Parser (OpenDataLoader)"]
     Parser --> Normalizer["2. LayoutNormalizer (Gắn Caption & Footnote)"]
-    Normalizer --> Macro["3. TẦNG 1: HeadingAwareChunker"]
+    Normalizer --> Macro["3. TẦNG 1: MultimodalChunker"]
     
     Macro -->|"Làn Bảng"| LaneTable["TableChunker (Caption + Repeated Header)"]
     Macro -->|"Làn Hình ảnh"| LaneImage["ImageChunker (Caption / OCR)"]
-    Macro -->|"Làn Văn bản"| LaneText["SemanticTextChunker (Ghép Heading Prefix ### H1 > H2)"]
+    Macro -->|"Làn Văn bản"| LaneText["TextChunker (Ghép Heading Prefix ### H1 > H2)"]
     
     LaneTable --> SortIndex["4. Sắp xếp thứ tự đọc & Đánh số Re-index"]
     LaneImage --> SortIndex
@@ -29,9 +29,9 @@ flowchart TD
 
 ---
 
-## 2. Tầng 1: Điều Phối Vĩ Mô (`HeadingAwareChunker`)
+## 2. Tầng 1: Điều Phối Vĩ Mô (`MultimodalChunker`)
 
-`HeadingAwareChunker` đóng vai trò là nhạc trưởng (Orchestrator) phân loại và xử lý các phần tử tài liệu (`LayoutElement`):
+`MultimodalChunker` đóng vai trò là nhạc trưởng (Orchestrator) phân loại và xử lý các phần tử tài liệu (`LayoutElement`):
 
 ### 2.1. Cây ngữ cảnh tiêu đề (`_propagate_sections`)
 - Duyệt qua danh sách phần tử và duy trì một ngăn xếp tiêu đề (`heading_stack`).
@@ -43,14 +43,14 @@ flowchart TD
 
 ### 2.3. Phân luồng dữ liệu đa thể thức
 - **Loại bỏ (Skip)**: Các phần tử `header`, `footer` (số trang, tiêu đề lặp lại đầu/chân trang) bị loại bỏ để không gây nhiễu ngữ cảnh.
-- **Bảng nhỏ giữ Inline**: Bảng có kích thước nhỏ ($\le \frac{\text{chunk\_size}}{2}$ và $\le 8$ dòng) được chuyển thành Markdown và gộp inline cùng đoạn văn bản mô tả xung quanh trong `SemanticTextChunker`.
+- **Bảng nhỏ giữ Inline**: Bảng có kích thước nhỏ ($\le \frac{\text{chunk\_size}}{2}$ và $\le 8$ dòng) được chuyển thành Markdown và gộp inline cùng đoạn văn bản mô tả xung quanh trong `TextChunker`.
 - **Bảng lớn & Hình ảnh**: Chuyển giao độc lập cho `TableChunker` và `ImageChunker`.
 
 ### 2.4. Tái lập chỉ mục & Sắp xếp thứ tự đọc
 - Toàn bộ chunks từ 3 làn (Text, Table, Image) được merge và sắp xếp lại theo thứ tự đọc tự nhiên (`page_start`, `page_end`), sau đó đánh số lại thuộc tính `index`.
 
 > [!NOTE]
-> **Ghép tiền tố ngữ cảnh (Context Prefix)** không phải do `HeadingAwareChunker` thực hiện, mà do `SemanticTextChunker._heading_prefix()` tự động gắn vào đầu mỗi text chunk:
+> **Ghép tiền tố ngữ cảnh (Context Prefix)** không phải do `MultimodalChunker` thực hiện, mà do `TextChunker._heading_prefix()` tự động gắn vào đầu mỗi text chunk:
 > ```markdown
 > ### CHƯƠNG I: QUY ĐỊNH CHUNG > Điều 2. Đối tượng áp dụng
 >
@@ -62,9 +62,9 @@ flowchart TD
 
 ## 3. Tầng 2: Các Bộ Chunker Chuyên Biệt (Micro Chunkers)
 
-### 3.1. Chunker Văn bản Ngữ Nghĩa (`SemanticTextChunker`)
+### 3.1. Chunker Văn bản Ngữ Nghĩa (`TextChunker`)
 
-Khác với các phương pháp băm cứng theo số ký tự (Naive Fixed-size Chunking), `SemanticTextChunker` tìm điểm ngắt tự nhiên theo **sự chuyển dịch chủ đề (Topic Shifts)**:
+Khác với các phương pháp băm cứng theo số ký tự (Naive Fixed-size Chunking), `TextChunker` tìm điểm ngắt tự nhiên theo **sự chuyển dịch chủ đề (Topic Shifts)**:
 
 #### Bước 1: Tách câu tiếng Việt chuẩn hóa (`_split_sentences`)
 - **Bảo toàn bảng Markdown**: Nhận diện các dòng bắt đầu và kết thúc bằng `|`, cô lập thành các khối nguyên tử (atomic block), không bị băm vụn thành từng dòng câu.

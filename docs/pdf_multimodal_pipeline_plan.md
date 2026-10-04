@@ -315,9 +315,9 @@ Không bỏ ảnh gốc sau khi tạo text.
 Triển khai các file đang là TODO:
 
 ```text
-chunkers/base.py
-chunkers/heading_aware.py
-chunkers/semantic.py
+chunking/base.py
+chunking/multimodal.py
+chunking/text.py
 ```
 
 Bổ sung logic:

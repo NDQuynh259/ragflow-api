@@ -294,6 +294,4 @@ class TextChunker:
         return [text[offset : offset + self.max_chunk_size] for offset in range(0, len(text), self.max_chunk_size)]
 
 
-SemanticTextChunker = TextChunker
-
-__all__ = ["TextChunker", "SemanticTextChunker"]
+__all__ = ["TextChunker"]

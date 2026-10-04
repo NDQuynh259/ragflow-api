@@ -91,7 +91,7 @@ class IngestionJob(Base, UUIDPrimaryKeyMixin):
     status: Mapped[str] = mapped_column(String(30), default="queued", nullable=False)
     retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     parser_name: Mapped[str] = mapped_column(String(50), default="opendataloader", nullable=False)
-    chunker_name: Mapped[str] = mapped_column(String(50), default="heading_aware", nullable=False)
+    chunker_name: Mapped[str] = mapped_column(String(50), default="multimodal", nullable=False)
     elapsed_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
     error_details: Mapped[str | None] = mapped_column(Text, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

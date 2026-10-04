@@ -39,7 +39,7 @@ sequenceDiagram
     participant Pipe as DocumentPipeline
     participant Parser as Parser (OpenDataLoader)
     participant Norm as LayoutNormalizer
-    participant Chunker as HeadingAwareChunker
+    participant Chunker as MultimodalChunker
     
     Caller->>Pipe: process(content, filename, document_id, image_dir)
     Pipe->>Parser: parse(content, filename, image_dir)
@@ -71,7 +71,7 @@ sequenceDiagram
   - Nếu gặp phần tử `footnote` (bắt đầu bằng `*`, `(*)`, `Note:`) ngay dưới bảng hoặc ảnh $\rightarrow$ gộp vào `element.metadata["footnote"]`.
   - Loại bỏ các phần tử caption/footnote độc lập để tránh chúng bị trôi dạt thành các đoạn văn rác ở chunk khác.
 
-### Bước 3: Chunk (`HeadingAwareChunker`)
+### Bước 3: Chunk (`MultimodalChunker`)
 - **Lan truyền ngữ cảnh Section (`_propagate_sections`)**: Cập nhật cây tiêu đề `section_path` (ví dụ: `["1. Giới thiệu", "1.2 Mục tiêu"]`) cho tất cả các phần tử nằm trong phạm vi mục đó.
 - **Multimodal routing**: Duyệt theo luồng đọc liên tục. Bảng nhỏ được render Markdown inline cùng văn bản xung quanh. Bảng lớn và hình ảnh được chunk độc lập với metadata đầy đủ.
 
@@ -170,11 +170,11 @@ for chunk in result.chunks[:2]:
 Khi cần phát hiện ranh giới chuyển chủ đề bằng vector khoảng cách ngữ nghĩa (cosine distance giữa các câu/đoạn) thay vì chỉ đếm ký tự:
 
 ```python
-from rag_document_pipeline.chunking.multimodal import HeadingAwareChunker
+from rag_document_pipeline.chunking.multimodal import MultimodalChunker
 from rag_document_pipeline import DocumentPipeline
 
 # Tạo chunker lai với mô hình embedding tùy chọn
-chunker = HeadingAwareChunker.hybrid_semantic(
+chunker = MultimodalChunker.hybrid_semantic(
     embed_fn=my_custom_embedding_function,  # Hàm nhận list[str] -> list[list[float]]
     min_chunk_size=300,
     max_chunk_size=1500,

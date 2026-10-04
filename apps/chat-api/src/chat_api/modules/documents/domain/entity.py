@@ -39,7 +39,7 @@ class IngestionJob(Entity[uuid.UUID]):
     status: IngestionStatus = IngestionStatus.QUEUED
     retry_count: int = 0
     parser_name: str = "opendataloader"
-    chunker_name: str = "heading_aware"
+    chunker_name: str = "multimodal"
     elapsed_seconds: float | None = None
     error_details: str | None = None
     started_at: datetime | None = None
@@ -83,7 +83,7 @@ class Document(AggregateRoot[uuid.UUID]):
     def create_ingestion_job(
         self,
         parser_name: str = "opendataloader",
-        chunker_name: str = "heading_aware",
+        chunker_name: str = "multimodal",
     ) -> IngestionJob:
         job = IngestionJob(
             id=uuid7(),

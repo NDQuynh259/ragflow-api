@@ -31,7 +31,7 @@ class UploadDocumentCommand(Command[DocumentDTO]):
     content: bytes
     mime_type: str = "application/pdf"
     parser_name: str = "opendataloader"
-    chunker_name: str = "heading_aware"
+    chunker_name: str = "multimodal"
     uploaded_by: uuid.UUID | None = None
 
 
