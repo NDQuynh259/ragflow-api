@@ -50,7 +50,6 @@ class CoreSettings(BaseSettings):
 
     # Document Pipeline & Chunking Strategy
     CHUNK_STRATEGY: str = "hybrid_semantic"
-    CHUNK_SEMANTIC_GROUPING: bool = True
     CHUNK_MIN_SIZE: int = 300
     CHUNK_MAX_SIZE: int = 1500
     CHUNK_THRESHOLD_PERCENTILE: float = 80.0

@@ -6,9 +6,9 @@ dependencies = [
     "rag-contracts",
     "opendataloader-pdf>=2.0.0",
     "langchain-core>=0.3",
-    "langchain-text-splitters>=0.3",
 ]
 requires-python = ">=3.11"
+
 [tool.uv.sources]
 rag-contracts = { workspace = true }
 [build-system]

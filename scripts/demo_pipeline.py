@@ -56,7 +56,7 @@ def main() -> int:
     print(f"\n📄 [1/5] Processing PDF: {pdf_path.name}")
     from rag_document_pipeline import DocumentPipeline
 
-    pipeline = DocumentPipeline(semantic_grouping=True)
+    pipeline = DocumentPipeline()
     result = pipeline.process(
         content, filename=pdf_path.name, document_id=document_id, image_dir=image_dir
     )

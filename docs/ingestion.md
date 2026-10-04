@@ -60,7 +60,7 @@ OpenDataLoader không được gọi trực tiếp từ `chat-api`; worker sẽ 
 ```python
 from rag_document_pipeline import DocumentPipeline
 
-result = DocumentPipeline(semantic_grouping=True).process(
+result = DocumentPipeline().process(
     pdf_bytes,
     filename="contract.pdf",
     document_id=document_id,

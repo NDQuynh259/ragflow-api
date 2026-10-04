@@ -403,7 +403,7 @@ def test_heading_stack_propagation():
 ```python
 import json
 from rag_document_pipeline.models import LayoutElement
-from rag_document_pipeline.chunkers.heading_aware import HeadingAwareChunker
+from rag_document_pipeline.chunking.multimodal import HeadingAwareChunker
 
 # Tải layout JSON từ S3 (đã parse trước đó)
 layout_json = storage.get("s3://rag-documents/.../doc_layout.json")

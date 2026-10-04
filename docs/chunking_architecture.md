@@ -198,7 +198,7 @@ CREATE TABLE IF NOT EXISTS chunks (
 
 ### 5.1. Khởi tạo trực tiếp Chunker Lai (Hybrid Semantic)
 ```python
-from rag_document_pipeline.chunkers.heading_aware import HeadingAwareChunker
+from rag_document_pipeline.chunking.multimodal import HeadingAwareChunker
 
 # Khởi tạo mô hình Lai: Heading-Aware + Semantic Text Chunker
 chunker = HeadingAwareChunker.hybrid_semantic(

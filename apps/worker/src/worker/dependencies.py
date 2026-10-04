@@ -55,12 +55,10 @@ def get_document_pipeline() -> DocumentPipeline:
             min_chunk_size=getattr(settings, "CHUNK_MIN_SIZE", 300),
             max_chunk_size=getattr(settings, "CHUNK_MAX_SIZE", 1500),
             threshold_percentile=getattr(settings, "CHUNK_THRESHOLD_PERCENTILE", 80.0),
-            semantic_grouping=getattr(settings, "CHUNK_SEMANTIC_GROUPING", True),
         )
 
     return DocumentPipeline(
         chunk_size=getattr(settings, "CHUNK_MAX_SIZE", 1200),
-        semantic_grouping=getattr(settings, "CHUNK_SEMANTIC_GROUPING", True),
     )
 
 

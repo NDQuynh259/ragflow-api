@@ -13,8 +13,8 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 
-from rag_document_pipeline.chunkers.base import Chunker
-from rag_document_pipeline.chunkers.heading_aware import HeadingAwareChunker
+from rag_document_pipeline.chunking.base import Chunker
+from rag_document_pipeline.chunking.multimodal import HeadingAwareChunker
 from rag_document_pipeline.models import (
     DocumentChunk,
     LayoutElement,
@@ -44,8 +44,6 @@ class DocumentPipeline:
         *,
         chunk_size: int = 1200,
         chunk_overlap: int = 200,
-        semantic_grouping: bool = True,
-        use_semantic_chunking: bool = True,
         embed_fn: Any = None,
     ) -> None:
         if chunk_size <= 0 or not 0 <= chunk_overlap < chunk_size:
@@ -59,22 +57,15 @@ class DocumentPipeline:
 
         if chunker is not None:
             self.chunker = chunker
-        elif use_semantic_chunking:
+        else:
+            # The multimodal reading-order router is always used.
             self.chunker = HeadingAwareChunker.hybrid_semantic(
                 embed_fn=embed_fn,
                 min_chunk_size=min(300, chunk_size // 4),
                 max_chunk_size=chunk_size,
-                semantic_grouping=semantic_grouping,
-            )
-        else:
-            self.chunker = HeadingAwareChunker(
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap,
-                semantic_grouping=semantic_grouping,
             )
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
-        self.semantic_grouping = semantic_grouping
 
     @classmethod
     def hybrid_semantic(
@@ -85,7 +76,6 @@ class DocumentPipeline:
         min_chunk_size: int = 300,
         max_chunk_size: int = 1500,
         threshold_percentile: float = 80.0,
-        semantic_grouping: bool = True,
     ) -> DocumentPipeline:
         """Tạo DocumentPipeline cấu hình sẵn Mô hình Lai (Heading-Aware + Semantic Topic Shifts).
 
@@ -104,13 +94,11 @@ class DocumentPipeline:
             min_chunk_size=min_chunk_size,
             max_chunk_size=max_chunk_size,
             threshold_percentile=threshold_percentile,
-            semantic_grouping=semantic_grouping,
         )
         return cls(
             parser=parser,
             chunker=chunker,
             chunk_size=max_chunk_size,
-            semantic_grouping=semantic_grouping,
         )
 
     # region process

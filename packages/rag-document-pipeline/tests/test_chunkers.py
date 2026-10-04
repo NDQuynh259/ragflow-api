@@ -1,6 +1,6 @@
 import pytest
-from rag_document_pipeline.chunkers.heading_aware import HeadingAwareChunker
-from rag_document_pipeline.chunkers.table import TableChunker
+from rag_document_pipeline.chunking.multimodal import HeadingAwareChunker
+from rag_document_pipeline.chunking.table import TableChunker
 from rag_document_pipeline.models import ImageData, LayoutElement, TableData
 from rag_document_pipeline.normalizers.layout import LayoutNormalizer
 from rag_document_pipeline.pipeline import DocumentPipeline
@@ -77,12 +77,11 @@ def test_figure_caption_binding():
     assert fig_el.image_data.caption == "Hình 2: Sơ đồ luồng dữ liệu hệ thống RAG"
 
 
-def test_semantic_grouping_with_small_table():
+def test_small_table_is_inlined_with_adjacent_text():
     """Verify that a small table is kept inline with its leading text paragraph."""
     chunker = HeadingAwareChunker.hybrid_semantic(
         min_chunk_size=300,
         max_chunk_size=1500,
-        semantic_grouping=True,
     )
 
     elements = [
@@ -119,8 +118,8 @@ def test_semantic_grouping_with_small_table():
 
     chunks = chunker.chunk(elements, document_id="doc_grouping")
 
-    # With semantic grouping, the paragraph and small table within the same section
-    # are merged into a unified chunk so context is NOT fragmented.
+    # The paragraph and small table within the same section are merged into a
+    # single text chunk so context is NOT fragmented.
     assert len(chunks) == 1
     c = chunks[0]
     assert "Chương 2: Chính sách phụ cấp" in c.content
@@ -133,11 +132,10 @@ def test_semantic_grouping_with_small_table():
     assert c.metadata.get("contains_table") is True
 
 
-def test_semantic_grouping_with_large_table():
+def test_large_table_is_chunked_independently():
     """Verify that a large table exceeding the small table threshold is chunked by TableChunker."""
     chunker = HeadingAwareChunker(
         chunk_size=300,
-        semantic_grouping=True,
     )
 
     # 15 rows table (large)

@@ -1,0 +1,176 @@
+from rag_document_pipeline.chunking.multimodal import MultimodalChunker
+from rag_document_pipeline.models import ImageData, LayoutElement, TableData
+
+
+def test_multimodal_router_keeps_large_table_and_image_independent():
+    elements = [
+        LayoutElement(id="h1", type="heading", text="Chapter", heading_level=1),
+        LayoutElement(id="p1", type="paragraph", text="Introductory text.", page_number=1),
+        LayoutElement(
+            id="t1",
+            type="table",
+            page_number=1,
+            table_data=TableData(
+                headers=["Key", "Value"],
+                rows=[[str(i), "x" * 50] for i in range(20)],
+            ),
+        ),
+        LayoutElement(
+            id="i1",
+            type="image",
+            page_number=1,
+            image_data=ImageData(caption="Architecture diagram"),
+        ),
+        LayoutElement(id="p2", type="paragraph", text="Closing text.", page_number=1),
+    ]
+
+    chunks = MultimodalChunker(chunk_size=180).chunk(elements, document_id="doc-1")
+
+    kinds = [chunk.kind for chunk in chunks]
+    assert kinds[0] == "text"
+    assert kinds[-1] == "text"
+    assert "table" in kinds
+    assert "figure" in kinds
+    # The image must remain its own chunk, never merged into a text chunk.
+    figure = next(chunk for chunk in chunks if chunk.kind == "figure")
+    assert figure.element_ids == ["i1"]
+    assert figure.indexable is True
+    # Tables must never be merged into text chunks.
+    assert all("t1" not in chunk.element_ids for chunk in chunks if chunk.kind == "text")
+    assert [chunk.index for chunk in chunks] == list(range(len(chunks)))
+    assert chunks[0].section_path == ["Chapter"]
+
+
+def test_compact_table_is_inline_with_adjacent_text():
+    elements = [
+        LayoutElement(id="p1", type="paragraph", text="Before table."),
+        LayoutElement(
+            id="t1",
+            type="table",
+            table_data=TableData(headers=["A"], rows=[["1"]]),
+        ),
+        LayoutElement(id="p2", type="paragraph", text="After table."),
+    ]
+
+    chunks = MultimodalChunker(chunk_size=500).chunk(elements, document_id="doc-2")
+
+    assert len(chunks) == 1
+    assert chunks[0].kind == "text"
+    assert "| A |" in chunks[0].content
+    assert chunks[0].element_ids == ["p1", "t1", "p2"]
+
+
+def test_textless_image_is_metadata_only():
+    element = LayoutElement(
+        id="i1",
+        type="figure",
+        page_number=3,
+        bbox=(1, 2, 3, 4),
+        image_data=ImageData(uri="images/figure.png"),
+    )
+
+    chunk = MultimodalChunker().chunk([element], document_id="doc-3")[0]
+
+    assert chunk.kind == "figure"
+    assert chunk.indexable is False
+    assert chunk.token_count == 0
+    assert chunk.metadata["image_uri"] == "images/figure.png"
+    assert chunk.bboxes == [(1, 2, 3, 4)]
+
+
+def test_split_table_metadata_only_marks_repeated_headers_when_split():
+    element = LayoutElement(
+        id="t1",
+        type="table",
+        table_data=TableData(headers=["A"], rows=[["short"]]),
+    )
+    chunk = MultimodalChunker(chunk_size=500).chunk([element], document_id="doc-4")[0]
+    assert "has_repeated_header" not in chunk.metadata
+
+
+def test_heading_stack_propagation_nests_and_resets():
+    elements = [
+        LayoutElement(id="h1", type="heading", text="Chapter 1", heading_level=1),
+        LayoutElement(id="h2", type="heading", text="Section 1.1", heading_level=2),
+        LayoutElement(id="p1", type="paragraph", text="Body one."),
+        LayoutElement(id="h3", type="heading", text="Chapter 2", heading_level=1),
+        LayoutElement(id="p2", type="paragraph", text="Body two."),
+    ]
+
+    chunks = MultimodalChunker().chunk(elements, document_id="doc-h")
+
+    assert chunks[0].section_path == ["Chapter 1", "Section 1.1"]
+    assert chunks[1].section_path == ["Chapter 2"]
+    assert chunks[0].content.startswith("### Chapter 1 > Section 1.1")
+
+
+def test_header_footer_are_skipped():
+    elements = [
+        LayoutElement(id="hd", type="header", text="Company Ltd."),
+        LayoutElement(id="p1", type="paragraph", text="Real content."),
+        LayoutElement(id="ft", type="footer", text="Page 1"),
+    ]
+
+    chunks = MultimodalChunker().chunk(elements, document_id="doc-skip")
+
+    assert len(chunks) == 1
+    assert chunks[0].element_ids == ["p1"]
+    assert "Company Ltd." not in chunks[0].content
+    assert "Page 1" not in chunks[0].content
+
+
+def test_grouping_respects_page_boundary():
+    elements = [
+        LayoutElement(id="p1", type="paragraph", text="Page one text.", page_number=1),
+        LayoutElement(id="p2", type="paragraph", text="Page two text.", page_number=2),
+    ]
+
+    chunks = MultimodalChunker().chunk(elements, document_id="doc-pages")
+
+    assert len(chunks) == 2
+    assert chunks[0].page_start == chunks[0].page_end == 1
+    assert chunks[1].page_start == chunks[1].page_end == 2
+
+
+def test_embed_fn_is_used_and_jaccard_fallback_matches_default():
+    sentences = "Alpha beta gamma. Alpha beta gamma. Delta epsilon zeta."
+    element = LayoutElement(id="p1", type="paragraph", text=sentences)
+
+    calls = {"count": 0}
+
+    def embed_fn(texts):
+        calls["count"] += 1
+        return [[1.0, 0.0] if "alpha" in t.lower() else [0.0, 1.0] for t in texts]
+
+    with_embed = MultimodalChunker(embed_fn=embed_fn).chunk([element], document_id="d1")
+    fallback = MultimodalChunker().chunk([element], document_id="d2")
+
+    assert calls["count"] >= 1
+    assert all(chunk.kind == "text" for chunk in with_embed)
+    assert all(chunk.kind == "text" for chunk in fallback)
+
+
+def test_embed_fn_failure_falls_back_to_jaccard():
+    def broken_embed(texts):
+        raise RuntimeError("provider unavailable")
+
+    element = LayoutElement(id="p1", type="paragraph", text="One two three. Four five six.")
+
+    chunks = MultimodalChunker(embed_fn=broken_embed).chunk([element], document_id="doc-fb")
+
+    assert len(chunks) >= 1
+    assert chunks[0].content
+
+
+def test_oversized_single_row_is_flagged():
+    element = LayoutElement(
+        id="t1",
+        type="table",
+        table_data=TableData(headers=["A"], rows=[["y" * 400]]),
+    )
+
+    chunks = MultimodalChunker(chunk_size=120).chunk([element], document_id="doc-big-row")
+
+    table_chunks = [c for c in chunks if c.kind == "table"]
+    assert table_chunks
+    assert any(c.metadata.get("oversized_row") for c in table_chunks)

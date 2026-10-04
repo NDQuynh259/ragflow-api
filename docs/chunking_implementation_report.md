@@ -159,10 +159,11 @@ Theo tiêu chuẩn kiến trúc tại [`docs/chunking_architecture.md`](./chunki
 
 | Tệp mã nguồn | Vai trò chính |
 | :--- | :--- |
-| `packages/rag-document-pipeline/src/rag_document_pipeline/chunkers/base.py` | Định nghĩa `Chunker` Protocol, hàm tính `estimate_tokens`, `group_by_section`. |
-| `packages/rag-document-pipeline/src/rag_document_pipeline/chunkers/heading_aware.py` | Điều phối Macro, truyền heading stack, gom section, gắn prefix. |
-| `packages/rag-document-pipeline/src/rag_document_pipeline/chunkers/semantic.py` | Tách câu tiếng Việt, Sliding Window Buffer, tính Topic Shift, kẹp cận kích thước. |
-| `packages/rag-document-pipeline/src/rag_document_pipeline/chunkers/table.py` | Chuyển đổi Markdown bảng, cắt theo nhóm dòng và lặp lại tiêu đề cột. |
-| `packages/rag-document-pipeline/src/rag_document_pipeline/chunkers/figure.py` | Tạo chunk hình ảnh từ caption/OCR/description, kiểm soát cờ `indexable`. |
+| `packages/rag-document-pipeline/src/rag_document_pipeline/chunking/base.py` | Định nghĩa `Chunker` Protocol, hàm tính `estimate_tokens`, `group_by_section`. |
+| `packages/rag-document-pipeline/src/rag_document_pipeline/chunking/section.py` | Truyền ngữ cảnh heading, gom nhóm theo section. |
+| `packages/rag-document-pipeline/src/rag_document_pipeline/chunking/multimodal.py` | Router multimodal (`MultimodalChunker`), định tuyến theo modality. |
+| `packages/rag-document-pipeline/src/rag_document_pipeline/chunking/text.py` | Tách câu tiếng Việt, Sliding Window Buffer, tính Topic Shift, kẹp cận kích thước. |
+| `packages/rag-document-pipeline/src/rag_document_pipeline/chunking/table.py` | Chuyển đổi Markdown bảng, cắt theo nhóm dòng và lặp lại tiêu đề cột. |
+| `packages/rag-document-pipeline/src/rag_document_pipeline/chunking/image.py` | Tạo chunk hình ảnh từ caption/OCR/description, kiểm soát cờ `indexable`. |
 | `packages/rag-document-pipeline/src/rag_document_pipeline/normalizers/layout.py` | Gắn kết Caption và Footnote vào Bảng/Ảnh trước khi phân luồng. |
 | `packages/rag-document-pipeline/src/rag_document_pipeline/pipeline.py` | Lớp tích hợp hoàn chỉnh: Parse $\to$ Normalize $\to$ Chunk $\to$ Validate. |

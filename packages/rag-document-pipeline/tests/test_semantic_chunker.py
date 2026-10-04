@@ -1,5 +1,5 @@
-from rag_document_pipeline.chunkers.heading_aware import HeadingAwareChunker
-from rag_document_pipeline.chunkers.semantic import SemanticTextChunker
+from rag_document_pipeline.chunking.multimodal import HeadingAwareChunker
+from rag_document_pipeline.chunking.text import SemanticTextChunker
 from rag_document_pipeline.models import LayoutElement, TableData
 
 
@@ -41,7 +41,6 @@ def test_heading_aware_hybrid_semantic():
     hybrid_chunker = HeadingAwareChunker.hybrid_semantic(
         min_chunk_size=50,
         max_chunk_size=500,
-        semantic_grouping=False,
     )
     elements = [
         LayoutElement(
@@ -70,21 +69,19 @@ def test_heading_aware_hybrid_semantic():
     ]
 
     chunks = hybrid_chunker.chunk(elements, document_id="doc_456")
-    kinds = [c.kind for c in chunks]
-    assert "text" in kinds
-    assert "table" in kinds
+    assert all(c.kind == "text" for c in chunks)
 
-    # Verify table has repeated headers
-    table_chunk = next(c for c in chunks if c.kind == "table")
-    assert "| Cấp bậc | Phụ cấp |" in table_chunk.content
+    # Compact tables stay inline with the surrounding text, preserving the header row.
+    text_chunk = next(c for c in chunks if "| Cấp bậc | Phụ cấp |" in c.content)
+    assert text_chunk.metadata["contains_table"] is True
+    assert text_chunk.metadata["table_ids"] == ["e3"]
 
 
 def test_heading_aware_hybrid_semantic_inline():
-    """Verify semantic_grouping=True inlines small tables into text chunks."""
+    """Verify that the multimodal router inlines small tables into text chunks."""
     hybrid_chunker = HeadingAwareChunker.hybrid_semantic(
         min_chunk_size=50,
         max_chunk_size=500,
-        semantic_grouping=True,
     )
     elements = [
         LayoutElement(
@@ -207,7 +204,6 @@ def test_document_pipeline_hybrid_semantic():
         parser=MockParser(),
         min_chunk_size=50,
         max_chunk_size=300,
-        semantic_grouping=True,
     )
     result = pipeline.process(b"dummy", filename="test.pdf", document_id="doc_sem")
     assert len(result.chunks) >= 1

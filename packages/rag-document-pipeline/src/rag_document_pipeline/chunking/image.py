@@ -8,9 +8,8 @@ records (``indexable=False``) so they are not embedded as empty strings.
 from __future__ import annotations
 
 import uuid
-from pathlib import Path
 
-from rag_document_pipeline.chunkers.base import estimate_tokens
+from rag_document_pipeline.chunking.base import estimate_tokens
 from rag_document_pipeline.models import DocumentChunk, LayoutElement
 
 
@@ -22,11 +21,12 @@ class ImageChunker:
         elements: list[LayoutElement],
         *,
         document_id: str,
+        workspace_id: str = "",
     ) -> list[DocumentChunk]:
         chunks: list[DocumentChunk] = []
 
         for el in elements:
-            chunks.append(self._chunk_image(el, document_id=document_id))
+            chunks.append(self._chunk_image(el, document_id=document_id, workspace_id=workspace_id))
 
         return chunks
 
@@ -35,6 +35,7 @@ class ImageChunker:
         element: LayoutElement,
         *,
         document_id: str,
+        workspace_id: str = "",
     ) -> DocumentChunk:
         parts: list[str] = ["[IMAGE]"]
         img = element.image_data
@@ -58,16 +59,12 @@ class ImageChunker:
         if footnote:
             parts.append(f"Note: {footnote}")
 
-        if len(parts) <= 1 and img and img.uri:
-            parts.append(
-                f"Visual image/diagram on page {element.page_number} ({Path(img.uri).name})"
-            )
-
         has_content = len(parts) > 1  # more than just "[IMAGE]"
         content = "\n".join(parts)
 
         metadata: dict = {
             "chunker": "image",
+            "modality": "image",
             "image_available": True,
         }
         if img and img.uri:
@@ -78,7 +75,8 @@ class ImageChunker:
         return DocumentChunk(
             id=str(uuid.uuid4()),
             document_id=document_id,
-            content=content if has_content else f"[IMAGE] Visual on page {element.page_number}",
+            workspace_id=workspace_id,
+            content=content,
             index=0,
             page_start=element.page_number,
             page_end=element.page_number,

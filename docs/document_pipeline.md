@@ -50,11 +50,8 @@ sequenceDiagram
     Norm-->>Pipe: list[LayoutElement] (bound & cleaned)
     
     Pipe->>Chunker: chunk(elements, document_id)
-    alt semantic_grouping == True
-        Chunker->>Chunker: _chunk_semantic_grouping()
-    else Lane-based standard
-        Chunker->>Chunker: Text / Table / Image lanes
-    end
+    Chunker->>Chunker: Multimodal reading-order routing
+    Chunker->>Chunker: Text → semantic; small table → inline; large table/image → standalone
     Chunker-->>Pipe: list[DocumentChunk]
     
     Pipe->>Pipe: _validate(chunks)
@@ -76,9 +73,7 @@ sequenceDiagram
 
 ### Bước 3: Chunk (`HeadingAwareChunker`)
 - **Lan truyền ngữ cảnh Section (`_propagate_sections`)**: Cập nhật cây tiêu đề `section_path` (ví dụ: `["1. Giới thiệu", "1.2 Mục tiêu"]`) cho tất cả các phần tử nằm trong phạm vi mục đó.
-- Phân luồng xử lý:
-  - Nếu bật `semantic_grouping=True`: Duyệt theo luồng đọc liên tục. Bảng nhỏ (dưới 5 hàng) và footnote được render trực tiếp dạng Markdown inline cùng văn bản dẫn xuất cho đến khi chạm ngưỡng `chunk_size`. Bảng lớn độc lập được chuyển cho `TableChunker` cắt trang lặp lại tiêu đề cột.
-  - Nếu dùng mặc định (`semantic_grouping=False`): Phân loại phần tử thành 3 luồng riêng (`text_chunker`, `table_chunker`, `image_chunker`) rồi ghép kết quả.
+- **Multimodal routing**: Duyệt theo luồng đọc liên tục. Bảng nhỏ được render Markdown inline cùng văn bản xung quanh. Bảng lớn và hình ảnh được chunk độc lập với metadata đầy đủ.
 
 ### Bước 4: Validate (`_validate`)
 - Đảm bảo không có chunk rỗng.
@@ -148,7 +143,6 @@ from rag_document_pipeline import DocumentPipeline
 pipeline = DocumentPipeline(
     chunk_size=1200,
     chunk_overlap=200,
-    semantic_grouping=True,  # Kích hoạt gom nhóm ngữ nghĩa chống phân mảnh
 )
 
 pdf_bytes = Path("tai-lieu.pdf").read_bytes()
@@ -176,7 +170,7 @@ for chunk in result.chunks[:2]:
 Khi cần phát hiện ranh giới chuyển chủ đề bằng vector khoảng cách ngữ nghĩa (cosine distance giữa các câu/đoạn) thay vì chỉ đếm ký tự:
 
 ```python
-from rag_document_pipeline.chunkers.heading_aware import HeadingAwareChunker
+from rag_document_pipeline.chunking.multimodal import HeadingAwareChunker
 from rag_document_pipeline import DocumentPipeline
 
 # Tạo chunker lai với mô hình embedding tùy chọn
@@ -185,7 +179,6 @@ chunker = HeadingAwareChunker.hybrid_semantic(
     min_chunk_size=300,
     max_chunk_size=1500,
     threshold_percentile=80.0,
-    semantic_grouping=True,
 )
 
 pipeline = DocumentPipeline(chunker=chunker)
@@ -246,4 +239,4 @@ custom_pipeline = DocumentPipeline(parser=MyDoclingParser())
 | `ParserError: Java 11+ is required` | Thiếu Java Runtime trong môi trường chạy của `opendataloader-pdf`. | Cài đặt OpenJDK 11+ (`apt-get install default-jre` hoặc cài đặt JDK trên máy chủ). |
 | `ValueError: Invalid chunk window` | Tham số `chunk_size <= 0` hoặc `chunk_overlap >= chunk_size`. | Đảm bảo `chunk_size > chunk_overlap >= 0` (ví dụ: size=1200, overlap=200). |
 | `AttributeError: 'NoneType' has no attribute 'caption'` | Truy xuất `table_data` hoặc `image_data` mà không kiểm tra `None`. | Trường này là Optional. Luôn kiểm tra `if element.table_data is not None:` trước khi truy cập. |
-| Mất mát ngữ cảnh bảng nhỏ | Bảng nhỏ bị tách thành chunk riêng độc lập làm mất câu dẫn dắt trước đó. | Bật `semantic_grouping=True` khi khởi tạo `DocumentPipeline`. |
+| Mất mát ngữ cảnh bảng nhỏ | Bảng nhỏ bị tách khỏi đoạn văn liên quan. | Router multimodal mặc định tự động inline bảng đủ nhỏ vào text liền kề. |
