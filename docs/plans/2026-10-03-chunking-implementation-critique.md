@@ -1,6 +1,6 @@
 # PHÂN TÍCH VÀ PHẢN BIỆN: KIẾN TRÚC CHUNKING HYBRID SEMANTIC
 
-> **Tài liệu gốc**: [`docs/chunking_implementation_report.md`](./chunking_implementation_report.md)  
+> **Tài liệu gốc**: [`docs/plans/2026-10-03-chunking-implementation-report.md`](./2026-10-03-chunking-implementation-report.md)  
 > **Ngày phản biện**: 2026-10-03  
 > **Người thực hiện**: Đối chiếu mã nguồn thực tế với tài liệu mô tả
 
@@ -8,7 +8,7 @@
 
 ## TÓM TẮT ĐÁNH GIÁ TỔNG QUAN
 
-**Kết luận chính**: Tài liệu [`chunking_implementation_report.md`](./chunking_implementation_report.md) mô tả **chính xác 95%** với mã nguồn thực tế. Hệ thống đã triển khai đầy đủ kiến trúc Mô hình Lai 2 tầng (Heading-Aware + Semantic Topic Shift) và chiến lược Zero-RAM-Bloat như đã cam kết.
+**Kết luận chính**: Tài liệu [`2026-10-03-chunking-implementation-report.md`](./2026-10-03-chunking-implementation-report.md) mô tả **chính xác 95%** với mã nguồn thực tế. Hệ thống đã triển khai đầy đủ kiến trúc Mô hình Lai 2 tầng (Heading-Aware + Semantic Topic Shift) và chiến lược Zero-RAM-Bloat như đã cam kết.
 
 ### Điểm Mạnh Đã Xác Minh ✅
 1. **Kiến trúc Lai 2 tầng hoạt động chính xác** với đầy đủ 3 làn xử lý (Text, Table, Image)

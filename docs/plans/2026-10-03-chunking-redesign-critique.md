@@ -3,7 +3,7 @@
 - **Ngày:** 2026-10-03
 - **Nhánh:** `feat/hybrid-semantic-chunking`
 - **Đối tượng phản biện:**
-  - `docs/chunking_implementation_report.md` — báo cáo triển khai hiện tại
+  - `docs/plans/2026-10-03-chunking-implementation-report.md` — báo cáo triển khai hiện tại
   - `docs/plans/2026-10-03-chunking-redesign.md` — kế hoạch triển khai tiếng Việt
   - `docs/chunking-redesign/architecture-review-and-redesign-plan.md` — review kiến trúc
   - `docs/chunking-redesign/chunking-implementation-roadmap.md` — roadmap 4 tuần

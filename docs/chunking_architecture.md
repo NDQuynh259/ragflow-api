@@ -1,6 +1,6 @@
-# KIẾN TRÚC CHUNKING LAI (HYBRID CHUNKING) VÀ TỐI ƯU HÓA BỘ NHỚ RAM
+# KIẾN TRÚC CHUNKING LAI (HYBRID CHUNKING) VÀ LUỒNG THỰC THI TOÀN TRÌNH
 
-Tài liệu này quy chuẩn toàn bộ giải pháp **Băm nhỏ dữ liệu (Chunking)** trong hệ thống Monorepo RAG: kết hợp giữa **Mô hình Lai 2 tầng (Heading-Aware + Semantic)** và **Cơ chế chống Memory Leak (Zero-RAM-Bloat)** khi xử lý các tài liệu doanh nghiệp quy mô lớn.
+Tài liệu này quy chuẩn toàn bộ giải pháp **Băm nhỏ dữ liệu (Document Chunking)** trong hệ thống RAG: kết hợp giữa **Mô hình Lai 2 tầng (Heading-Aware + Semantic)**, **Cơ chế chống Memory Leak (Zero-RAM-Bloat)** và **Sơ đồ luồng gọi hàm thực thi (Call Flow & Routing)** chi tiết trong package `packages/rag-document-pipeline`.
 
 ---
 
@@ -79,6 +79,21 @@ sequenceDiagram
 
 Mô hình lai kết hợp: **Heading-Aware ở tầng vĩ mô (Macro)** để bảo toàn cấu trúc phân cấp và **Semantic Chunking ở tầng vi mô (Micro)** để nhận diện ranh giới đổi chủ đề tự nhiên.
 
+### Cấu Trúc Gói Mã Nguồn (`rag_document_pipeline/chunking/`)
+
+```text
+packages/rag-document-pipeline/src/rag_document_pipeline/chunking/
+├── __init__.py          # Public exports và compatibility aliases
+├── base.py              # Protocol Chunker, estimate_tokens
+├── section.py           # Quản lý cây tiêu đề (_propagate_sections, group_by_section)
+├── multimodal.py        # Orchestrator MultimodalChunker điều phối luồng đọc tự nhiên
+├── text.py              # TextChunker (tách câu tiếng Việt, sliding window, topic shifts)
+├── table.py             # TableChunker (render Markdown, repeated headers)
+└── image.py             # ImageChunker (caption, OCR, footnote, cờ indexable)
+```
+
+### Sơ Đồ Khái Niệm Phân Tầng:
+
 ```mermaid
 %%{init: {
   'theme': 'base',
@@ -106,14 +121,14 @@ flowchart TD
     
     subgraph Thuật toán Semantic bên trong
         G --> H["1. Tách văn bản thành các câu: S1, S2, S3..."]
-        H --> I["2. Đo khoảng cách ngữ nghĩa giữa các câu liền kề"]
+        H --> I["2. Đo khoảng cách ngữ nghĩa giữa các câu qua Sliding Window"]
         I --> J{"Khoảng cách có vọt qua ngưỡng (Topic Shift)?"}
         J -->|"Có"| K["Cắt nhát băm tại điểm đổi chủ đề"]
         J -->|"Không"| L["Gộp tiếp câu vào chunk"]
         K --> M["3. Kẹp cận kích thước: min_chunk=300, max_chunk=1500"]
     end
 
-    C --> N["Ghép Context Prefix: ## Tiêu đề 1 > Tiêu đề 2 vào đầu mỗi Chunk"]
+    C --> N["Ghép Context Prefix: ### Tiêu đề 1 > Tiêu đề 2 vào đầu mỗi Text Chunk"]
     D --> N
     M --> N
     N --> O["Lưu vào bảng 'chunks' trong PostgreSQL"]
@@ -121,49 +136,295 @@ flowchart TD
 
 ---
 
-### 3.1. Tầng 1: Vĩ mô (Heading-Aware Orchestrator)
+### 3.1. Tầng 1: Vĩ mô (Heading-Aware Orchestrator & Reading-Order Router)
 File mã nguồn: [`packages/rag-document-pipeline/src/rag_document_pipeline/chunking/multimodal.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/multimodal.py)
 
-- **Heading Stack Propagation (`_propagate_sections`)**:
-  - Theo dõi cây tiêu đề cha con ($H_1 \rightarrow H_2 \rightarrow H_3$).
-  - Tự động gán mảng `section_path` (ví dụ: `["Chương 1", "1.1 Phạm vi"]`) cho tất cả các đoạn văn, bảng biểu, hình ảnh bên dưới.
-- **Phân làn chuyên biệt (Type Routing)**:
-  - Không băm lẫn lộn: Bảng biểu giữ nguyên dạng bảng Markdown; Hình ảnh giữ nguyên chú thích caption.
-- **Repeated Header cho Bảng biểu dài ([`table.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/table.py))**:
-  - Với các bảng dữ liệu vượt quá 1200 ký tự, khi cắt theo nhóm hàng, hệ thống **tự động lặp lại dòng tiêu đề cột** ở đầu mỗi chunk con để LLM không bị mất ý nghĩa cột.
+`MultimodalChunker` đóng vai trò nhạc trưởng điều phối toàn bộ các phần tử layout theo đúng thứ tự đọc tự nhiên (*Natural Reading Order*):
+
+#### Cây Ngữ Cảnh Tiêu Đề (`_propagate_sections`) & Nhóm Section (`_group_by_section`)
+- Duyệt qua danh sách phần tử và duy trì một ngăn xếp tiêu đề (`heading_stack`).
+- Khi gặp tiêu đề cấp mới ($H_1, H_2, H_3$), cập nhật ngăn xếp theo cấp độ phân cấp.
+- Gán mảng `section_path` (ví dụ: `["CHƯƠNG I: QUY ĐỊNH CHUNG", "Điều 2. Đối tượng áp dụng"]`) cho toàn bộ các phần tử đoạn văn bản, bảng biểu, hình ảnh xuất hiện phía dưới.
+
+```mermaid
+sequenceDiagram
+    participant C as MultimodalChunker.chunk
+    participant P as _propagate_sections
+    participant G as _group_by_section
+    participant L as LayoutElement[]
+
+    C->>P: _propagate_sections(elements)
+    loop từng element theo reading order
+        P->>P: Nếu heading: cập nhật heading_stack
+        P->>L: Gán section_path cho element kế tiếp
+    end
+    P-->>C: elements có section_path
+    C->>G: _group_by_section(elements)
+    G->>G: Gom phần tử liền kề cùng section_path và page_number
+    G-->>C: list[list[LayoutElement]]
+```
+
+#### Quy tắc cập nhật `heading_stack`:
+```text
+H1: Chương 1
+    section_path = ["Chương 1"]
+
+  H2: 1.1 Phạm vi
+      section_path = ["Chương 1", "1.1 Phạm vi"]
+
+  paragraph
+      section_path = ["Chương 1", "1.1 Phạm vi"]
+
+H1: Chương 2
+    section_path = ["Chương 2"]
+```
+
+#### Bảng Định Tuyến Modality Duy Nhất (Single Reading-Order Router):
+Hệ thống sử dụng một router multimodal duy nhất theo reading order, không dùng cờ chia tách tùy tiện:
+
+| Modality | Cách Xử Lý Chi Tiết |
+| :--- | :--- |
+| **Text / List / Formula** | Gom các phần tử liền kề dưới cùng tiêu đề và đưa vào `TextChunker` phân đoạn ngữ nghĩa. |
+| **Bảng nhỏ** | Chuyển thành Markdown inline và ghép trực tiếp vào đoạn văn bản xung quanh. |
+| **Bảng lớn** | Cắt độc lập theo nhóm dòng, tự động lặp lại tiêu đề cột (`repeated_header = True`). |
+| **Image / Figure** | Băm độc lập từ `caption`, `description`, `ocr_text`, `footnote`. |
+| **Header / Footer** | Tự động loại bỏ (skip) để tránh làm nhiễu ngữ cảnh và loãng vector search. |
 
 ---
 
 ### 3.2. Tầng 2: Vi mô (Semantic Text Chunker)
-File mã nguồn: [`packages/rag-document-pipeline/src/rag_document_pipeline/chunking/semantic.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/semantic.py)
+File mã nguồn: [`packages/rag-document-pipeline/src/rag_document_pipeline/chunking/text.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/text.py)
 
-Bên dưới một tiêu đề có thể có nhiều đoạn văn dài. Thay vì cắt cơ học theo độ dài ký tự cứng:
+Bên dưới một tiêu đề có thể có nhiều đoạn văn dài. Khác với các phương pháp băm cứng theo số ký tự (Naive Fixed-size Chunking), `TextChunker` tìm điểm ngắt tự nhiên theo **sự chuyển dịch chủ đề (Topic Shifts)** qua quy trình 4 bước chặt chẽ:
 
-1. **Tách câu thông minh**:
-   - Sử dụng regex nhận diện ranh giới câu tiếng Việt và tiếng Anh (`[.?!;…\n]`), bảo toàn các từ viết tắt (`Dr.`, `e.g.`, `v.v.`).
-2. **Đo khoảng cách ngữ nghĩa (Semantic Distance)**:
-   - **Chế độ 1 (Vector Cosine Distance)**: Nếu cấu hình `embed_fn`, thuật toán tính khoảng cách vector:
-     $$\text{dist}(S_i, S_{i+1}) = 1.0 - \frac{E_i \cdot E_{i+1}}{\|E_i\| \|E_{i+1}\|}$$
-   - **Chế độ 2 (Statistical Lexical Semantic - Mặc định Zero-Cost)**: Sử dụng khoảng cách biến động tập từ vựng Jaccard giữa các câu:
-     $$\text{dist}(S_i, S_{i+1}) = 1.0 - \frac{|W_i \cap W_{i+1}|}{|W_i \cup W_{i+1}|}$$
-     Chạy hoàn toàn trên CPU, siêu tốc ($< 1\text{ms}$) và **hoàn toàn không tốn tiền API**.
-3. **Phát hiện điểm đổi chủ đề (Topic Shift Detection)**:
-   - Tính ngưỡng nhạy cảm dựa trên bách phân vị (`threshold_percentile = 80.0%`).
-   - Bất cứ vị trí nào khoảng cách ngữ nghĩa giữa 2 câu vượt ngưỡng $\rightarrow$ xác định là điểm đổi chủ đề $\rightarrow$ Cắt tạo chunk mới.
-4. **Kẹp cận kích thước (Size Clamping - Chống vụn và chống tràn)**:
-   - **Chống chunk vụn**: Nếu đoạn đổi chủ đề ngắn hơn `min_chunk_size = 300` ký tự, tự động gộp với câu phía trước.
-   - **Chống chunk quá dài**: Nếu một chủ đề kéo dài liên miên, tự động ngắt theo `max_chunk_size = 1500` ký tự để không làm tràn cửa sổ ngữ cảnh của LLM.
-5. **Gắn tiền tố ngữ cảnh (Context Prefix)**:
-   - Đầu mỗi semantic chunk luôn có tiền tố:
-     ```markdown
-     ## CHƯƠNG 1: QUY ĐỊNH CHUNG > 1.2 Quyền hạn nhân sự
+```mermaid
+flowchart TD
+    A[TextChunker.chunk] --> B[_group_by_section]
+    B --> C[Cho từng group]
+    C --> D[_heading_prefix]
+    C --> E[_group_text từng element]
+    E -->|table có table_data| F[TableChunker.render_markdown]
+    E -->|text/khác| G[el.text.strip]
+    F --> H[Nối bằng blank line]
+    G --> H
+    H --> I[_split_semantically]
 
-     [Nội dung văn bản được gom theo ngữ nghĩa...]
-     ```
+    I --> J[_split_sentences]
+    J --> K[_collect_blocks tách bảng Markdown khỏi văn bản]
+    K --> L{Block là bảng?}
+    L -->|Có| M[Giữ nguyên atomic table block]
+    L -->|Không| N[Mask decimal và viết tắt bằng U+E000]
+    N --> O[Split theo . ? ! ; … và newline]
+    O --> P[Unmask dấu chấm]
+    M --> Q[list sentences]
+    P --> Q
+
+    Q --> R[_compute_distances window_size=2]
+    R --> S{embed_fn?}
+    S -->|Có| T[Batch embedding toàn bộ buffers]
+    T --> U[Cosine distance]
+    S -->|Không hoặc lỗi| V[Jaccard lexical distance]
+    U --> W[list distances]
+    V --> W
+
+    W --> X[_calculate_threshold theo percentile 80%]
+    X --> Y[Tách khi distance >= threshold]
+    Y --> Z[_enforce_bounds]
+    Z --> AA{segment < min_chunk_size 300?}
+    AA -->|Có và có segment trước| AB[_merge_segments nối vào chunk trước]
+    AA -->|Không| AC[Giữ segment]
+    AB --> AD
+    AC --> AD{segment > max_chunk_size 1500?}
+    AD -->|Có| AE[_recursive_split theo \n\n, \n, . , ,]
+    AD -->|Không| AF[Giữ segment]
+    AE --> AG[list segments]
+    AF --> AG
+
+    AG --> AH[Gắn heading prefix ### H1 > H2]
+    AH --> AI[DocumentChunk với kind=text]
+    AI --> AJ[estimate_tokens]
+```
+
+#### Bước 1: Tách câu tiếng Việt chuẩn hóa (`_split_sentences`)
+- **Bảo toàn bảng Markdown**: Nhận diện các dòng bắt đầu và kết thúc bằng `|`, cô lập thành các khối nguyên tử (atomic block), không bị băm vụn thành từng dòng câu đơn lẻ.
+- **Mã hóa ký tự đặc biệt (Masking với `\uE000`)**:
+  - Dấu chấm số thập phân và phân cách hàng nghìn (`1.5`, `1.500.000`).
+  - Viết tắt chức danh, học vị: `ThS.`, `TS.`, `GS.`, `PGS.`, `BS.`, `DS.`, `KTS.`, `đ/c`...
+  - Viết tắt hành chính, văn bản quy phạm pháp luật: `TP.`, `đ/v.`, `v.v.`, `NĐ-CP.`, `QĐ.`, `TT.`...
+  - Viết tắt tiếng Anh thông dụng: `e.g.`, `i.e.`, `etc.`, `Mr.`, `Mrs.`, `Dr.`...
+- **Tách câu**: Cắt ranh giới theo biểu thức chính quy `[.?!;…\n]`, sau đó khôi phục lại các dấu chấm đã mask.
+
+#### Bước 2: Đo khoảng cách ngữ nghĩa qua Cửa sổ trượt (`Sliding Window Buffer`)
+Thay vì so sánh trực tiếp hai câu đơn lẻ $S_i$ và $S_{i+1}$ (dễ bị nhiễu do các từ nối ngắn như *"Do đó:"*, *"Theo đó:"*), thuật toán xây dựng:
+- **Left Buffer**: Gom $W$ câu kết thúc tại vị trí $i$ (mặc định $W = 2$).
+- **Right Buffer**: Gom $W$ câu bắt đầu tại vị trí $i + 1$.
+
+```mermaid
+sequenceDiagram
+    participant S as _split_semantically
+    participant D as _compute_distances
+    participant E as embed_fn
+    participant J as Jaccard fallback
+
+    S->>D: sentences, window_size=2
+    D->>D: Tạo left_buffer và right_buffer cho từng boundary
+    alt embed_fn được truyền vào
+        D->>E: embed_fn(left_buffers + right_buffers)
+        E-->>D: vectors
+        D->>D: Tính 1 - cosine_similarity
+    else embed_fn=None hoặc bị lỗi
+        D->>J: tokenize bằng regex \w+
+        J-->>D: 1 - intersection/union
+    end
+    D-->>S: distances
+    S->>S: threshold = percentile(distances, 80)
+    S->>S: split khi distance >= threshold
+```
+
+Hệ thống hỗ trợ 2 chế độ đo khoảng cách ngữ nghĩa:
+1. **Vector Cosine Distance** (khi truyền `embed_fn`):
+   $$\text{Dist}(L, R) = 1.0 - \frac{\vec{E}_L \cdot \vec{E}_R}{\|\vec{E}_L\| \|\vec{E}_R\|}$$
+2. **Lexical Jaccard Overlap Fallback** (Zero-cost chạy offline):
+   $$\text{Dist}(L, R) = 1.0 - \frac{|W_L \cap W_R|}{|W_L \cup W_R|}$$
+   Hoạt động siêu tốc ($< 1\text{ms}$), chạy thuần CPU, không tiêu tốn quota hay chi phí API mạng.
+
+#### Bước 3: Xác định ngưỡng cắt đổi chủ đề (`_calculate_threshold`)
+- Ngưỡng khoảng cách được tính theo bách phân vị động: `threshold_percentile = 80.0%`.
+- Bất cứ vị trí nào $\text{Dist}(L, R) \ge \text{threshold}$ $\rightarrow$ xác định là điểm đổi chủ đề $\rightarrow$ Cắt tạo chunk mới.
+
+#### Bước 4: Kẹp cận kích thước (Size Clamping - Chống vụn và chống tràn)
+- **Chống chunk vụn (< min_chunk_size = 300 ký tự)**: Lũy tiến ghép các cụm câu liền kề nếu chưa đạt độ dài tối thiểu, tránh sinh ra các vector rời rạc gây loãng kết quả tìm kiếm.
+- **Chống chunk quá dài (> max_chunk_size = 1500 ký tự)**: Nếu một chủ đề kéo dài liên tục, áp dụng `RecursiveCharacterTextSplitter` đệ quy theo các mức dấu phân đoạn (`\n\n`, `\n`, `. `, `, `) để không vượt quá context window của LLM.
+
+#### Gắn tiền tố ngữ cảnh (Context Prefix)
+Đầu mỗi text chunk được `TextChunker._heading_prefix()` tự động chèn tiền tố phân cấp:
+```markdown
+### CHƯƠNG I: QUY ĐỊNH CHUNG > Điều 2. Đối tượng áp dụng
+
+[Nội dung văn bản được gom theo ngữ nghĩa...]
+```
+*(Riêng `TableChunker` sử dụng `caption_prefix` và `ImageChunker` sử dụng tag `[IMAGE]`)*.
 
 ---
 
-## 4. Cấu Trúc Dữ Liệu Lưu Trữ (PostgreSQL Schema)
+### 3.3. Xử lý Đa Thể Thức Chuyên Sâu (Table & Image Chunkers)
+
+```mermaid
+flowchart LR
+    A[LayoutElement] --> B{type}
+    B -->|text/list/formula| C[Accumulate adjacent text]
+    C --> D[TextChunker]
+
+    B -->|bảng nhỏ| E[TableChunker.render_markdown]
+    E --> C
+
+    B -->|bảng lớn| F[TableChunker.chunk]
+    F --> G[_chunk_table]
+    G --> H{full markdown <= chunk_size?}
+    H -->|Có| I[1 table DocumentChunk]
+    H -->|Không| J[Chia theo row groups]
+    J --> K[Lặp header mỗi chunk]
+
+    B -->|image/figure| L[ImageChunker.chunk]
+    L --> M[_chunk_image]
+    M --> N[Gom caption/description/OCR/element text/footnote]
+    N --> O{Có text?}
+    O -->|Có| P[indexable=True]
+    O -->|Không| Q[indexable=False, token_count=0]
+```
+
+- **Bảng nhỏ giữ Inline**: Bảng có kích thước nhỏ ($\le \frac{\text{chunk\_size}}{2}$ và $\le 8$ dòng) được render thành Markdown và gộp inline cùng đoạn văn bản mô tả xung quanh trong `TextChunker`.
+- **Bảng lớn độc lập ([`table.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/table.py))**:
+  - Bảng $> 1200$ ký tự hoặc $> 8$ dòng được tách thành các chunk độc lập.
+  - **Repeated Headers**: Khi chia theo nhóm hàng (row groups), tiêu đề cột tự động được lặp lại ở đầu mỗi chunk con kèm cờ `has_repeated_header = True` trong metadata.
+- **Hình ảnh & Sơ đồ ([`image.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/image.py))**:
+  - Gom tổng hợp từ `caption`, `description`, `ocr_text`, `footnote`.
+  - **Bảo vệ không gian Vector (`indexable`)**: Nếu có nội dung chữ $\rightarrow$ `indexable = True` và embedding; nếu không có chữ $\rightarrow$ giữ metadata với `indexable = False` để tránh nhúng vector rác.
+
+---
+
+## 4. Chuẩn Hóa Bố Cục Trước Khi Băm (`LayoutNormalizer`)
+
+File mã nguồn: [`packages/rag-document-pipeline/src/rag_document_pipeline/normalizers/layout.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/normalizers/layout.py)
+
+Để tránh việc các dòng chú thích hoặc ghi chú chân trang bị tách thành các chunk "mồ côi" (orphan chunks), `LayoutNormalizer` thực hiện gắn kết trước khi chuyển sang `MultimodalChunker`:
+- **Caption Binding**: Nhận diện `caption` (bắt đầu bằng *Bảng, Table, Hình, Figure...*) ở dòng ngay trước hoặc ngay sau Bảng/Ảnh và tích hợp trực tiếp vào phần tử đó.
+- **Footnote Binding**: Nhận diện `footnote` (bắt đầu bằng *Ghi chú, Note, (\*)...*) và đưa vào `metadata["footnote"]`.
+- **Dọn dẹp phần tử mồ côi**: Loại bỏ các phần tử chú thích đã được hấp thụ khỏi luồng phân đoạn chính.
+
+---
+
+## 5. Luồng Gọi Hàm và Thứ Tự Thực Thi Chi Tiết (Call Hierarchy)
+
+### 5.1. Luồng Toàn Thể Từ Nhận File Đến Xuất Chunk
+
+```mermaid
+flowchart TD
+    A[DocumentPipeline.process] --> B[parser.parse]
+    B --> C[DocumentPipeline._normalize]
+    C --> D[LayoutNormalizer.bind_captions_and_footnotes]
+    D --> E[MultimodalChunker.chunk]
+    E --> F[Multimodal reading-order router]
+
+    F -->|Text / List / Formula| G[Accumulate adjacent text]
+    G --> H[TextChunker.chunk]
+
+    F -->|Bảng nhỏ| I[TableChunker.render_markdown]
+    I --> G
+    F -->|Bảng lớn| J[TableChunker.chunk]
+    F -->|Image/Figure| K[ImageChunker.chunk]
+
+    H --> L[Merge theo reading order]
+    J --> L
+    K --> L
+
+    L --> M[Re-index sequentially]
+
+    M --> N[DocumentPipeline._validate]
+    N --> O[ProcessedDocument]
+```
+
+### 5.2. Thứ Tự Cây Hàm Gọi (Call Hierarchy Tree)
+
+```text
+DocumentPipeline.process
+├── parser.parse (OpenDataLoaderParser -> layout elements thô)
+├── DocumentPipeline._normalize
+│   ├── _clean_text (Unicode NFC & khoảng trắng từng element)
+│   └── LayoutNormalizer.bind_captions_and_footnotes (hấp thụ chú thích & footnote)
+├── MultimodalChunker.chunk
+│   ├── _propagate_sections (duy trì heading_stack, gán section_path)
+│   └── Multimodal reading-order router
+│       ├── _group_by_section (gom phần tử cùng section & page)
+│       ├── TableChunker.is_small_table (kiểm tra kích thước bảng)
+│       ├── TableChunker.render_markdown (bảng nhỏ inline)
+│       ├── TextChunker.chunk
+│       │   ├── _heading_prefix (tạo tiền tố ### H1 > H2)
+│       │   ├── _group_text (nối văn bản các element)
+│       │   └── _split_semantically (băm phân đoạn theo chủ đề)
+│       │       ├── _split_sentences (tách câu, bảo toàn bảng & mask viết tắt)
+│       │       ├── _compute_distances (Sliding window W=2: Cosine / Jaccard)
+│       │       ├── _calculate_threshold (tính ngưỡng percentile 80%)
+│       │       ├── _join_sentences (ghép câu thành khối)
+│       │       └── _enforce_bounds (kẹp cận 300 - 1500 ký tự)
+│       ├── TableChunker.chunk (bảng lớn độc lập)
+│       │   └── _chunk_table (chia hàng, lặp repeated header)
+│       └── ImageChunker.chunk (hình ảnh độc lập)
+│           └── _chunk_image (gom OCR/caption, gán indexable)
+├── DocumentPipeline._validate (kiểm tra toàn vẹn token_count, bboxes)
+└── ProcessedDocument (elements, chunks, page_count)
+```
+
+### 5.3. Các Hàm Tiện Ích Cốt Lõi
+
+- `group_by_section()` — gom phần tử liền kề có cùng `section_path` và `page_number`.
+- `estimate_tokens()` — ước lượng token xấp xỉ bằng `len(text) // 4`.
+- `TableChunker.render_markdown()` — render bảng thành Markdown để inline hoặc xuất độc lập.
+- `TableChunker.is_small_table()` — quyết định bảng có đủ nhỏ ($\le \frac{\text{chunk\_size}}{2}$ và $\le 8$ dòng) để inline hay không.
+
+---
+
+## 6. Cấu Trúc Dữ Liệu Lưu Trữ (PostgreSQL Schema)
 
 Sau khi xử lý qua mô hình lai, dữ liệu được lưu vào bảng `chunks`:
 
@@ -172,7 +433,7 @@ CREATE TABLE IF NOT EXISTS chunks (
     id              TEXT PRIMARY KEY,
     document_id     TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
     workspace_id    TEXT NOT NULL,
-    content         TEXT NOT NULL,                       -- Chứa cả tiền tố ## Heading và nội dung
+    content         TEXT NOT NULL,                       -- Chứa cả tiền tố ### Heading và nội dung
     embedding       vector(768),                         -- Vector đặc trưng từ Gemini
     kind            TEXT DEFAULT 'text',                 -- 'text', 'table', 'image'
     page_start      INTEGER DEFAULT 1,                   -- Trang bắt đầu
@@ -194,9 +455,9 @@ CREATE TABLE IF NOT EXISTS chunks (
 
 ---
 
-## 5. Hướng Dẫn Sử Dụng Trong Mã Nguồn
+## 7. Hướng Dẫn Sử Dụng Trong Mã Nguồn
 
-### 5.1. Khởi tạo trực tiếp Chunker Lai (Hybrid Semantic)
+### 7.1. Khởi tạo trực tiếp Chunker Lai (Hybrid Semantic)
 ```python
 from rag_document_pipeline.chunking.multimodal import MultimodalChunker
 
@@ -208,9 +469,10 @@ chunker = MultimodalChunker.hybrid_semantic(
 )
 ```
 
-### 5.2. Chạy với Pipeline toàn diện
+### 7.2. Chạy với Pipeline Toàn Diện
 ```python
 from rag_document_pipeline.pipeline import DocumentPipeline
+from rag_document_pipeline.chunking.multimodal import MultimodalChunker
 
 pipeline = DocumentPipeline(
     chunker=MultimodalChunker.hybrid_semantic(),
@@ -230,20 +492,35 @@ for chunk in processed.chunks:
 
 ---
 
-## 6. Bảng So Sánh Hiệu Quả Thực Tế
+## 8. Bảng So Sánh Hiệu Quả Thực Tế
 
 | Tiêu chí | Cắt Cố Định (Fixed-size) | Heading-Aware Thường | Mô Hình Lai (Hybrid Semantic) |
 | :--- | :---: | :---: | :---: |
-| **Độ toàn vẹn của Bảng biểu** | ❌ Bị xé nát | ✅ Giữ nguyên Markdown | ✅ Giữ nguyên Markdown |
-| **Bảo toàn ngữ cảnh Tiêu đề** | ❌ Mất hoàn toàn | ✅ Cây `section_path` | ✅ Cây `section_path` |
-| **Độ thuần khiết chủ đề** | ❌ Trộn lẫn ý | 🟡 Tương đối | ⭐⭐⭐⭐⭐ Tuyệt đối |
-| **Tiêu tốn bộ nhớ RAM** | ⚠️ Dễ OOM | ⚠️ Dễ OOM nếu file to | 🟢 **$O(1)$ Không lo Memory Leak** |
-| **Chi phí API lúc băm** | 🟢 0đ | 🟢 0đ | 🟢 **0đ (Chế độ Lexical)** |
+| **Độ toàn vẹn của Bảng biểu** | ❌ Bị xé nát | ✅ Giữ nguyên Markdown | ✅ Giữ nguyên Markdown (Inline / Repeated Header) |
+| **Bảo toàn ngữ cảnh Tiêu đề** | ❌ Mất hoàn toàn | ✅ Cây `section_path` | ✅ Cây `section_path` + Context Prefix |
+| **Độ thuần khiết chủ đề** | ❌ Trộn lẫn ý | 🟡 Tương đối | ⭐⭐⭐⭐⭐ Tách chuẩn theo Topic Shift |
+| **Tiêu tốn bộ nhớ RAM** | ⚠️ Dễ OOM | ⚠️ Dễ OOM nếu file to | 🟢 **$O(1)$ Zero-RAM-Bloat (S3 Staging)** |
+| **Chi phí API lúc băm** | 🟢 0đ | 🟢 0đ | 🟢 **0đ (Chế độ Lexical Jaccard)** |
 
 ---
 
-## 7. Tài Liệu Tham Chiếu & Phân Tích Chuyên Sâu
+## 9. Danh Mục Mã Nguồn Triển Khai
 
-- [Phân tích Chuyên sâu: Hiện tượng Phân mảnh Ngữ cảnh trong Multimodal RAG](file:///c:/Users/ndquynh/Documents/RAG/docs/multimodal_context_fragmentation_analysis.md): So sánh chi tiết Anti-pattern tách rời phần tử (như trong `langchain_multimodal.ipynb`) với kiến trúc bảo toàn ngữ cảnh của hệ thống.
-- [Chi tiết Luồng Chunking Pipeline](file:///c:/Users/ndquynh/Documents/RAG/docs/chunking_pipeline.md)
+| Tệp mã nguồn | Vai trò triển khai |
+| :--- | :--- |
+| [`chunking/base.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/base.py) | Định nghĩa `Chunker` Protocol, hàm tính `estimate_tokens`. |
+| [`chunking/section.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/section.py) | Quản lý cây tiêu đề (`_propagate_sections`), gom nhóm theo section (`_group_by_section`). |
+| [`chunking/multimodal.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/multimodal.py) | Router multimodal (`MultimodalChunker`), điều phối luồng đọc tự nhiên, re-index chunks. |
+| [`chunking/text.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/text.py) | Tách câu tiếng Việt (masking), Sliding Window Buffer ($W=2$), tính Topic Shift, kẹp cận kích thước. |
+| [`chunking/table.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/table.py) | Chuyển đổi Markdown bảng, cắt theo nhóm hàng và lặp lại tiêu đề cột (`repeated_header`). |
+| [`chunking/image.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/image.py) | Tạo chunk hình ảnh từ caption/OCR/description, kiểm soát cờ `indexable`. |
+| [`normalizers/layout.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/normalizers/layout.py) | Gắn kết Caption và Footnote vào Bảng/Ảnh trước khi phân luồng, xóa orphan elements. |
+| [`pipeline.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/pipeline.py) | Lớp điều phối tổng thể: Parse (OpenDataLoader) $\to$ Normalize $\to$ Chunk $\to$ Validate. |
 
+---
+
+## 10. Tài Liệu Tham Chiếu & Phân Tích Chuyên Sâu
+
+- 📄 [Kiến Trúc & Hướng Dẫn Document Pipeline](file:///c:/Users/ndquynh/Documents/RAG/docs/document_pipeline.md): Hướng dẫn API Orchestrator `DocumentPipeline`.
+- 🔍 [Phân tích Chuyên sâu: Hiện tượng Phân mảnh Ngữ cảnh trong Multimodal RAG](file:///c:/Users/ndquynh/Documents/RAG/docs/multimodal_context_fragmentation_analysis.md): So sánh chi tiết Anti-pattern tách rời phần tử với kiến trúc bảo toàn ngữ cảnh của hệ thống.
+- 🏗️ [Tài Liệu Thiết Kế Kiến Trúc Toàn Diện (Master Architecture)](file:///c:/Users/ndquynh/Documents/RAG/docs/architecture.md): Bức tranh toàn cảnh về kiến trúc hệ thống Monorepo, apps/chat-api, worker, scheduler và database.
