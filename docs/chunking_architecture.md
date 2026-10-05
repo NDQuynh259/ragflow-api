@@ -343,6 +343,85 @@ flowchart LR
 
 ---
 
+### 3.4. Phân Tích Chuyên Sâu: Bài Toán 2 Chiều Của Bảng Biểu & 3 Chiến Lược Xử Lý Cho RAG
+
+Bảng biểu trong tài liệu không phải là văn bản tuyến tính 1 chiều (1D Sequential Text), mà là **dữ liệu quan hệ 2 chiều (2D Relational Data)**:
+- **Chiều Hàng (Row-wise)**: Tập hợp các thuộc tính của một đối tượng cụ thể (Entity Record).
+- **Chiều Cột (Column-wise)**: Sự so sánh, đối chiếu hoặc phân loại một thuộc tính qua nhiều đối tượng khác nhau (Metrics / Categories).
+- **Giao điểm ô (Cell Intersection)**: Một giá trị chỉ có ý nghĩa khi kết hợp `(Tên Cột, Tên Hàng, Đơn vị tính)`.
+
+Khi duỗi thẳng bảng thành chuỗi Markdown (`| Cột 1 | Cột 2 |...`), các mô hình Embedding (vốn chỉ đo khoảng cách token 1 chiều lân cận) sẽ **bị mù theo chiều dọc (Column Blindness)** và dễ làm mất ngữ cảnh giao điểm ô khi vector hóa.
+
+#### 3.4.1. Ba Hướng Tiếp Cận Xử Lý Bảng Cho RAG Hiện Đại
+
+```mermaid
+flowchart TD
+    A[Bảng Biểu 2D từ Tài liệu] --> B{Chiến lược Xử lý}
+    
+    B --> C["Cách 1: Row-wise Textification"]
+    C --> C1["Chuyển mỗi hàng thành câu / Key-Value:<br/>Quý = Q1 | Doanh thu = 150 tỷ | Chi phí = 120 tỷ"]
+    C1 --> C2["Phù hợp: Tìm kiếm chính xác từng đối tượng / hàng"]
+
+    B --> D["Cách 2: Biểu diễn Kép (Dual Representation)"]
+    D --> D1["Retrieval Payload: Summary / Key-Value dùng cho Vector & BM25"]
+    D --> D2["Generation Payload: Giữ nguyên bảng Markdown 2D cho LLM"]
+    D1 & D2 --> D3["Phù hợp: Tối ưu đồng thời khâu Search và khâu Trả lời"]
+
+    B --> E["Cách 3: Chuyển đổi Cơ sở Dữ liệu & Text-to-SQL"]
+    E --> E1["Nạp bảng vào SQLite / DuckDB / Dynamic Tables"]
+    E1 --> E2["Dùng LLM sinh lệnh SQL: SELECT SUM(...) WHERE ..."]
+    E2 --> E3["Phù hợp: Bảng số liệu lớn, tính toán tổng hợp tuyệt đối"]
+```
+
+1. **Cách 1: Tự nhiên hóa từng dòng (Row-wise Key-Value / Textification)**
+   - **Cơ chế**: Chuyển đổi mỗi hàng của bảng thành một phát biểu tự nhiên hoặc chuỗi Key-Value độc lập:
+     ```text
+     [Bảng: Báo cáo tài chính theo quý - 2024]
+     - Bản ghi 1: Quý = Q1 | Doanh thu = 150 tỷ VNĐ | Lợi nhuận = 25 tỷ VNĐ
+     - Bản ghi 2: Quý = Q2 | Doanh thu = 180 tỷ VNĐ | Lợi nhuận = 32 tỷ VNĐ
+     ```
+   - **Tác động**: Từng hàng biến thành một đơn vị ngữ nghĩa độc lập, embedding model vector hóa cực kỳ chính xác cho các truy vấn tìm kiếm thực thể.
+
+2. **Cách 2: Biểu diễn kép (Dual Representation - Search Text vs LLM Context)**
+   - **Cơ chế**: Tách biệt hoàn toàn định dạng dùng để **Tìm kiếm (Retrieval)** và định dạng dùng để **Sinh câu trả lời (Generation)**:
+     - **Retrieval Payload (`searchable_text` / Embedding)**: Sử dụng bản tóm tắt bảng (Table Summary sinh bởi LLM hoặc template) kết hợp chuỗi Key-Value để vector search và BM25 tìm đúng bảng.
+     - **Generation Payload (`content`)**: Nạp nguyên vẹn cấu trúc bảng Markdown/HTML vào prompt để LLM đọc và suy luận 2 chiều trực quan.
+
+3. **Cách 3: Chuyển đổi Cơ sở dữ liệu Cấu trúc & Text-to-SQL (Structural Engine / SQL Tooling)**
+   - **Cơ chế**: Khi gặp bảng lớn có nhiều số liệu thống kê, hệ thống không chunk bảng vào Vector Database mà lưu vào SQLite/DuckDB hoặc PostgreSQL schema động.
+   - **Tác động**: Khi người dùng hỏi dạng lọc/tính toán (*"Phòng ban nào có chi phí cao nhất?", "Tổng doanh thu 3 quý đầu năm?"*), hệ thống dùng LLM chuyển câu hỏi thành truy vấn SQL (`SELECT ... GROUP BY ... ORDER BY ... LIMIT 1`) để truy vấn số liệu chính xác 100%.
+
+#### 3.4.2. Bảng So Sánh Ưu - Nhược Điểm Toàn Diện
+
+| Tiêu chí so sánh | Cách 1: Row-wise Textification | Cách 2: Biểu diễn kép (Dual Representation) | Cách 3: Text-to-SQL / Database Engine |
+| :--- | :--- | :--- | :--- |
+| **Tìm kiếm theo hàng (Row Query)** | ⭐⭐⭐⭐⭐ Rất tốt (Mỗi hàng là 1 câu hoàn chỉnh) | ⭐⭐⭐⭐⭐ Rất tốt (Nhờ Summary + Key-Value) | ⭐⭐⭐ Tốt (Cần chuyển câu hỏi sang lệnh `WHERE`) |
+| **Tìm kiếm / Tổng hợp cột (Column/Agg Query)** | ⚠️ Hạn chế (Khó tính toán tổng, trung bình) | 🟡 Khá (LLM nhận bảng Markdown đầy đủ để tính) | ⭐⭐⭐⭐⭐ Hoàn hảo (SQL thực hiện `SUM`, `AVG`, `MAX`) |
+| **Độ chính xác tính toán số liệu** | ⚠️ Phụ thuộc vào khả năng đọc text của LLM | 🟡 Khá (LLM tính toán trên bảng Markdown) | ⭐⭐⭐⭐⭐ Tuyệt đối 100% (Tính toán bằng Database Engine) |
+| **Định dạng context cho LLM** | 🟡 Khá dài dòng nếu bảng nhiều cột | ⭐⭐⭐⭐⭐ Tự nhiên, trực quan (Bảng Markdown 2D) | ⭐⭐⭐ Tốt (Dữ liệu trả về từ bảng kết quả SQL) |
+| **Chi phí API / Thời gian lúc Ingest** | 🟢 **0đ - Siêu nhanh** (Rule-based string template) | 🟡 Thấp nếu dùng Rule; Cao nếu gọi LLM tóm tắt | 🔴 Cao (Cần tạo schema động, load bảng, validate) |
+| **Độ phức tạp hạ tầng & Vận hành** | 🟢 **Rất đơn giản** (Tích hợp ngay trong Chunker) | 🟢 **Đơn giản** (Lưu thêm trường vào Metadata/DB) | 🔴 **Rất phức tạp** (SQL sandbox, dynamic table, schema drift) |
+| **Khả năng chịu lỗi khi OCR méo mó** | 🟢 Cao (Dung thứ bảng thiếu ô, merge cell) | 🟢 Cao (Không đòi hỏi schema cố định) | 🔴 Rất kém (Bảng OCR sai lệch kiểu dữ liệu sẽ gãy lệnh SQL) |
+
+#### 3.4.3. Đề Xuất Giải Pháp Cho Dự Án `ragflow-api` & Lập Luận Lựa Chọn
+
+**Giải pháp tối ưu đề xuất:** **Kiến trúc Lai Biểu Diễn Kép Tinh Gọn (Lightweight Dual Representation kết hợp Rule-based Row Textification)**.
+
+Cụ thể kiến trúc triển khai:
+1. **Bảng nhỏ ($\le 8$ hàng, $\le 800$ ký tự)**: Giữ nguyên cơ chế **Inline Markdown** cạnh văn bản mô tả để LLM nắm trọn vẹn ngữ cảnh tự nhiên.
+2. **Bảng lớn ($> 8$ hàng)**: Áp dụng cơ chế **Biểu diễn kép không tốn phí API**:
+   - **Trường `content` (LLM Generation)**: Giữ nguyên cấu trúc bảng Markdown hoàn chỉnh kèm **Repeated Header** và Caption để LLM đọc và trích dẫn bounding box trên giao diện.
+   - **Trường `metadata["searchable_text"]` (Vector & BM25 Retrieval)**: Được bộ `TableChunker` tự động sinh bằng thuật toán chuyển đổi **Row-wise Key-Value template** (tự động ghép Header tương ứng với từng Cell trên từng hàng).
+   - **Vector Embedding**: Sinh vector dựa trên `searchable_text` (hoặc kết hợp `Caption + Section Path + Key-Value Text`) thay vì vector hóa các ký tự phân cách pipe `| --- |`.
+
+**Lập luận vì sao đây là giải pháp tối ưu nhất cho hệ thống này:**
+1. **Tuân thủ triệt để nguyên lý "Zero-RAM-Bloat & Zero-Ingestion-Cost"**: Thuật toán chuyển đổi Row Key-Value hoàn toàn chạy trên CPU bằng Python string template, tốc độ $< 1\text{ms}$, không tiêu tốn quota Gemini API hay làm nghẽn hàng đợi Celery/RabbitMQ lúc ingest hàng trăm trang tài liệu.
+2. **Giải quyết triệt để "Điểm mù Vector" mà vẫn giữ tính trực quan**: Embedding model và BM25 tìm kiếm trúng đích từng dòng dữ liệu nhờ Key-Value; trong khi LLM khi trả lời người dùng vẫn nhận được bảng Markdown 2D nguyên bản để hiển thị bảng kẻ ô đẹp mắt trên UI.
+3. **Phù hợp với đặc thù tài liệu doanh nghiệp**: Tài liệu thực tế (Hợp đồng, Quyết định, Báo cáo scan OCR) thường chứa các bảng biểu có cấu trúc không đồng nhất, merge cell, hoặc thiếu số liệu. Cách tiếp cận này có độ chịu lỗi (fault tolerance) rất cao, không bị đổ vỡ như mô hình Text-to-SQL đòi hỏi chuẩn hóa quan hệ khắt khe.
+4. **Tương thích 100% với hạ tầng PostgreSQL / pgvector hiện tại**: Không cần bổ sung thêm database SQLite hay DuckDB phụ trợ, chỉ cần tận dụng trường `metadata` trong bảng `chunks` đã có sẵn.
+
+---
+
 ## 4. Chuẩn Hóa Bố Cục Trước Khi Băm (`LayoutNormalizer`)
 
 File mã nguồn: [`packages/rag-document-pipeline/src/rag_document_pipeline/normalizers/layout.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/normalizers/layout.py)

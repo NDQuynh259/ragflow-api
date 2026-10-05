@@ -1,4 +1,5 @@
 import pytest
+from rag_document_pipeline.chunking.image import ImageChunker
 from rag_document_pipeline.chunking.multimodal import MultimodalChunker
 from rag_document_pipeline.chunking.table import TableChunker
 from rag_document_pipeline.models import ImageData, LayoutElement, TableData
@@ -214,3 +215,86 @@ def test_pipeline_normalize_caption_binding():
     assert t.table_data is not None
     assert t.table_data.caption == "Bảng 1: Bảng phân công nhiệm vụ"
     assert t.metadata.get("footnote") == "* Thời gian thực hiện: Q4/2024"
+
+
+def test_image_chunker_ocr_extraction():
+    """Verify ImageChunker uses ocr_fn to extract text when no caption is available."""
+    called_with = []
+
+    def mock_ocr(path: str) -> str:
+        called_with.append(path)
+        return "Số hóa đơn: HD-2024-001\nTổng tiền: 5.000.000 VNĐ"
+
+    chunker = ImageChunker(ocr_fn=mock_ocr)
+    element = LayoutElement(
+        id="img_inv",
+        type="image",
+        page_number=1,
+        image_data=ImageData(uri="documents/invoices/inv_01.png"),
+    )
+
+    chunks = chunker.chunk([element], document_id="doc_ocr")
+    assert len(chunks) == 1
+    c = chunks[0]
+
+    assert c.kind == "figure"
+    assert c.indexable is True
+    assert c.metadata["has_ocr"] is True
+    assert "Số hóa đơn: HD-2024-001" in c.metadata["ocr_text"]
+    assert "OCR: Số hóa đơn: HD-2024-001" in c.content
+    assert called_with == ["documents/invoices/inv_01.png"]
+    assert element.image_data is not None
+    assert element.image_data.ocr_text == c.metadata["ocr_text"]
+
+
+def test_image_chunker_preserves_preexisting_ocr():
+    """Verify existing ocr_text is not overwritten and ocr_fn is not invoked unnecessarily."""
+    ocr_called = False
+
+    def mock_ocr(path: str) -> str:
+        nonlocal ocr_called
+        ocr_called = True
+        return "New OCR"
+
+    chunker = ImageChunker(ocr_fn=mock_ocr)
+    element = LayoutElement(
+        id="img_pre",
+        type="image",
+        page_number=2,
+        image_data=ImageData(
+            uri="documents/figures/fig.png",
+            ocr_text="Đã có văn bản OCR trước đó",
+        ),
+    )
+
+    chunks = chunker.chunk([element], document_id="doc_ocr_pre")
+    assert len(chunks) == 1
+    assert not ocr_called
+    assert chunks[0].indexable is True
+    assert chunks[0].metadata["ocr_text"] == "Đã có văn bản OCR trước đó"
+    assert "OCR: Đã có văn bản OCR trước đó" in chunks[0].content
+
+
+def test_multimodal_chunker_pipeline_ocr_forwarding():
+    """Verify ocr_fn is forwarded from DocumentPipeline to MultimodalChunker and ImageChunker."""
+    mock_ocr = lambda path: "Bản vẽ thiết kế kỹ thuật - Tỷ lệ 1:100"
+
+    pipeline = DocumentPipeline.hybrid_semantic(ocr_fn=mock_ocr)
+    elements = [
+        LayoutElement(id="h1", type="heading", text="Hồ sơ thiết kế", heading_level=1),
+        LayoutElement(
+            id="diag1",
+            type="image",
+            image_data=ImageData(uri="drawings/cad_01.png"),
+        ),
+    ]
+
+    # Normalize and chunk
+    normalized = pipeline._normalize(elements)
+    chunks = pipeline.chunker.chunk(normalized, document_id="doc_pipe_ocr")
+
+    img_chunk = next(c for c in chunks if c.kind == "figure")
+    assert img_chunk.indexable is True
+    assert img_chunk.metadata.get("has_ocr") is True
+    assert "OCR: Bản vẽ thiết kế kỹ thuật - Tỷ lệ 1:100" in img_chunk.content
+

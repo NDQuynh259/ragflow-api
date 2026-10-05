@@ -45,6 +45,7 @@ class DocumentPipeline:
         chunk_size: int = 1200,
         chunk_overlap: int = 200,
         embed_fn: Any = None,
+        ocr_fn: Any = None,
     ) -> None:
         if chunk_size <= 0 or not 0 <= chunk_overlap < chunk_size:
             raise ValueError("Invalid chunk window")
@@ -61,6 +62,7 @@ class DocumentPipeline:
             # The multimodal reading-order router is always used.
             self.chunker = MultimodalChunker.hybrid_semantic(
                 embed_fn=embed_fn,
+                ocr_fn=ocr_fn,
                 min_chunk_size=min(300, chunk_size // 4),
                 max_chunk_size=chunk_size,
             )
@@ -73,6 +75,7 @@ class DocumentPipeline:
         *,
         parser: Parser | None = None,
         embed_fn: Any = None,
+        ocr_fn: Any = None,
         min_chunk_size: int = 300,
         max_chunk_size: int = 1500,
         threshold_percentile: float = 80.0,
@@ -91,6 +94,7 @@ class DocumentPipeline:
         """
         chunker = MultimodalChunker.hybrid_semantic(
             embed_fn=embed_fn,
+            ocr_fn=ocr_fn,
             min_chunk_size=min_chunk_size,
             max_chunk_size=max_chunk_size,
             threshold_percentile=threshold_percentile,

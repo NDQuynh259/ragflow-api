@@ -31,6 +31,7 @@ class MultimodalChunker:
         min_chunk_size: int | None = None,
         threshold_percentile: float = 80.0,
         embed_fn: Any = None,
+        ocr_fn: Any = None,
         **_: Any,
     ) -> None:
         self.chunk_size = chunk_size
@@ -42,7 +43,7 @@ class MultimodalChunker:
             threshold_percentile=threshold_percentile,
         )
         self.table_chunker = table_chunker or TableChunker(chunk_size=chunk_size)
-        self.image_chunker = image_chunker or ImageChunker()
+        self.image_chunker = image_chunker or ImageChunker(ocr_fn=ocr_fn)
 
     @classmethod
     def hybrid_semantic(cls, **options: Any) -> "MultimodalChunker":
