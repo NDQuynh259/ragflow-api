@@ -49,19 +49,27 @@ class MultimodalChunker:
         return cls(**options)
 
     def chunk(self, elements: list[LayoutElement], *, document_id: str) -> list[DocumentChunk]:
+        # Propagate section information to elements
         elements = propagate_sections(elements)
+
+        # Group elements by section path and page number
         groups = group_by_section([e for e in elements if e.type.lower() not in SKIP_TYPES])
+        
+        # Iterate through groups and chunk elements
         chunks: list[DocumentChunk] = []
         for group in groups:
             text_batch: list[LayoutElement] = []
             for element in group:
                 kind = element.type.lower()
                 if kind in TABLE_TYPES:
+                    
                     if TableChunker.is_small_table(element, max_chars=self.chunk_size // 2, max_rows=8):
+                        # Table small enough to be inlined with text
                         inline = element.model_copy(deep=True)
                         inline.text = TableChunker.render_markdown(element)
                         text_batch.append(inline)
                     else:
+                        # Table too large: flush pending text and add a standalone table chunk
                         chunks.extend(self._flush_text(text_batch, document_id))
                         text_batch = []
                         chunks.extend(self.table_chunker.chunk([element], document_id=document_id))
