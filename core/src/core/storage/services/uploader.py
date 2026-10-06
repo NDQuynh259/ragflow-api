@@ -65,7 +65,7 @@ class FileUploader:
         storage_uri = self.storage.save(
             filename=validated.filename,
             content=validated.content,
-            workspace_id=workspace_id,
+            object_path=f"workspaces/{workspace_id}/{validated.filename}",
         )
 
         logger.info(

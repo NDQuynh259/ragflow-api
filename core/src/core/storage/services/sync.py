@@ -82,7 +82,7 @@ class StorageRetrySyncService:
                 s3_uri = self.fallback_adapter.primary.save(
                     filename=item.filename,
                     content=content,
-                    workspace_id=item.workspace_id,
+                    object_path=item.object_path,
                 )
                 logger.info(
                     "Successfully retried and uploaded '%s' to primary storage: %s",

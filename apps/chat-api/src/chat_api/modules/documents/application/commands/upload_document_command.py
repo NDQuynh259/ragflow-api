@@ -75,9 +75,14 @@ class UploadDocumentHandler:
         if existing:
             return DocumentMapper.to_dto(existing)
 
-        raw_uri = self.storage.save(validated.filename, validated.content, cmd.workspace_id)
+        document_id = uuid7()
+        raw_uri = self.storage.save(
+            validated.filename,
+            validated.content,
+            f"workspaces/{cmd.workspace_id}/{document_id}/{validated.filename}",
+        )
         document = Document(
-            id=uuid7(),
+            id=document_id,
             workspace_id=cmd.workspace_id,
             filename=Filename(validated.filename),
             storage_uri=StorageUri(raw_uri),

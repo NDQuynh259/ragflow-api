@@ -45,7 +45,7 @@ def main() -> int:
     # Setup output and images directories
     document_id = pdf_path.stem
     content = pdf_path.read_bytes()
-    output_dir = Path("output") / document_id
+    output_dir = Path("outputs") / document_id
     output_dir.mkdir(parents=True, exist_ok=True)
     image_dir = output_dir / "images"
     image_dir.mkdir(parents=True, exist_ok=True)

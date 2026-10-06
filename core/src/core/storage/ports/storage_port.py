@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
 from abc import ABC, abstractmethod
 
 
@@ -10,7 +9,12 @@ class ObjectStoragePort(ABC):
     """Abstract port for file object storage."""
 
     @abstractmethod
-    def save(self, filename: str, content: bytes, workspace_id: uuid.UUID) -> str:
+    def save(
+        self,
+        filename: str,
+        content: bytes,
+        object_path: str,
+    ) -> str:
         """Store content and return storage URI."""
         pass
 

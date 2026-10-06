@@ -25,10 +25,10 @@ class InMemoryTestTargetStorage(ObjectStoragePort):
         self.files: dict[str, bytes] = {}
         self.should_fail = False
 
-    def save(self, filename: str, content: bytes, workspace_id: uuid.UUID) -> str:
+    def save(self, filename: str, content: bytes, object_path: str) -> str:
         if self.should_fail:
             raise StorageException("Simulated S3 connection failure!")
-        uri = f"s3://test-bucket/workspaces/{workspace_id}/{filename}"
+        uri = f"s3://test-bucket/{object_path}"
         self.files[uri] = bytes(content)
         return uri
 
@@ -63,7 +63,7 @@ def test_fallback_save_creates_outbox_item_on_primary_failure() -> None:
 
         ws_id = uuid.uuid4()
         content = b"PDF content saved in emergency"
-        uri = fallback_adapter.save("report.pdf", content, ws_id)
+        uri = fallback_adapter.save("report.pdf", content, f"workspaces/{ws_id}/report.pdf")
 
         # File is safely saved to local disk
         assert uri.startswith("file://")
@@ -95,7 +95,7 @@ def test_storage_retry_sync_service_lifecycle() -> None:
 
         ws_id = uuid.uuid4()
         content = b"Document pending sync"
-        local_uri = fallback_adapter.save("important.pdf", content, ws_id)
+        local_uri = fallback_adapter.save("important.pdf", content, f"workspaces/{ws_id}/important.pdf")
 
         sync_service = StorageRetrySyncService(
             fallback_adapter=fallback_adapter,
@@ -149,7 +149,7 @@ def test_storage_retry_sync_exceeds_max_retries() -> None:
         )
 
         ws_id = uuid.uuid4()
-        fallback_adapter.save("broken.pdf", b"data", ws_id)
+        fallback_adapter.save("broken.pdf", b"data", f"workspaces/{ws_id}/broken.pdf")
 
         sync_service = StorageRetrySyncService(
             fallback_adapter=fallback_adapter,

@@ -31,6 +31,7 @@ class OpenDataLoaderParser:
         self.image_output = image_output
         self.image_dir = Path(image_dir) if image_dir else None
 
+    # region parse
     def parse(
         self,
         content: bytes,
@@ -87,7 +88,6 @@ class OpenDataLoaderParser:
         return candidates[0] if candidates else None
 
     # region _to_elements
-
     @classmethod
     def _to_elements(cls, payload: Any, *, image_dir: Path | None = None) -> list[LayoutElement]:
         raw = (
@@ -158,6 +158,7 @@ class OpenDataLoaderParser:
             )
         return elements
 
+    # region _extract_table_data
     @classmethod
     def _extract_table_data(cls, rows: list[Any], caption: str | None = None) -> TableData | None:
         if not rows:
@@ -186,6 +187,7 @@ class OpenDataLoaderParser:
             caption=caption,
         )
 
+    # region _text
     @staticmethod
     def _text(item: dict[str, Any]) -> str:
         """Extract visible text from OpenDataLoader's nested JSON.
@@ -236,6 +238,7 @@ class OpenDataLoaderParser:
         # objects repeating the same visible text.
         return "\n".join(dict.fromkeys(parts))
 
+    # region _number
     @staticmethod
     def _number(item: dict[str, Any], *keys: str, default: int = 1) -> int:
         for key in keys:
@@ -246,6 +249,7 @@ class OpenDataLoaderParser:
                     pass
         return default
 
+    # region _bbox
     @staticmethod
     def _bbox(item: dict[str, Any]) -> tuple[float, float, float, float] | None:
         value = item.get("bounding box", item.get("bbox", item.get("bounding_box")))

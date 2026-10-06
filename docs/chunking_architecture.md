@@ -420,6 +420,53 @@ Cụ thể kiến trúc triển khai:
 3. **Phù hợp với đặc thù tài liệu doanh nghiệp**: Tài liệu thực tế (Hợp đồng, Quyết định, Báo cáo scan OCR) thường chứa các bảng biểu có cấu trúc không đồng nhất, merge cell, hoặc thiếu số liệu. Cách tiếp cận này có độ chịu lỗi (fault tolerance) rất cao, không bị đổ vỡ như mô hình Text-to-SQL đòi hỏi chuẩn hóa quan hệ khắt khe.
 4. **Tương thích 100% với hạ tầng PostgreSQL / pgvector hiện tại**: Không cần bổ sung thêm database SQLite hay DuckDB phụ trợ, chỉ cần tận dụng trường `metadata` trong bảng `chunks` đã có sẵn.
 
+#### 3.4.4. Query Router Hybrid Khi Triển Khai Truy Vấn
+
+Khi triển khai lớp query, hệ thống không nên dùng một retriever duy nhất cho mọi loại câu hỏi. **Query Router Hybrid** phân loại ý định truy vấn trước, sau đó định tuyến sang chiến lược tìm kiếm phù hợp. Kết quả cuối cùng được hợp nhất và rerank trước khi đưa vào LLM.
+
+```mermaid
+flowchart TD
+    A[User Query] --> B[Query Classifier]
+    B --> C{Query Intent}
+    C -->|Tra cứu một giá trị| D[Dense Vector + Row-wise Searchable Text]
+    C -->|Từ khóa chính xác| E[BM25 / PostgreSQL Full Text Search]
+    C -->|So sánh nhiều hàng| F[Dense + Metadata Filter + Markdown Context]
+    C -->|Tổng hợp số liệu| G[Structured Engine / Text-to-SQL]
+    C -->|Mô tả bảng hoặc tài liệu| H[Table Summary + Markdown Content]
+    D & E & F & G & H --> I[Reranker / Result Merger]
+    I --> J[LLM Generation]
+```
+
+**Quy tắc định tuyến đề xuất:**
+
+| Ý định | Dấu hiệu truy vấn | Retriever / Engine | Payload đưa vào LLM |
+| :--- | :--- | :--- | :--- |
+| `factual_lookup` | “là bao nhiêu”, “giá trị”, một thực thể cụ thể | Dense vector trên `metadata.searchable_text` | Row key-value + Markdown liên quan |
+| `keyword_match` | Tìm tên, mã, thuật ngữ chính xác | BM25 / `tsvector` | Các chunk có exact match |
+| `comparison` | “cao hơn”, “thấp hơn”, “so sánh” | Dense + lọc các entity cần đối chiếu | Markdown 2D giữ nguyên header |
+| `aggregation` | “tổng”, “trung bình”, “lớn nhất”, “nhỏ nhất” | DuckDB/Text-to-SQL nếu bảng có schema tin cậy; fallback Dense | Kết quả tính toán + nguồn bảng |
+| `summarization` | “bảng này nói về gì”, “tóm tắt” | Table summary + content | Markdown hoặc summary |
+
+**Giai đoạn triển khai:**
+
+1. **MVP — Rule-based classifier:** nhận diện từ khóa cho `factual_lookup`, `keyword_match`, `comparison`, `aggregation`, `summarization`; không gọi LLM trong bước phân loại.
+2. **Retrieval:** dùng dense vector với `searchable_text`; triển khai BM25/`tsvector` trên cùng payload thay vì chỉ index Markdown pipe.
+3. **Aggregation có kiểm soát:** chỉ chuyển sang SQL khi header, kiểu số và schema bảng được chuẩn hóa; bảng OCR lỗi hoặc merge cell phải fallback về retrieval thông thường.
+4. **Result merger/reranker:** loại bỏ kết quả trùng, giữ `content` Markdown và metadata `page`, `bbox`, `row_start`, `row_end` để trích dẫn.
+5. **LLM generation:** LLM chỉ nhận kết quả đã được định tuyến; không tự quyết định truy vấn SQL trực tiếp trên toàn bộ database.
+
+**Ví dụ định tuyến:**
+
+```text
+“Tổng doanh thu Q1–Q3 là bao nhiêu?”
+→ aggregation
+→ SQL/DuckDB nếu bảng có schema hợp lệ
+→ nếu không hợp lệ: lấy các row Q1, Q2, Q3 bằng searchable_text
+→ trả kết quả kèm citation đến bảng gốc
+```
+
+Trong phạm vi hiện tại, `searchable_text` đã hỗ trợ nhánh dense retrieval. BM25/hybrid retriever và Text-to-SQL là các hạng mục mở rộng; không được coi là đã triển khai đầy đủ chỉ vì đã có `tsv_content` trong schema.
+
 ---
 
 ## 4. Chuẩn Hóa Bố Cục Trước Khi Băm (`LayoutNormalizer`)
@@ -591,7 +638,7 @@ for chunk in processed.chunks:
 | [`chunking/section.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/section.py) | Quản lý cây tiêu đề (`_propagate_sections`), gom nhóm theo section (`_group_by_section`). |
 | [`chunking/multimodal.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/multimodal.py) | Router multimodal (`MultimodalChunker`), điều phối luồng đọc tự nhiên, re-index chunks. |
 | [`chunking/text.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/text.py) | Tách câu tiếng Việt (masking), Sliding Window Buffer ($W=2$), tính Topic Shift, kẹp cận kích thước. |
-| [`chunking/table.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/table.py) | Chuyển đổi Markdown bảng, cắt theo nhóm hàng và lặp lại tiêu đề cột (`repeated_header`). |
+| [`chunking/table.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/table.py) | Chuyển đổi Markdown bảng, cắt theo nhóm hàng, lặp lại tiêu đề cột (`repeated_header`) và sinh `metadata.searchable_text` dạng row-wise key-value. |
 | [`chunking/image.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/image.py) | Tạo chunk hình ảnh từ caption/OCR/description, kiểm soát cờ `indexable`. |
 | [`normalizers/layout.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/normalizers/layout.py) | Gắn kết Caption và Footnote vào Bảng/Ảnh trước khi phân luồng, xóa orphan elements. |
 | [`pipeline.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/pipeline.py) | Lớp điều phối tổng thể: Parse (OpenDataLoader) $\to$ Normalize $\to$ Chunk $\to$ Validate. |

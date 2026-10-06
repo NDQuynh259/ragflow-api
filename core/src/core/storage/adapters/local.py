@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
 from pathlib import Path
 
 from core.config import settings
@@ -16,17 +15,17 @@ class LocalStorageAdapter(ObjectStoragePort):
         self.base_dir = Path(base_dir or settings.STORAGE_DIR)
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
-    def save(self, filename: str, content: bytes, workspace_id: uuid.UUID) -> str:
-        workspace_dir = self.base_dir / str(workspace_id)
-        workspace_dir.mkdir(parents=True, exist_ok=True)
-
-        clean_name = Path(filename).name
-        if clean_name.endswith("_layout.json"):
-            safe_name = clean_name
-        else:
-            file_id = uuid.uuid4().hex[:8]
-            safe_name = f"{file_id}_{clean_name}"
-        target_path = workspace_dir / safe_name
+    def save(
+        self,
+        filename: str,
+        content: bytes,
+        object_path: str,
+    ) -> str:
+        relative_path = Path(object_path)
+        if relative_path.is_absolute() or ".." in relative_path.parts:
+            raise ValueError("object_path must be a safe relative path")
+        target_path = self.base_dir / relative_path
+        target_path.parent.mkdir(parents=True, exist_ok=True)
         target_path.write_bytes(content)
 
         return f"file://{target_path.resolve()}"

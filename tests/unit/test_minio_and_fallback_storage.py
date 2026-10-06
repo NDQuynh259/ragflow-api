@@ -23,8 +23,8 @@ class InMemoryMockStorage(ObjectStoragePort):
     def __init__(self) -> None:
         self._storage: dict[str, bytes] = {}
 
-    def save(self, filename: str, content: bytes, workspace_id: uuid.UUID) -> str:
-        uri = f"memory://{workspace_id}/{filename}"
+    def save(self, filename: str, content: bytes, object_path: str) -> str:
+        uri = f"memory://{object_path}"
         self._storage[uri] = bytes(content)
         return uri
 
@@ -78,7 +78,7 @@ def test_minio_storage_adapter_save_and_ensure_bucket() -> None:
 
     workspace_id = uuid.uuid4()
     content = b"PDF dummy content"
-    uri = adapter.save("report.pdf", content, workspace_id)
+    uri = adapter.save("report.pdf", content, f"workspaces/{workspace_id}/report.pdf")
 
     # Verifies bucket was created
     mock_client.bucket_exists.assert_called_once_with("my-bucket")
@@ -89,8 +89,7 @@ def test_minio_storage_adapter_save_and_ensure_bucket() -> None:
     call_kwargs = mock_client.put_object.call_args.kwargs
     assert call_kwargs["bucket_name"] == "my-bucket"
     assert call_kwargs["length"] == len(content)
-    assert f"workspaces/{workspace_id}/" in call_kwargs["object_name"]
-    assert call_kwargs["object_name"].endswith("_report.pdf")
+    assert call_kwargs["object_name"] == f"workspaces/{workspace_id}/report.pdf"
 
     assert uri.startswith("s3://my-bucket/workspaces/")
 
@@ -156,7 +155,7 @@ def test_fallback_storage_success_primary() -> None:
     workspace_id = uuid.uuid4()
     content = b"Content via primary"
 
-    uri = fallback.save("file.txt", content, workspace_id)
+    uri = fallback.save("file.txt", content, f"workspaces/{workspace_id}/file.txt")
     assert uri.startswith("memory://")
     # Saved to primary, secondary remains empty
     assert primary.exists(uri) is True
@@ -173,7 +172,7 @@ def test_fallback_storage_fails_over_to_secondary() -> None:
     workspace_id = uuid.uuid4()
     content = b"Content saved to local fallback"
 
-    uri = fallback.save("fallback_doc.pdf", content, workspace_id)
+    uri = fallback.save("fallback_doc.pdf", content, f"workspaces/{workspace_id}/fallback_doc.pdf")
     assert uri.startswith("memory://")
     assert secondary.exists(uri) is True
     assert secondary.get(uri) == content

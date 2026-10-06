@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 import mimetypes
 import os
 from pathlib import Path
@@ -33,8 +32,6 @@ class GeminiOCR:
     def __call__(self, image_source: str) -> str:
         """Return text in reading order, or an empty string when no text exists."""
         image_bytes, mime_type = self._read_image(image_source)
-        encoded = base64.b64encode(image_bytes).decode("ascii")
-
         from google.genai import types
 
         response = self._client.models.generate_content(
@@ -47,7 +44,7 @@ class GeminiOCR:
                         "Return only the transcription. If there is no readable text, return an empty string."
                     )
                 ),
-                types.Part.from_bytes(data=base64.b64decode(encoded), mime_type=mime_type),
+                types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
             ],
             config=types.GenerateContentConfig(temperature=0, max_output_tokens=4096),
         )

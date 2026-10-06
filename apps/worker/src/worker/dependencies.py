@@ -13,6 +13,7 @@ from core.config import settings
 from core.database import SqlAlchemyUnitOfWork
 from core.storage import ObjectStoragePort, create_storage_adapter
 from rag_core.engine import RAGEngine
+from rag_core.ocr import GeminiOCR
 from rag_document_pipeline.pipeline import DocumentPipeline
 
 logger = logging.getLogger(__name__)
@@ -50,8 +51,11 @@ def get_document_pipeline() -> DocumentPipeline:
                 exc,
             )
 
+        ocr_fn = _get_ocr_fn()
+
         return DocumentPipeline.hybrid_semantic(
             embed_fn=embed_fn,
+            ocr_fn=ocr_fn,
             min_chunk_size=getattr(settings, "CHUNK_MIN_SIZE", 300),
             max_chunk_size=getattr(settings, "CHUNK_MAX_SIZE", 1500),
             threshold_percentile=getattr(settings, "CHUNK_THRESHOLD_PERCENTILE", 80.0),
@@ -59,7 +63,20 @@ def get_document_pipeline() -> DocumentPipeline:
 
     return DocumentPipeline(
         chunk_size=getattr(settings, "CHUNK_MAX_SIZE", 1200),
+        ocr_fn=_get_ocr_fn(),
     )
+
+
+@lru_cache(maxsize=1)
+def _get_ocr_fn():
+    """Return the OCR callback for image chunking, or None when disabled/unavailable."""
+    if not getattr(settings, "OCR_ENABLED", True):
+        return None
+    try:
+        return GeminiOCR(model=getattr(settings, "OCR_MODEL", "gemini-2.5-flash"))
+    except Exception as exc:
+        logger.warning("Image OCR disabled, provider unavailable (%s)", exc)
+        return None
 
 
 @lru_cache(maxsize=1)

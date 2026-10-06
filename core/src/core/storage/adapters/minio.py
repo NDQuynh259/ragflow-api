@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import io
 import logging
-import uuid
 from typing import TYPE_CHECKING
 
 from core.exceptions import FileNotFoundStorageException, StorageException
@@ -68,14 +67,16 @@ class MinioStorageAdapter(ObjectStoragePort):
                 )
                 raise
 
-    def save(self, filename: str, content: bytes, workspace_id: uuid.UUID) -> str:
+    def save(
+        self,
+        filename: str,
+        content: bytes,
+        object_path: str,
+    ) -> str:
         self._ensure_bucket()
-        clean_name = filename.split("/")[-1].split("\\")[-1]
-        if clean_name.endswith("_layout.json"):
-            object_key = f"workspaces/{workspace_id}/{clean_name}"
-        else:
-            file_id = uuid.uuid4().hex[:8]
-            object_key = f"workspaces/{workspace_id}/{file_id}_{clean_name}"
+        object_key = object_path.strip("/").replace("\\", "/")
+        if not object_key or object_key.startswith("../") or "/../" in object_key:
+            raise ValueError("object_path must be a safe relative object key")
 
         content_stream = io.BytesIO(content)
         self._client.put_object(

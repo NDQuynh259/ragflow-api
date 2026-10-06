@@ -75,7 +75,10 @@ class RAGEngine:
 
         for i in range(0, total_chunks, batch_size):
             batch = indexable[i : i + batch_size]
-            texts = [c.content for c in batch]
+            texts = [
+                str(c.metadata.get("searchable_text", "")).strip() or c.content
+                for c in batch
+            ]
             logger.info(
                 "Embedding batch %d-%d of %d chunks...",
                 i + 1,

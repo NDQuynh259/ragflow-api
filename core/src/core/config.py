@@ -54,6 +54,10 @@ class CoreSettings(BaseSettings):
     CHUNK_MAX_SIZE: int = 1500
     CHUNK_THRESHOLD_PERCENTILE: float = 80.0
 
+    # Image OCR (multimodal figure text extraction)
+    OCR_ENABLED: bool = True
+    OCR_MODEL: str = "gemini-2.5-flash"
+
 
 # Backward-compatible alias
 Settings = CoreSettings

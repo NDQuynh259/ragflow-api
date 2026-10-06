@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+import tempfile
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -39,6 +41,66 @@ class DocumentIngestionService:
         self.pipeline = pipeline
         self.engine = engine
 
+    def _upload_images(
+        self,
+        image_dir: Path,
+        *,
+        document_id: uuid.UUID,
+        workspace_id: uuid.UUID,
+    ) -> dict[str, str]:
+        """Upload extracted images and return local filename-to-URI mappings."""
+        image_uris: dict[str, str] = {}
+        for image_path in image_dir.rglob("*"):
+            if not image_path.is_file():
+                continue
+            try:
+                uri = self.storage.save(
+                    filename=image_path.name,
+                    content=image_path.read_bytes(),
+                    object_path=(
+                        f"workspaces/{workspace_id}/{document_id}/images/{image_path.name}"
+                    ),
+                )
+                image_uris[image_path.name] = uri
+                logger.info("Uploaded extracted image %s to %s", image_path.name, uri)
+            except Exception:
+                logger.exception("Could not upload extracted image %s", image_path)
+        return image_uris
+
+    @staticmethod
+    def _rewrite_image_uris(elements: list, image_uris: dict[str, str]) -> None:
+        """Replace parser-local image paths with durable object-storage URIs."""
+        for element in elements:
+            image_data = getattr(element, "image_data", None)
+            if image_data and image_data.uri:
+                image_name = Path(image_data.uri).name
+                if image_name in image_uris:
+                    image_data.uri = image_uris[image_name]
+            if getattr(element, "source", None):
+                source_name = Path(element.source).name
+                if source_name in image_uris:
+                    element.source = image_uris[source_name]
+            for key in ("image_path", "uri"):
+                value = element.metadata.get(key)
+                if value:
+                    image_name = Path(str(value)).name
+                    if image_name in image_uris:
+                        element.metadata[key] = image_uris[image_name]
+
+    @staticmethod
+    def _rewrite_chunk_image_uris(chunks: list, image_uris: dict[str, str]) -> None:
+        """Replace parser-local image paths in chunk metadata with durable URIs."""
+        for chunk in chunks:
+            for key in ("image_path", "image_uri", "source"):
+                value = getattr(chunk.metadata, key, None) or chunk.metadata.get(key)
+                if value:
+                    image_name = Path(str(value)).name
+                    if image_name in image_uris:
+                        if hasattr(chunk.metadata, key):
+                            setattr(chunk.metadata, key, image_uris[image_name])
+                        else:
+                            chunk.metadata[key] = image_uris[image_name]
+
     def execute_pipeline(
         self,
         storage_uri: str,
@@ -54,11 +116,25 @@ class DocumentIngestionService:
         file_size = len(file_bytes)
         logger.info("Read %d bytes from storage URI: %s", file_size, storage_uri)
 
-        processed = self.pipeline.process(
-            file_bytes,
-            filename=filename,
-            document_id=str(document_id),
-        )
+        # Extract images to a temp directory so they can be uploaded to object storage
+        image_dir: Path | None = None
+        temp_dir: tempfile.TemporaryDirectory[str] | None = None
+        try:
+            temp_dir = tempfile.TemporaryDirectory(prefix="rag-ingest-images-")
+            image_dir = Path(temp_dir.name)
+            processed = self.pipeline.process(
+                file_bytes,
+                filename=filename,
+                document_id=str(document_id),
+                image_dir=image_dir,
+            )
+        except TypeError:
+            # Parser does not accept image_dir
+            processed = self.pipeline.process(
+                file_bytes,
+                filename=filename,
+                document_id=str(document_id),
+            )
         # 1. Release raw file bytes immediately from RAM
         del file_bytes
         gc.collect()
@@ -70,8 +146,25 @@ class DocumentIngestionService:
             len(processed.chunks),
         )
 
+        # 2. Upload extracted images to object storage under the document prefix
+        image_uris: dict[str, str] = {}
+        if image_dir and image_dir.is_dir():
+            image_uris = self._upload_images(
+                image_dir,
+                document_id=document_id,
+                workspace_id=workspace_id,
+            )
+        # Release temp image directory before rewriting URIs
+        if temp_dir is not None:
+            temp_dir.cleanup()
+            temp_dir = None
+            image_dir = None
+        if image_uris:
+            self._rewrite_image_uris(processed.elements, image_uris)
+            self._rewrite_chunk_image_uris(processed.chunks, image_uris)
+
         layout_uri: str | None = None
-        # 2. Persist parsed layout JSON to Storage (Enterprise pattern: no RAM bloat, reusable for re-chunking)
+        # 3. Persist parsed layout JSON to Storage (Enterprise pattern: no RAM bloat, reusable for re-chunking)
         if hasattr(processed, "elements") and processed.elements:
             try:
                 elements_dump = [
@@ -82,7 +175,7 @@ class DocumentIngestionService:
                 layout_uri = self.storage.save(
                     filename=f"{document_id}_layout.json",
                     content=layout_json.encode("utf-8"),
-                    workspace_id=workspace_id,
+                    object_path=f"workspaces/{workspace_id}/{document_id}/{document_id}_layout.json",
                 )
                 logger.info("Persisted parsed layout to storage URI: %s", layout_uri)
 
@@ -97,7 +190,7 @@ class DocumentIngestionService:
         for chunk in processed.chunks:
             chunk.workspace_id = str(workspace_id)
 
-        # 3. Index chunks into vector store in batches
+        # 4. Index chunks into vector store in batches
         indexed_count = self.engine.index(processed.chunks)
         logger.info(
             "Successfully indexed %d chunks for document %s",
@@ -108,7 +201,7 @@ class DocumentIngestionService:
         page_count = processed.page_count
         chunk_count = len(processed.chunks)
 
-        # 4. Clean up processed container from RAM
+        # 5. Clean up processed container from RAM
         del processed
         gc.collect()
 

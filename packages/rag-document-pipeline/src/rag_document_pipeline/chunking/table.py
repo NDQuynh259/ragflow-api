@@ -58,6 +58,9 @@ class TableChunker:
                     element,
                     (0, len(table.rows)),
                     False,
+                    searchable_text=self._render_searchable_text(
+                        table.headers, table.rows, caption=caption
+                    ),
                     workspace_id=workspace_id,
                 )
             ]
@@ -81,6 +84,9 @@ class TableChunker:
                     element,
                     (row_start, row_index),
                     True,
+                    searchable_text=self._render_searchable_text(
+                        table.headers, table.rows[row_start:row_index], caption=caption
+                    ),
                     workspace_id=workspace_id,
                 )
             )
@@ -100,6 +106,9 @@ class TableChunker:
                     (row_start, row_start + len(current)),
                     was_split,
                     metadata_extra,
+                    searchable_text=self._render_searchable_text(
+                        table.headers, current, caption=caption
+                    ),
                     workspace_id=workspace_id,
                 )
             )
@@ -144,6 +153,28 @@ class TableChunker:
         return "\n".join("| " + " | ".join(row) + " |" for row in rows)
 
     @staticmethod
+    def _render_searchable_text(
+        headers: list[str],
+        rows: list[list[str]],
+        *,
+        caption: str = "",
+    ) -> str:
+        """Render each row as explicit header/value pairs for dense retrieval."""
+        prefix = f"Bảng: {caption}\n" if caption else ""
+        lines: list[str] = []
+        for row_number, row in enumerate(rows, start=1):
+            pairs = []
+            for index, value in enumerate(row):
+                value = str(value).strip()
+                if not value:
+                    continue
+                label = headers[index].strip() if index < len(headers) else f"Cột {index + 1}"
+                pairs.append(f"{label} = {value}")
+            if pairs:
+                lines.append(f"Dòng {row_number}: " + " | ".join(pairs))
+        return prefix + "\n".join(lines)
+
+    @staticmethod
     def _make_chunk(
         document_id: str,
         content: str,
@@ -151,6 +182,8 @@ class TableChunker:
         row_range: tuple[int, int] | None,
         repeated_header: bool = False,
         extra: dict[str, Any] | None = None,
+        *,
+        searchable_text: str = "",
         workspace_id: str = "",
     ) -> DocumentChunk:
         metadata: dict[str, Any] = {"chunker": "table", "modality": "table"}
@@ -160,6 +193,8 @@ class TableChunker:
             metadata["has_repeated_header"] = True
         if extra:
             metadata.update(extra)
+        if searchable_text:
+            metadata["searchable_text"] = searchable_text
         return DocumentChunk(
             id=str(uuid.uuid4()),
             document_id=document_id,

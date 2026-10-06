@@ -177,6 +177,31 @@ def test_large_table_is_chunked_independently():
     for tc in table_chunks:
         assert "| Tên vật tư | Đơn giá |" in tc.content
         assert tc.section_path == ["Chương 3: Bảng giá vật tư lớn"]
+        searchable = tc.metadata.get("searchable_text", "")
+        assert "Tên vật tư = Mục" in searchable
+        assert "Đơn giá = Giá trị" in searchable
+        assert "| --- |" not in searchable
+
+
+def test_table_searchable_text_preserves_header_value_intersections():
+    element = LayoutElement(
+        id="t1",
+        type="table",
+        table_data=TableData(
+            headers=["Quý", "Doanh thu", "Lợi nhuận"],
+            rows=[["Q1", "150 tỷ", "25 tỷ"]],
+            caption="Báo cáo 2024",
+        ),
+        page_number=1,
+    )
+
+    chunk = TableChunker(chunk_size=1000).chunk([element], document_id="doc")[0]
+
+    assert "### Báo cáo 2024" in chunk.content
+    assert chunk.metadata["searchable_text"] == (
+        "Bảng: Báo cáo 2024\n"
+        "Dòng 1: Quý = Q1 | Doanh thu = 150 tỷ | Lợi nhuận = 25 tỷ"
+    )
 
 
 def test_pipeline_normalize_caption_binding():

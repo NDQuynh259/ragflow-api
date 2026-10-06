@@ -22,6 +22,7 @@ class OutboxItem:
     local_uri: str
     filename: str
     workspace_id: uuid.UUID
+    object_path: str
     created_at: str
     retry_count: int = 0
     last_error: str | None = None
@@ -32,6 +33,10 @@ class OutboxItem:
             local_uri=data["local_uri"],
             filename=data["filename"],
             workspace_id=uuid.UUID(str(data["workspace_id"])),
+            object_path=data.get(
+                "object_path",
+                f"workspaces/{data['workspace_id']}/{data['filename']}",
+            ),
             created_at=data["created_at"],
             retry_count=data.get("retry_count", 0),
             last_error=data.get("last_error"),
@@ -61,10 +66,19 @@ class FallbackStorageAdapter(ObjectStoragePort):
         self.outbox_dir = Path(outbox_dir or (Path(settings.STORAGE_DIR) / "outbox"))
         self.outbox_dir.mkdir(parents=True, exist_ok=True)
 
-    def save(self, filename: str, content: bytes, workspace_id: uuid.UUID) -> str:
+    def save(
+        self,
+        filename: str,
+        content: bytes,
+        object_path: str,
+    ) -> str:
         """Attempt primary upload first. If error occurs, fall back immediately to secondary and record outbox."""
         try:
-            uri = self.primary.save(filename, content, workspace_id)
+            uri = self.primary.save(
+                filename,
+                content,
+                object_path,
+            )
             logger.info("Successfully saved '%s' to primary storage: %s", filename, uri)
             return uri
         except Exception as exc:
@@ -73,14 +87,18 @@ class FallbackStorageAdapter(ObjectStoragePort):
                 filename,
                 exc,
             )
-            fallback_uri = self.secondary.save(filename, content, workspace_id)
+            fallback_uri = self.secondary.save(
+                filename,
+                content,
+                object_path,
+            )
             logger.info("Fallback saved '%s' to local server storage: %s", filename, fallback_uri)
 
             # Record into outbox for background retry sync
             self._record_outbox(
                 local_uri=fallback_uri,
                 filename=filename,
-                workspace_id=workspace_id,
+                object_path=object_path,
                 error_msg=str(exc),
             )
             return fallback_uri
@@ -129,14 +147,15 @@ class FallbackStorageAdapter(ObjectStoragePort):
         self,
         local_uri: str,
         filename: str,
-        workspace_id: uuid.UUID,
+        object_path: str,
         error_msg: str,
     ) -> None:
         """Persist metadata JSON tracking this local file for subsequent retry."""
         item = OutboxItem(
             local_uri=local_uri,
             filename=filename,
-            workspace_id=workspace_id,
+            workspace_id=self._workspace_id_from_path(object_path),
+            object_path=object_path,
             created_at=datetime.now(UTC).isoformat(),
             retry_count=0,
             last_error=error_msg,
@@ -144,6 +163,13 @@ class FallbackStorageAdapter(ObjectStoragePort):
         outbox_file = self._get_outbox_path(local_uri)
         outbox_file.write_text(json.dumps(item.to_dict(), indent=2), encoding="utf-8")
         logger.info("Recorded Outbox retry item for '%s': %s", filename, outbox_file.name)
+
+    @staticmethod
+    def _workspace_id_from_path(object_path: str) -> uuid.UUID:
+        parts = object_path.replace("\\", "/").strip("/").split("/")
+        if len(parts) < 2 or parts[0] != "workspaces":
+            raise ValueError("object_path must start with workspaces/{workspace_id}/")
+        return uuid.UUID(parts[1])
 
     def get_pending_sync_items(self) -> list[OutboxItem]:
         """Scan outbox directory and return all pending OutboxItems."""
