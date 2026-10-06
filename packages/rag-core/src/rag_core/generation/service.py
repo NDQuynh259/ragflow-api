@@ -125,6 +125,9 @@ class GenerationService:
                     system_instruction=SYSTEM_PROMPT,
                     temperature=0.2,
                     max_output_tokens=2048,
+                    automatic_function_calling=types.AutomaticFunctionCallingConfig(
+                        disable=True
+                    ),
                 ),
             )
             answer = response.text or ""

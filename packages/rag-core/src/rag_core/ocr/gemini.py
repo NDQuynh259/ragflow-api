@@ -46,7 +46,13 @@ class GeminiOCR:
                 ),
                 types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
             ],
-            config=types.GenerateContentConfig(temperature=0, max_output_tokens=4096),
+            config=types.GenerateContentConfig(
+                temperature=0,
+                max_output_tokens=4096,
+                automatic_function_calling=types.AutomaticFunctionCallingConfig(
+                    disable=True
+                ),
+            ),
         )
         return (response.text or "").strip()
 
