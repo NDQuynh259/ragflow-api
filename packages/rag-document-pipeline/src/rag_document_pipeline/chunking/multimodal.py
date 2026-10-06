@@ -68,6 +68,15 @@ class MultimodalChunker:
                         # Table small enough to be inlined with text
                         inline = element.model_copy(deep=True)
                         inline.text = TableChunker.render_markdown(element)
+                        inline.metadata["searchable_text"] = TableChunker._render_searchable_text(
+                            element.table_data.headers if element.table_data else [],
+                            element.table_data.rows if element.table_data else [],
+                            caption=(
+                                (element.table_data.caption if element.table_data else None)
+                                or element.caption
+                                or ""
+                            ),
+                        )
                         text_batch.append(inline)
                     else:
                         # Table too large: flush pending text and add a standalone table chunk

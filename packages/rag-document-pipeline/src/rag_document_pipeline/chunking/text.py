@@ -61,9 +61,17 @@ class TextChunker:
             metadata: dict[str, Any] = {"chunker": "semantic_hybrid", "modality": "text"}
             if has_table:
                 metadata["contains_table"] = True
-                metadata["table_ids"] = [
-                    el.id for el in group if el.type.lower() in ("table", "data_table")
+                table_elements = [
+                    el for el in group if el.type.lower() in ("table", "data_table")
                 ]
+                metadata["table_ids"] = [el.id for el in table_elements]
+                searchable = [
+                    el.metadata["searchable_text"]
+                    for el in table_elements
+                    if el.metadata.get("searchable_text")
+                ]
+                if searchable:
+                    metadata["searchable_text"] = "\n".join(searchable)
 
             page_start = min(el.page_number for el in group)
             page_end = max(el.page_number for el in group)

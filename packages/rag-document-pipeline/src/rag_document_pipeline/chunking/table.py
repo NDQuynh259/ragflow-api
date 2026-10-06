@@ -165,11 +165,12 @@ class TableChunker:
         for row_number, row in enumerate(rows, start=1):
             pairs = []
             for index, value in enumerate(row):
-                value = str(value).strip()
-                if not value:
-                    continue
                 label = headers[index].strip() if index < len(headers) else f"Cột {index + 1}"
-                pairs.append(f"{label} = {value}")
+                normalized = str(value).strip() or "[empty]"
+                pairs.append(f"{label} = {normalized}")
+            for index in range(len(row), len(headers)):
+                label = headers[index].strip() or f"Cột {index + 1}"
+                pairs.append(f"{label} = [empty]")
             if pairs:
                 lines.append(f"Dòng {row_number}: " + " | ".join(pairs))
         return prefix + "\n".join(lines)

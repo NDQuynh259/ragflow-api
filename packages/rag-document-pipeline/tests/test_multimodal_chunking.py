@@ -174,3 +174,50 @@ def test_oversized_single_row_is_flagged():
     table_chunks = [c for c in chunks if c.kind == "table"]
     assert table_chunks
     assert any(c.metadata.get("oversized_row") for c in table_chunks)
+
+
+def test_inline_table_carries_searchable_text_to_text_chunk():
+    """Inline tables must propagate searchable_text for RAGEngine to embed."""
+    elements = [
+        LayoutElement(id="p1", type="paragraph", text="Revenue context."),
+        LayoutElement(
+            id="small",
+            type="table",
+            table_data=TableData(
+                headers=["Quarter", "Revenue"],
+                rows=[["Q1", "150"]],
+                caption="Small table",
+            ),
+        ),
+    ]
+
+    chunks = MultimodalChunker(chunk_size=800).chunk(elements, document_id="doc-inline")
+    text_chunk = chunks[0]
+
+    assert text_chunk.kind == "text"
+    assert text_chunk.metadata.get("contains_table") is True
+    assert "searchable_text" in text_chunk.metadata
+    assert "Quarter = Q1" in text_chunk.metadata["searchable_text"]
+    assert "Revenue = 150" in text_chunk.metadata["searchable_text"]
+
+
+def test_large_table_has_searchable_text_in_standalone_chunks():
+    """Large tables split into standalone chunks must each carry searchable_text."""
+    element = LayoutElement(
+        id="large",
+        type="table",
+        table_data=TableData(
+            headers=["Quarter", "Revenue"],
+            rows=[[f"Q{i}", f"{100+i*10}"] for i in range(12)],
+            caption="Annual report",
+        ),
+    )
+
+    chunks = MultimodalChunker(chunk_size=180).chunk([element], document_id="doc-large")
+    table_chunks = [chunk for chunk in chunks if chunk.kind == "table"]
+
+    assert table_chunks
+    for chunk in table_chunks:
+        assert "searchable_text" in chunk.metadata
+        assert "Quarter = Q" in chunk.metadata["searchable_text"]
+        assert "Revenue = " in chunk.metadata["searchable_text"]
