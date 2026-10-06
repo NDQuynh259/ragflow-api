@@ -40,7 +40,7 @@ class ChatApiSettings(CoreSettings):
     # Gemini
     GEMINI_API_KEY: str = ""
     GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
-    GEMINI_LLM_MODEL: str = "gemini-2.5-flash"
+    GEMINI_LLM_MODEL: str = "gemini-2.0-flash"
 
     # OpenAI
     OPENAI_API_KEY: str = ""

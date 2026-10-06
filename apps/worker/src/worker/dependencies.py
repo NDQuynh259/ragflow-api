@@ -73,7 +73,7 @@ def _get_ocr_fn():
     if not getattr(settings, "OCR_ENABLED", True):
         return None
     try:
-        return GeminiOCR(model=getattr(settings, "OCR_MODEL", "gemini-2.5-flash"))
+        return GeminiOCR(model=getattr(settings, "OCR_MODEL", "gemini-2.0-flash"))
     except Exception as exc:
         logger.warning("Image OCR disabled, provider unavailable (%s)", exc)
         return None

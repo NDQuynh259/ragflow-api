@@ -20,7 +20,7 @@ class GeminiOCR:
         timeout: float = 30.0,
     ) -> None:
         self._api_key = api_key or os.environ.get("GEMINI_API_KEY", "")
-        self._model = model or os.environ.get("GEMINI_OCR_MODEL", "gemini-2.5-flash")
+        self._model = model or os.environ.get("GEMINI_OCR_MODEL", "gemini-2.0-flash")
         self._timeout = timeout
         if not self._api_key:
             raise ValueError("GEMINI_API_KEY is required for OCR.")

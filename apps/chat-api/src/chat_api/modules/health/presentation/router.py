@@ -103,7 +103,7 @@ def _check_ai_providers() -> ComponentStatus:
 
     providers: list[str] = []
     if gemini_key:
-        providers.append(f"Gemini ({getattr(settings, 'GEMINI_LLM_MODEL', 'gemini-2.5-flash')})")
+        providers.append(f"Gemini ({getattr(settings, 'GEMINI_LLM_MODEL', 'gemini-2.0-flash')})")
     if cohere_key:
         providers.append(f"Cohere ({getattr(settings, 'COHERE_EMBEDDING_MODEL', 'embed-v4.0')})")
     if openai_key:

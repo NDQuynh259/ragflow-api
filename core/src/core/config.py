@@ -56,7 +56,7 @@ class CoreSettings(BaseSettings):
 
     # Image OCR (multimodal figure text extraction)
     OCR_ENABLED: bool = True
-    OCR_MODEL: str = "gemini-2.5-flash"
+    OCR_MODEL: str = "gemini-2.0-flash"
 
 
 # Backward-compatible alias
