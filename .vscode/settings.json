@@ -13,5 +13,15 @@
     "${workspaceFolder}/packages/rag-document-pipeline/src",
     "${workspaceFolder}/apps/chat-api/src",
     "${workspaceFolder}/workers/document-worker/src"
+  ],
+  "cSpell.words": [
+    "alembic",
+    "chunker",
+    "chunkers",
+    "genai",
+    "pyright",
+    "ragflow",
+    "rerank",
+    "reranker"
   ]
 }
