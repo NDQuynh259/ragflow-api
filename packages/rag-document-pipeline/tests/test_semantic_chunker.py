@@ -38,7 +38,7 @@ def test_semantic_text_chunker_basic():
 
 
 def test_multimodal_hybrid_semantic():
-    hybrid_chunker = MultimodalChunker.hybrid_semantic(
+    hybrid_chunker = MultimodalChunker(
         min_chunk_size=50,
         max_chunk_size=500,
     )
@@ -79,7 +79,7 @@ def test_multimodal_hybrid_semantic():
 
 def test_multimodal_hybrid_semantic_inline():
     """Verify that the multimodal router inlines small tables into text chunks."""
-    hybrid_chunker = MultimodalChunker.hybrid_semantic(
+    hybrid_chunker = MultimodalChunker(
         min_chunk_size=50,
         max_chunk_size=500,
     )

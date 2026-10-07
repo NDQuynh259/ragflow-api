@@ -7,7 +7,7 @@ import os
 from typing import Any
 
 from rag_contracts.chunks import SearchResult
-from rag_core.embeddings.base import Embedder
+from rag_core.ports.embedder import Embedder
 from rag_core.ports.vector_store import VectorStore
 
 logger = logging.getLogger(__name__)

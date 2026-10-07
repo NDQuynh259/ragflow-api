@@ -9,7 +9,7 @@ Handles:
 from __future__ import annotations
 
 import re
-from typing import Sequence
+from collections.abc import Sequence
 
 from rag_document_pipeline.models import LayoutElement
 
@@ -41,7 +41,6 @@ class LayoutNormalizer:
             return []
 
         elements_list = list(elements)
-        n = len(elements_list)
         absorbed_indices: set[int] = set()
 
         for i, el in enumerate(elements_list):

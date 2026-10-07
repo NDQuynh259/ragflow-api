@@ -5,9 +5,9 @@ from __future__ import annotations
 import logging
 
 from rag_contracts import ChunkRecord, DocumentChunk
-from rag_core.embeddings.base import Embedder
-from rag_core.generation.service import GenerationResult, GenerationService
+from rag_core.ports.embedder import Embedder
 from rag_core.ports.vector_store import VectorStore
+from rag_core.providers.generation.service import GenerationResult, GenerationService
 from rag_core.retrieval.service import RetrievalService
 
 logger = logging.getLogger(__name__)
@@ -38,8 +38,8 @@ class RAGEngine:
     @classmethod
     def from_env(cls) -> RAGEngine:
         """Create a RAGEngine with all components configured from env vars."""
-        from rag_core.embeddings.gemini import GeminiEmbedder
         from rag_core.indexing.pgvector import PgVectorStore
+        from rag_core.providers.embeddings.gemini import GeminiEmbedder
 
         embedder = GeminiEmbedder()
         vector_store = PgVectorStore()

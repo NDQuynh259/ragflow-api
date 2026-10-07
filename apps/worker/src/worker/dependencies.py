@@ -13,7 +13,7 @@ from core.config import settings
 from core.database import SqlAlchemyUnitOfWork
 from core.storage import ObjectStoragePort, create_storage_adapter
 from rag_core.engine import RAGEngine
-from rag_core.ocr import GeminiOCR
+from rag_core.providers.ocr import GeminiOCR
 from rag_document_pipeline.pipeline import DocumentPipeline
 
 logger = logging.getLogger(__name__)

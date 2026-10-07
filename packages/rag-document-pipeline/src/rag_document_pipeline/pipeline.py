@@ -60,7 +60,7 @@ class DocumentPipeline:
             self.chunker = chunker
         else:
             # The multimodal reading-order router is always used.
-            self.chunker = MultimodalChunker.hybrid_semantic(
+            self.chunker = MultimodalChunker(
                 embed_fn=embed_fn,
                 ocr_fn=ocr_fn,
                 min_chunk_size=min(300, chunk_size // 4),
@@ -92,7 +92,7 @@ class DocumentPipeline:
            - Đo khoảng cách ngữ nghĩa qua Sliding Window Buffer.
            - Cắt ranh giới chunk mới tại điểm nhảy vọt chủ đề (threshold_percentile).
         """
-        chunker = MultimodalChunker.hybrid_semantic(
+        chunker = MultimodalChunker(
             embed_fn=embed_fn,
             ocr_fn=ocr_fn,
             min_chunk_size=min_chunk_size,

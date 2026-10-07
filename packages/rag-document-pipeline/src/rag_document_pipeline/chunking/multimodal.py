@@ -46,10 +46,6 @@ class MultimodalChunker:
         self.table_chunker = table_chunker or TableChunker(chunk_size=chunk_size)
         self.image_chunker = image_chunker or ImageChunker(ocr_fn=ocr_fn)
 
-    @classmethod
-    def hybrid_semantic(cls, **options: Any) -> MultimodalChunker:
-        return cls(**options)
-
     def chunk(self, elements: list[LayoutElement], *, document_id: str) -> list[DocumentChunk]:
         # Propagate section information to elements
         elements = propagate_sections(elements)
@@ -98,6 +94,7 @@ class MultimodalChunker:
             chunk.index = index
         return chunks
 
+    # region _flush_text
     def _flush_text(self, elements: list[LayoutElement], document_id: str) -> list[DocumentChunk]:
         if not any(e.text.strip() or e.table_data for e in elements if e.type.lower() != "heading"):
             return []

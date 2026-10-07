@@ -1,4 +1,4 @@
-"""Generation services."""
+"""Text generation provider implementations."""
 
 from .service import GenerationResult, GenerationService
 

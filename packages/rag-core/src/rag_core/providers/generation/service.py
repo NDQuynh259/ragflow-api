@@ -8,7 +8,7 @@ import re
 from typing import Any
 
 from rag_contracts.chunks import SearchResult
-from rag_core.generation.prompts import (
+from rag_core.providers.generation.prompts import (
     CONTEXT_TEMPLATE,
     SYSTEM_PROMPT,
     USER_TEMPLATE,

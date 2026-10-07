@@ -79,7 +79,7 @@ def test_figure_caption_binding():
 
 def test_small_table_is_inlined_with_adjacent_text():
     """Verify that a small table is kept inline with its leading text paragraph."""
-    chunker = MultimodalChunker.hybrid_semantic(
+    chunker = MultimodalChunker(
         min_chunk_size=300,
         max_chunk_size=1500,
     )
