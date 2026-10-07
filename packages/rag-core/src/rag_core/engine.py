@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+import math
 
 from rag_contracts import ChunkRecord, DocumentChunk
+from rag_core.errors import EmbeddingError
 from rag_core.ports.embedder import Embedder
 from rag_core.ports.vector_store import VectorStore
 from rag_core.providers.generation.service import GenerationResult, GenerationService
@@ -58,14 +60,27 @@ class RAGEngine:
             generation=generation,
         )
 
-    def index(self, chunks: list[DocumentChunk], batch_size: int = 50) -> int:
+    def index(
+        self,
+        chunks: list[DocumentChunk],
+        batch_size: int = 50,
+        *,
+        workspace_id: str | None = None,
+    ) -> int:
         """Embed and store document chunks in the vector store in micro-batches.
 
         Only indexable chunks with content are embedded.
         Processes in batches of `batch_size` (default: 50) to prevent RAM spikes and memory bloat.
         Returns the number of chunks stored.
         """
+        if batch_size <= 0:
+            raise ValueError("batch_size must be greater than zero")
+        if workspace_id is not None and not workspace_id.strip():
+            raise ValueError("workspace_id must not be empty")
+
         indexable = [c for c in chunks if c.indexable and c.content.strip()]
+        if workspace_id is not None:
+            indexable = [c for c in indexable if c.workspace_id == workspace_id]
         if not indexable:
             logger.info("No indexable chunks to store.")
             return 0
@@ -76,7 +91,7 @@ class RAGEngine:
         for i in range(0, total_chunks, batch_size):
             batch = indexable[i : i + batch_size]
             texts = [
-                str(c.metadata.get("searchable_text", "")).strip() or c.content
+                (c.metadata.get("searchable_text") or "").strip() or c.content
                 for c in batch
             ]
             logger.info(
@@ -86,6 +101,22 @@ class RAGEngine:
                 total_chunks,
             )
             vectors = self.embedder.embed(texts)
+            if len(vectors) != len(batch):
+                raise EmbeddingError(
+                    f"Embedder returned {len(vectors)} vectors for {len(batch)} chunks"
+                )
+            expected_dimension = getattr(self.embedder, "dimension", None)
+            if expected_dimension:
+                invalid = [
+                    len(vector)
+                    for vector in vectors
+                    if len(vector) != expected_dimension
+                    or not all(math.isfinite(value) for value in vector)
+                ]
+                if invalid:
+                    raise EmbeddingError(
+                        f"Embedder returned invalid vectors; expected dimension {expected_dimension}"
+                    )
 
             records: list[ChunkRecord] = [
                 ChunkRecord(
@@ -120,6 +151,7 @@ class RAGEngine:
         document_ids: list[str] | None = None,
         kind: str | None = None,
         top_k: int | None = None,
+        workspace_id: str | None = None,
     ) -> GenerationResult:
         """Retrieve context and generate a grounded answer.
 
@@ -138,11 +170,15 @@ class RAGEngine:
             document_ids=document_ids,
             kind=kind,
             top_k=top_k,
+            workspace_id=workspace_id,
         )
 
         # 2. Generate
         return self.generation.generate(query, results)
 
-    def delete_document(self, document_id: str) -> int:
-        """Remove all indexed chunks for a document."""
-        return self.vector_store.delete_by_document(document_id)
+    def delete_document(self, document_id: str, *, workspace_id: str | None = None) -> int:
+        """Remove all indexed chunks for a document within an optional workspace."""
+        return self.vector_store.delete_by_document(
+            document_id,
+            workspace_id=workspace_id,
+        )

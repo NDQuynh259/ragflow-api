@@ -3,22 +3,31 @@
 Images with captions or descriptions become indexable chunks.
 Images without any textual representation are kept as metadata-only
 records (``indexable=False``) so they are not embedded as empty strings.
+
+OCR extraction is bounded by max_ocr_length (default: 2000 characters).
 """
 
 from __future__ import annotations
 
+import logging
 import uuid
 from typing import Any
 
 from rag_document_pipeline.chunking.core import estimate_tokens
 from rag_document_pipeline.models import DocumentChunk, LayoutElement
 
+logger = logging.getLogger(__name__)
+
+DEFAULT_MAX_OCR_LENGTH = 2000
+
 
 class ImageChunker:
     """Chunk image/figure elements based on available textual content."""
 
-    def __init__(self, *, ocr_fn: Any = None) -> None:
+    def __init__(self, *, ocr_fn: Any = None, max_ocr_length: int = DEFAULT_MAX_OCR_LENGTH) -> None:
         self.ocr_fn = ocr_fn
+        self.max_ocr_length = max_ocr_length
+
 
     def chunk(
         self,
@@ -54,7 +63,14 @@ class ImageChunker:
             or element.metadata.get("ocr")
         )
 
-        # 2. If OCR is missing and ocr_fn is provided, extract OCR from image source
+        metadata: dict[str, Any] = {
+            "chunker": "image",
+            "modality": "image",
+            "image_available": True,
+        }
+        if self.ocr_fn:
+            metadata["ocr_attempted"] = False
+
         if not ocr_text and self.ocr_fn:
             image_source = (
                 (img.uri if img else None)
@@ -63,15 +79,25 @@ class ImageChunker:
                 or element.metadata.get("uri")
             )
             if image_source:
+                metadata["ocr_attempted"] = True
                 try:
                     extracted = self.ocr_fn(image_source)
                     if extracted and isinstance(extracted, str) and extracted.strip():
                         ocr_text = extracted.strip()
+                        if len(ocr_text) > self.max_ocr_length:
+                            logger.warning(
+                                "OCR text for element %s exceeds max_ocr_length (%d), truncating",
+                                element.id,
+                                self.max_ocr_length,
+                            )
+                            ocr_text = ocr_text[: self.max_ocr_length]
+                            metadata["ocr_truncated"] = True
                         if img:
                             img.ocr_text = ocr_text
                         element.metadata["ocr_text"] = ocr_text
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("OCR extraction failed for %s: %s", image_source, exc)
+                    metadata["ocr_error"] = str(exc)
 
         if caption:
             parts.append(caption)
@@ -91,11 +117,6 @@ class ImageChunker:
         has_content = len(parts) > 1  # more than just "[IMAGE]"
         content = "\n".join(parts)
 
-        metadata: dict = {
-            "chunker": "image",
-            "modality": "image",
-            "image_available": True,
-        }
         if img and img.uri:
             metadata["image_uri"] = img.uri
         if ocr_text:

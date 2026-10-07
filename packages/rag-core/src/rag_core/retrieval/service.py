@@ -33,8 +33,18 @@ class RetrievalService:
     ) -> None:
         self.embedder = embedder
         self.vector_store = vector_store
-        self.default_top_k = default_top_k or int(os.environ.get("DEFAULT_TOP_K", "5"))
-        self.neighbor_window = neighbor_window or int(os.environ.get("RAG_NEIGHBOR_WINDOW", "1"))
+        self.default_top_k = (
+            default_top_k if default_top_k is not None else int(os.environ.get("DEFAULT_TOP_K", "5"))
+        )
+        self.neighbor_window = (
+            neighbor_window
+            if neighbor_window is not None
+            else int(os.environ.get("RAG_NEIGHBOR_WINDOW", "1"))
+        )
+        if self.default_top_k <= 0:
+            raise ValueError("default_top_k must be greater than zero")
+        if self.neighbor_window < 0:
+            raise ValueError("neighbor_window must not be negative")
 
     def retrieve(
         self,
@@ -43,12 +53,15 @@ class RetrievalService:
         document_ids: list[str] | None = None,
         kind: str | None = None,
         top_k: int | None = None,
+        workspace_id: str | None = None,
     ) -> list[SearchResult]:
         """Embed query and search vector store."""
         if not query.strip():
             return []
 
-        k = top_k or self.default_top_k
+        k = top_k if top_k is not None else self.default_top_k
+        if k <= 0:
+            raise ValueError("top_k must be greater than zero")
 
         # 1. Embed the query
         vectors = self.embedder.embed([query])
@@ -59,7 +72,11 @@ class RetrievalService:
 
         # 2. Build filter
         search_filter: dict[str, Any] = {}
-        if document_ids:
+        if workspace_id:
+            search_filter["workspace_id"] = workspace_id
+        if document_ids is not None:
+            if not document_ids:
+                return []
             search_filter["document_ids"] = document_ids
         if kind:
             search_filter["kind"] = kind
@@ -68,7 +85,7 @@ class RetrievalService:
         results = self.vector_store.search(
             query_vector,
             top_k=k,
-            filter=search_filter if search_filter else None,
+            filters=search_filter if search_filter else None,
         )
 
         logger.info(

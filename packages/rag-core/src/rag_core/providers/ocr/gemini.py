@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import ipaddress
 import mimetypes
 import os
+import socket
 from pathlib import Path
 from urllib.parse import urlparse
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 
 class GeminiOCR:
@@ -18,10 +20,22 @@ class GeminiOCR:
         api_key: str | None = None,
         model: str | None = None,
         timeout: float = 30.0,
+        max_image_bytes: int | None = None,
+        allow_private_network: bool = False,
     ) -> None:
         self._api_key = api_key or os.environ.get("GEMINI_API_KEY", "")
         self._model = model or os.environ.get("GEMINI_OCR_MODEL", "gemini-2.0-flash")
         self._timeout = timeout
+        self._max_image_bytes = max_image_bytes or int(
+            os.environ.get("OCR_MAX_IMAGE_BYTES", "10485760")
+        )
+        self._allow_private_network = allow_private_network or (
+            os.environ.get("OCR_ALLOW_PRIVATE_NETWORK", "").lower() in {"1", "true", "yes"}
+        )
+        if self._timeout <= 0:
+            raise ValueError("timeout must be greater than zero")
+        if self._max_image_bytes <= 0:
+            raise ValueError("max_image_bytes must be greater than zero")
         if not self._api_key:
             raise ValueError("GEMINI_API_KEY is required for OCR.")
 
@@ -59,15 +73,37 @@ class GeminiOCR:
     def _read_image(self, image_source: str) -> tuple[bytes, str]:
         parsed = urlparse(image_source)
         if parsed.scheme in {"http", "https"}:
-            with urlopen(image_source, timeout=self._timeout) as response:
-                data = response.read()
+            self._assert_url_allowed(parsed.hostname)
+            request = Request(image_source, headers={"User-Agent": "ragflow-ocr/1.0"})
+            with urlopen(request, timeout=self._timeout) as response:
+                data = response.read(self._max_image_bytes + 1)
+                if len(data) > self._max_image_bytes:
+                    raise ValueError("Image exceeds OCR_MAX_IMAGE_BYTES limit")
                 content_type = response.headers.get_content_type()
             return data, content_type if content_type.startswith("image/") else "image/jpeg"
 
         path = Path(image_source)
+        size = path.stat().st_size
+        if size > self._max_image_bytes:
+            raise ValueError("Image exceeds OCR_MAX_IMAGE_BYTES limit")
         data = path.read_bytes()
         mime_type, _ = mimetypes.guess_type(path.name)
         return data, mime_type if mime_type and mime_type.startswith("image/") else "image/jpeg"
+
+    def _assert_url_allowed(self, hostname: str | None) -> None:
+        """Reject URLs resolving to private, loopback, or link-local addresses."""
+        if self._allow_private_network:
+            return
+        if not hostname:
+            raise ValueError("Image URL must include a hostname")
+        try:
+            addresses = {info[4][0] for info in socket.getaddrinfo(hostname, None)}
+        except socket.gaierror as exc:
+            raise ValueError("Image URL hostname could not be resolved") from exc
+        for address in addresses:
+            ip = ipaddress.ip_address(address)
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                raise ValueError("Image URL resolves to a disallowed network address")
 
 
 __all__ = ["GeminiOCR"]

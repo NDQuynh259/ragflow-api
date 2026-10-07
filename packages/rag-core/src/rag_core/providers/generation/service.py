@@ -74,9 +74,21 @@ class GenerationService:
         *,
         api_key: str | None = None,
         model: str | None = None,
+        max_context_tokens: int | None = None,
+        max_output_tokens: int | None = None,
     ) -> None:
         self._api_key = api_key or os.environ.get("GEMINI_API_KEY", "")
         self._model = model or os.environ.get("GEMINI_LLM_MODEL", "gemini-2.0-flash")
+        self._max_context_tokens = max_context_tokens or int(
+            os.environ.get("GENERATION_MAX_CONTEXT_TOKENS", "8000")
+        )
+        self._max_output_tokens = max_output_tokens or int(
+            os.environ.get("GENERATION_MAX_OUTPUT_TOKENS", "2048")
+        )
+        if self._max_context_tokens <= 0:
+            raise ValueError("max_context_tokens must be greater than zero")
+        if self._max_output_tokens <= 0:
+            raise ValueError("max_output_tokens must be greater than zero")
 
         if not self._api_key:
             raise ValueError("GEMINI_API_KEY is required for generation.")
@@ -94,8 +106,10 @@ class GenerationService:
         if not results:
             return GenerationResult(answer="Không tìm thấy thông tin phù hợp trong tài liệu.")
 
-        # 1. Build context
+        # 1. Build context within a conservative character/token budget.
         context_parts: list[str] = []
+        context_chars = self._max_context_tokens * 4
+        used_chars = 0
         for i, sr in enumerate(results):
             chunk = sr.chunk
             pages = (
@@ -103,14 +117,19 @@ class GenerationService:
                 if chunk.page_start == chunk.page_end
                 else f"{chunk.page_start}-{chunk.page_end}"
             )
-            context_parts.append(
-                CONTEXT_TEMPLATE.format(
-                    index=i + 1,
-                    kind=chunk.kind,
-                    pages=pages,
-                    content=chunk.content,
-                )
+            part = CONTEXT_TEMPLATE.format(
+                index=i + 1,
+                kind=chunk.kind,
+                pages=pages,
+                content=chunk.content,
             )
+            remaining = context_chars - used_chars
+            if remaining <= 0:
+                break
+            if len(part) > remaining:
+                part = part[:remaining]
+            context_parts.append(part)
+            used_chars += len(part)
         context = "\n".join(context_parts)
         user_message = USER_TEMPLATE.format(context=context, query=query)
 
@@ -124,7 +143,7 @@ class GenerationService:
                 config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_PROMPT,
                     temperature=0.2,
-                    max_output_tokens=2048,
+                    max_output_tokens=self._max_output_tokens,
                     automatic_function_calling=types.AutomaticFunctionCallingConfig(
                         disable=True
                     ),
@@ -132,8 +151,13 @@ class GenerationService:
             )
             answer = response.text or ""
         except Exception as exc:
-            logger.error("Gemini generation failed: %s", exc)
-            return GenerationResult(answer=f"Lỗi khi tạo câu trả lời: {exc}")
+            # Log the provider error but never surface raw exception text to callers.
+            logger.error("Gemini generation failed: %s", exc, exc_info=True)
+            return GenerationResult(
+                answer="Không thể tạo câu trả lời do lỗi hệ thống. Vui lòng thử lại sau.",
+                usage={"prompt_tokens": 0, "completion_tokens": 0},
+            )
+
 
         # 3. Extract citations
         citations = self._extract_citations(answer, results)

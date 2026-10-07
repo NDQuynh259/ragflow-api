@@ -15,6 +15,7 @@ class RAGEnginePort(ABC):
         query: str,
         document_ids: list[str] | None = None,
         top_k: int | None = None,
+        workspace_id: str | None = None,
     ) -> tuple[str, list[dict[str, Any]], dict[str, int]]:
         """Query RAG engine, returning (answer, citations, usage)."""
         pass

@@ -20,12 +20,13 @@ class VectorStore(Protocol):
         vector: list[float],
         *,
         top_k: int = 5,
-        filter: dict[str, Any] | None = None,
+        filters: dict[str, Any] | None = None,
     ) -> list[SearchResult]:
         """Search for nearest neighbors. Returns ranked results."""
         ...
 
-    def delete_by_document(self, document_id: str) -> int:
+    def delete_by_document(self, document_id: str, *, workspace_id: str | None = None) -> int:
+
         """Delete all chunks belonging to a document. Returns deleted count."""
         ...
 

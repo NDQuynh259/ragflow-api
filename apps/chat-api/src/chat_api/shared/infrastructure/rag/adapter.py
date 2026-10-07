@@ -34,11 +34,12 @@ class RAGEngineAdapter(RAGEnginePort):
         query: str,
         document_ids: list[str] | None = None,
         top_k: int | None = None,
+        workspace_id: str | None = None,
     ) -> tuple[str, list[dict[str, Any]], dict[str, int]]:
         engine = self._get_engine()
         if engine is not None:
             try:
-                result = engine.answer(query, document_ids=document_ids, top_k=top_k)
+                result = engine.answer(query, document_ids=document_ids, top_k=top_k, workspace_id=workspace_id)
                 raw_citations = [c.to_dict() for c in result.citations]
                 return result.answer, raw_citations, result.usage
             except Exception as exc:

@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import json
+import logging
+import math
 import tempfile
 import uuid
 from pathlib import Path
 from typing import Any
 
+from rag_contracts import ElementType
 from rag_document_pipeline.models import ImageData, LayoutElement, TableData
 from rag_document_pipeline.parsers.base import ParserError
+
+logger = logging.getLogger(__name__)
 
 
 class OpenDataLoaderParser:
@@ -72,7 +77,10 @@ class OpenDataLoaderParser:
                     convert_kwargs["image_dir"] = str(target_image_dir.resolve())
                 opendataloader_pdf.convert(**convert_kwargs)
             except Exception as exc:
-                raise ParserError(f"OpenDataLoader failed to parse '{filename}': {exc}") from exc
+                # Log the underlying failure but keep the public error generic so
+                # temporary paths and JVM exception details are not exposed.
+                logger.error("OpenDataLoader conversion failed: %s", exc, exc_info=True)
+                raise ParserError(f"OpenDataLoader could not parse '{filename}'.") from exc
             json_file = self._find_result(output)
             if json_file is None:
                 raise ParserError("OpenDataLoader completed without producing a JSON result.")
@@ -141,16 +149,16 @@ class OpenDataLoaderParser:
             elements.append(
                 LayoutElement(
                     id=str(item.get("id", item.get("element_id", uuid.uuid4()))),
-                    type=element_type,
+                    type=ElementType(element_type)
+                    if element_type in {member.value for member in ElementType}
+                    else ElementType.TEXT,
                     text=text,
                     page_number=max(1, page),
                     bbox=bbox,
                     source=item.get("source") if isinstance(item.get("source"), str) else None,
                     caption=item.get("caption") if isinstance(item.get("caption"), str) else None,
                     order=order,
-                    heading_level=item.get("heading level")
-                    if isinstance(item.get("heading level"), int)
-                    else None,
+                    heading_level=cls._heading_level(item),
                     table_data=table_data,
                     image_data=image_data,
                     metadata=metadata,
@@ -240,13 +248,22 @@ class OpenDataLoaderParser:
 
     # region _number
     @staticmethod
+    def _heading_level(item: dict[str, Any]) -> int | None:
+        """Return a validated heading level in the supported 1-6 range."""
+        value = item.get("heading level")
+        if not isinstance(value, int) or isinstance(value, bool):
+            return None
+        return value if 1 <= value <= 6 else None
+
+    @staticmethod
     def _number(item: dict[str, Any], *keys: str, default: int = 1) -> int:
         for key in keys:
             if key in item:
                 try:
-                    return int(item[key])
+                    value = int(item[key])
+                    return value if value >= 1 else default
                 except (TypeError, ValueError):
-                    pass
+                    logger.warning("Invalid numeric parser field %r in item; using default", key)
         return default
 
     # region _bbox
@@ -264,9 +281,13 @@ class OpenDataLoaderParser:
             return None
         try:
             coords = [float(v) for v in value if v is not None]
-            if len(coords) != 4:
+            if len(coords) != 4 or not all(math.isfinite(c) for c in coords):
                 return None
             x0, y0, x1, y1 = coords
-            return (min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
+            left, right = min(x0, x1), max(x0, x1)
+            bottom, top = min(y0, y1), max(y0, y1)
+            if right <= left or top <= bottom:
+                return None
+            return (left, bottom, right, top)
         except (TypeError, ValueError):
             return None

@@ -65,6 +65,7 @@ class RAGChatOrchestratorService:
             query=query,
             document_ids=doc_ids_filter,
             top_k=top_k,
+            workspace_id=str(session.workspace_id),
         )
 
         latency_ms = (time.perf_counter() - start_time) * 1000.0
