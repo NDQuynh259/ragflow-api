@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from rag_document_pipeline.chunking.base import Chunker
-from rag_document_pipeline.chunking.section import group_by_section, propagate_sections
-from rag_document_pipeline.chunking.image import ImageChunker
-from rag_document_pipeline.chunking.text import TextChunker
-from rag_document_pipeline.chunking.table import TableChunker
+from rag_document_pipeline.chunking.core import Chunker, group_by_section, propagate_sections
+from rag_document_pipeline.chunking.strategies import (
+    ImageChunker,
+    TableChunker,
+    TextChunker,
+)
 from rag_document_pipeline.models import DocumentChunk, LayoutElement
 
 TEXT_TYPES = {"text", "heading", "paragraph", "list", "caption", "formula"}
@@ -46,7 +47,7 @@ class MultimodalChunker:
         self.image_chunker = image_chunker or ImageChunker(ocr_fn=ocr_fn)
 
     @classmethod
-    def hybrid_semantic(cls, **options: Any) -> "MultimodalChunker":
+    def hybrid_semantic(cls, **options: Any) -> MultimodalChunker:
         return cls(**options)
 
     def chunk(self, elements: list[LayoutElement], *, document_id: str) -> list[DocumentChunk]:
@@ -55,7 +56,7 @@ class MultimodalChunker:
 
         # Group elements by section path and page number
         groups = group_by_section([e for e in elements if e.type.lower() not in SKIP_TYPES])
-        
+
         # Iterate through groups and chunk elements
         chunks: list[DocumentChunk] = []
         for group in groups:
@@ -63,7 +64,7 @@ class MultimodalChunker:
             for element in group:
                 kind = element.type.lower()
                 if kind in TABLE_TYPES:
-                    
+
                     if TableChunker.is_small_table(element, max_chars=self.chunk_size // 2, max_rows=8):
                         # Table small enough to be inlined with text
                         inline = element.model_copy(deep=True)

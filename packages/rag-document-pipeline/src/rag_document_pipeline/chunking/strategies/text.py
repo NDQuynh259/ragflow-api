@@ -8,7 +8,12 @@ import uuid
 from collections.abc import Callable
 from typing import Any
 
-from rag_document_pipeline.chunking.base import estimate_tokens, group_by_section
+from rag_document_pipeline.chunking.core import (
+    cosine_distance,
+    estimate_tokens,
+    group_by_section,
+    jaccard_distance,
+)
 from rag_document_pipeline.models import DocumentChunk, LayoutElement
 
 MASK_CHAR = ""
@@ -114,7 +119,7 @@ class TextChunker:
             if el.type.lower() == "heading":
                 continue
             if el.type.lower() in ("table", "data_table") and el.table_data:
-                from rag_document_pipeline.chunking.table import TableChunker
+                from rag_document_pipeline.chunking.strategies.table import TableChunker
 
                 value = TableChunker.render_markdown(el)
             else:
@@ -197,33 +202,13 @@ class TextChunker:
                     raise ValueError("embed_fn returned an unexpected number of vectors")
                 midpoint = len(buffers)
                 return [
-                    self._cosine_distance(vectors[index], vectors[index + midpoint])
+                    cosine_distance(vectors[index], vectors[index + midpoint])
                     for index in range(midpoint)
                 ]
             except Exception:
                 pass
 
-        return [self._jaccard_distance(left, right) for left, right in buffers]
-
-    @staticmethod
-    def _cosine_distance(a: list[float], b: list[float]) -> float:
-        dot = sum(x * y for x, y in zip(a, b))
-        norm_a = math.sqrt(sum(x * x for x in a))
-        norm_b = math.sqrt(sum(y * y for y in b))
-        if not norm_a or not norm_b:
-            return 1.0
-        return 1.0 - max(-1.0, min(1.0, dot / (norm_a * norm_b)))
-
-    @staticmethod
-    def _jaccard_distance(left: str, right: str) -> float:
-        left_words = set(re.findall(r"\w+", left.lower()))
-        right_words = set(re.findall(r"\w+", right.lower()))
-        if not left_words and not right_words:
-            return 0.0
-        union = left_words | right_words
-        if not union:
-            return 0.0
-        return 1.0 - len(left_words & right_words) / len(union)
+        return [jaccard_distance(left, right) for left, right in buffers]
 
     def _calculate_threshold(self, distances: list[float]) -> float:
         if not distances:

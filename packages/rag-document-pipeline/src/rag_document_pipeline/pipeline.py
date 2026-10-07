@@ -13,7 +13,7 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 
-from rag_document_pipeline.chunking.base import Chunker
+from rag_document_pipeline.chunking.core import Chunker
 from rag_document_pipeline.chunking.multimodal import MultimodalChunker
 from rag_document_pipeline.models import (
     DocumentChunk,

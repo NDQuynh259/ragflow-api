@@ -1,7 +1,6 @@
-import pytest
-from rag_document_pipeline.chunking.image import ImageChunker
 from rag_document_pipeline.chunking.multimodal import MultimodalChunker
-from rag_document_pipeline.chunking.table import TableChunker
+from rag_document_pipeline.chunking.strategies.image import ImageChunker
+from rag_document_pipeline.chunking.strategies.table import TableChunker
 from rag_document_pipeline.models import ImageData, LayoutElement, TableData
 from rag_document_pipeline.normalizers.layout import LayoutNormalizer
 from rag_document_pipeline.pipeline import DocumentPipeline

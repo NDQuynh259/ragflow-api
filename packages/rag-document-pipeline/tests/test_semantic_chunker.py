@@ -1,5 +1,5 @@
 from rag_document_pipeline.chunking.multimodal import MultimodalChunker
-from rag_document_pipeline.chunking.text import TextChunker
+from rag_document_pipeline.chunking.strategies.text import TextChunker
 from rag_document_pipeline.models import LayoutElement, TableData
 
 

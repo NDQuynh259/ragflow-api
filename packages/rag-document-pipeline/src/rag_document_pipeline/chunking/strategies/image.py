@@ -8,9 +8,9 @@ records (``indexable=False``) so they are not embedded as empty strings.
 from __future__ import annotations
 
 import uuid
-from typing import Any, Callable
+from typing import Any
 
-from rag_document_pipeline.chunking.base import estimate_tokens
+from rag_document_pipeline.chunking.core import estimate_tokens
 from rag_document_pipeline.models import DocumentChunk, LayoutElement
 
 
