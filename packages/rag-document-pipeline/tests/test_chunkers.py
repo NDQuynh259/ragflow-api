@@ -77,12 +77,9 @@ def test_figure_caption_binding():
     assert fig_el.image_data.caption == "Hình 2: Sơ đồ luồng dữ liệu hệ thống RAG"
 
 
-def test_small_table_is_inlined_with_adjacent_text():
-    """Verify that a small table is kept inline with its leading text paragraph."""
-    chunker = MultimodalChunker(
-        min_chunk_size=300,
-        max_chunk_size=1500,
-    )
+def test_table_uses_single_pipeline_regardless_of_size():
+    """Verify that tables always go through TableChunker, never inlined into text chunks."""
+    chunker = MultimodalChunker(chunk_size=1200)
 
     elements = [
         LayoutElement(
@@ -118,22 +115,24 @@ def test_small_table_is_inlined_with_adjacent_text():
 
     chunks = chunker.chunk(elements, document_id="doc_grouping")
 
-    # The paragraph and small table within the same section are merged into a
-    # single text chunk so context is NOT fragmented.
-    assert len(chunks) == 1
-    c = chunks[0]
-    assert "Chương 2: Chính sách phụ cấp" in c.content
-    assert "Công ty áp dụng các mức phụ cấp chức vụ" in c.content
-    assert "| Chức vụ | Mức phụ cấp |" in c.content
-    assert "Phụ cấp được chi trả cùng kỳ lương" in c.content
-    assert "p1" in c.element_ids
-    assert "t1" in c.element_ids
-    assert "p2" in c.element_ids
-    assert c.metadata.get("contains_table") is True
+    table_chunks = [c for c in chunks if c.kind == "table"]
+    text_chunks = [c for c in chunks if c.kind == "text"]
+
+    assert len(table_chunks) == 1
+    assert "t1" in table_chunks[0].element_ids
+    assert "p1" not in table_chunks[0].element_ids
+    assert "| Chức vụ | Mức phụ cấp |" in table_chunks[0].content
+    assert table_chunks[0].metadata.get("searchable_text")
+
+    # Text stays in its own chunk, split either side of the table
+    assert all("t1" not in c.element_ids for c in text_chunks)
+    assert any("p1" in c.element_ids for c in text_chunks)
+    assert any("p2" in c.element_ids for c in text_chunks)
+    assert all(c.metadata.get("contains_table") is not True for c in text_chunks)
 
 
 def test_large_table_is_chunked_independently():
-    """Verify that a large table exceeding the small table threshold is chunked by TableChunker."""
+    """Verify that a large table is split into row-window chunks by TableChunker."""
     chunker = MultimodalChunker(
         chunk_size=300,
     )
