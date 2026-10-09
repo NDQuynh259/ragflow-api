@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
-from rag_contracts.chunks import ChunkRecord, SearchResult
+from rag_contracts.chunks import SearchResult
 from rag_core.ports.reranker import Reranker
 
 

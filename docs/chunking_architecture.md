@@ -312,32 +312,33 @@ Hệ thống hỗ trợ 2 chế độ đo khoảng cách ngữ nghĩa:
 ```mermaid
 flowchart LR
     A[LayoutElement] --> B{type}
-    B -->|text/list/formula| C[Accumulate adjacent text]
-    C --> D[TextChunker]
+    B -->|text/list/formula| C[Flush text_batch]
+    C --> D[TextChunker: kind='text']
 
-    B -->|bảng nhỏ| E[TableChunker.render_markdown]
-    E --> C
+    B -->|table/data_table| E[TableChunker.chunk]
+    E --> F[_chunk_table]
+    F --> G{full markdown <= chunk_size?}
+    G -->|Có| H[1 table DocumentChunk]
+    G -->|Không| I[Chia theo row groups]
+    I --> J{Row đơn lẻ quá khổ?}
+    J -->|Có| K[_split_oversized_row: Tách thành sub-tables]
+    J -->|Không| L[Lặp header mỗi chunk]
 
-    B -->|bảng lớn| F[TableChunker.chunk]
-    F --> G[_chunk_table]
-    G --> H{full markdown <= chunk_size?}
-    H -->|Có| I[1 table DocumentChunk]
-    H -->|Không| J[Chia theo row groups]
-    J --> K[Lặp header mỗi chunk]
-
-    B -->|image/figure| L[ImageChunker.chunk]
-    L --> M[_chunk_image]
-    M --> N[Gom caption/description/OCR/element text/footnote]
-    N --> O{Có text?}
-    O -->|Có| P[indexable=True]
-    O -->|Không| Q[indexable=False, token_count=0]
+    B -->|image/figure| M[ImageChunker.chunk]
+    M --> N[_chunk_image]
+    N --> O[Gom caption/description/OCR/element text/footnote]
+    O --> P{Có text?}
+    P -->|Có| Q[indexable=True]
+    P -->|Không| R[indexable=False, token_count=0]
 ```
 
-- **Bảng nhỏ giữ Inline**: Bảng có kích thước nhỏ ($\le \frac{\text{chunk\_size}}{2}$ và $\le 8$ dòng) được render thành Markdown và gộp inline cùng đoạn văn bản mô tả xung quanh trong `TextChunker`.
-- **Bảng lớn độc lập ([`table.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/table.py))**:
-  - Bảng $> 1200$ ký tự hoặc $> 8$ dòng được tách thành các chunk độc lập.
-  - **Repeated Headers**: Khi chia theo nhóm hàng (row groups), tiêu đề cột tự động được lặp lại ở đầu mỗi chunk con kèm cờ `has_repeated_header = True` trong metadata.
-- **Hình ảnh & Sơ đồ ([`image.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/image.py))**:
+- **Bảng độc lập 100% ([`table.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/strategies/table.py))**:
+  - Mọi bảng biểu đều được tách thành các chunk độc lập (`kind="table"`), loại bỏ hoàn toàn cơ chế inline vào text.
+  - **Repeated Headers**: Khi chia theo nhóm hàng (row groups), tiêu đề cột và caption tự động được lặp lại ở đầu mỗi chunk con kèm cờ `has_repeated_header = True` trong metadata.
+  - **Băm dòng quá khổ (Oversized Row Splitting)**: Hàng đơn lẻ chứa ô văn bản vượt `chunk_size` được tự động băm nhỏ thành các sub-table chunks, bảo toàn các cột định danh ngữ cảnh (mã hợp đồng, điều khoản).
+  - **Biểu diễn kép (Dual Representation)**: `content` lưu bảng Markdown 2D trực quan cho LLM; `metadata["searchable_text"]` lưu chuỗi Key-Value phẳng hóa tối ưu cho Dense Vector & BM25.
+  - *(Xem tài liệu chuyên sâu tại [`table_chunking_architecture.md`](file:///c:/Users/ndquynh/Documents/RAG/docs/table_chunking_architecture.md))*.
+- **Hình ảnh & Sơ đồ ([`image.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/strategies/image.py))**:
   - Gom tổng hợp từ `caption`, `description`, `ocr_text`, `footnote`.
   - **Bảo vệ không gian Vector (`indexable`)**: Nếu có nội dung chữ $\rightarrow$ `indexable = True` và embedding; nếu không có chữ $\rightarrow$ giữ metadata với `indexable = False` để tránh nhúng vector rác.
 
@@ -408,11 +409,13 @@ flowchart TD
 **Giải pháp tối ưu đề xuất:** **Kiến trúc Lai Biểu Diễn Kép Tinh Gọn (Lightweight Dual Representation kết hợp Rule-based Row Textification)**.
 
 Cụ thể kiến trúc triển khai:
-1. **Bảng nhỏ ($\le 8$ hàng, $\le 800$ ký tự)**: Giữ nguyên cơ chế **Inline Markdown** cạnh văn bản mô tả để LLM nắm trọn vẹn ngữ cảnh tự nhiên.
-2. **Bảng lớn ($> 8$ hàng)**: Áp dụng cơ chế **Biểu diễn kép không tốn phí API**:
+1. **100% Bảng được chunk độc lập (`kind="table"`)**: Mọi bảng biểu đều được chuyển sang `TableChunker` để đảm bảo tính phân tách modality rõ ràng, không làm loãng embedding của văn bản xung quanh.
+2. **Cơ chế Biểu diễn kép không tốn phí API (Rule-based Dual Representation)**:
    - **Trường `content` (LLM Generation)**: Giữ nguyên cấu trúc bảng Markdown hoàn chỉnh kèm **Repeated Header** và Caption để LLM đọc và trích dẫn bounding box trên giao diện.
+   - **Băm dòng quá khổ (Oversized Row Splitting)**: Dòng có ô văn bản dài vượt `chunk_size` được cắt thành các sub-tables, bảo toàn các cột định danh (mã hợp đồng, điều khoản).
    - **Trường `metadata["searchable_text"]` (Vector & BM25 Retrieval)**: Được bộ `TableChunker` tự động sinh bằng thuật toán chuyển đổi **Row-wise Key-Value template** (tự động ghép Header tương ứng với từng Cell trên từng hàng).
    - **Vector Embedding**: Sinh vector dựa trên `searchable_text` (hoặc kết hợp `Caption + Section Path + Key-Value Text`) thay vì vector hóa các ký tự phân cách pipe `| --- |`.
+   - *(Chi tiết xem tại [`table_chunking_architecture.md`](file:///c:/Users/ndquynh/Documents/RAG/docs/table_chunking_architecture.md))*.
 
 **Lập luận vì sao đây là giải pháp tối ưu nhất cho hệ thống này:**
 1. **Tuân thủ triệt để nguyên lý "Zero-RAM-Bloat & Zero-Ingestion-Cost"**: Thuật toán chuyển đổi Row Key-Value hoàn toàn chạy trên CPU bằng Python string template, tốc độ $< 1\text{ms}$, không tiêu tốn quota Gemini API hay làm nghẽn hàng đợi Celery/RabbitMQ lúc ingest hàng trăm trang tài liệu.

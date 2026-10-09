@@ -24,7 +24,7 @@ class GeminiOCR:
         allow_private_network: bool = False,
     ) -> None:
         self._api_key = api_key or os.environ.get("GEMINI_API_KEY", "")
-        self._model = model or os.environ.get("GEMINI_OCR_MODEL", "gemini-2.0-flash")
+        self._model = model or os.environ.get("GEMINI_OCR_MODEL", "gemini-3.5-flash")
         self._timeout = timeout
         self._max_image_bytes = max_image_bytes or int(
             os.environ.get("OCR_MAX_IMAGE_BYTES", "10485760")

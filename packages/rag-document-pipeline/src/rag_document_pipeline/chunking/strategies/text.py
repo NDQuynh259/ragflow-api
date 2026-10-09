@@ -65,34 +65,23 @@ class TextChunker:
                 continue
 
             segments = self._enforce_bounds(self._split_semantically(body))
-            has_table = any(el.type.lower() in ("table", "data_table") for el in group)
             metadata: dict[str, Any] = {"chunker": "semantic_hybrid", "modality": "text"}
-            if has_table:
-                metadata["contains_table"] = True
-                table_elements = [
-                    el for el in group if el.type.lower() in ("table", "data_table")
-                ]
-                metadata["table_ids"] = [el.id for el in table_elements]
-                searchable = [
-                    el.metadata["searchable_text"]
-                    for el in table_elements
-                    if el.metadata.get("searchable_text")
-                ]
-                if searchable:
-                    metadata["searchable_text"] = "\n".join(searchable)
 
-            page_start = min(el.page_number for el in group)
-            page_end = max(el.page_number for el in group)
-            element_ids = [el.id for el in group if el.type.lower() != "heading"]
-            bboxes = [el.bbox for el in group if el.bbox and el.type.lower() != "heading"]
+            non_text_types = {"heading", "table", "data_table", "image", "figure", "header", "footer"}
+            text_elements = [el for el in group if el.type.lower() not in non_text_types]
+            if not text_elements:
+                continue
+
+            page_start = min(el.page_number for el in text_elements)
+            page_end = max(el.page_number for el in text_elements)
+            element_ids = [el.id for el in text_elements]
+            bboxes = [el.bbox for el in text_elements if el.bbox]
             section_path = next((el.section_path for el in group if el.section_path), [])
             heading_elements = [el for el in group if el.type.lower() == "heading"]
             if heading_elements:
                 section_path = list(heading_elements[-1].section_path)
 
             prefix_path = list(section_path)
-            if heading_elements:
-                prefix_path = list(heading_elements[-1].section_path)
 
             for segment in segments:
                 content = f"### {' > '.join(prefix_path)}\n\n{segment}".strip() if prefix_path else segment
@@ -108,7 +97,7 @@ class TextChunker:
                         kind="text",
                         section_path=list(section_path),
                         token_count=estimate_tokens(content),
-                        metadata=metadata,
+                        metadata=dict(metadata),
                     )
                 )
         return chunks
@@ -118,23 +107,13 @@ class TextChunker:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _heading_prefix(group: list[LayoutElement]) -> str:
-        path = next((el.section_path for el in group if el.section_path), None)
-        return "### " + " > ".join(path) if path else ""
-
-    @staticmethod
     def _group_text(group: list[LayoutElement]) -> str:
         parts: list[str] = []
         for el in group:
-            # Skip all heading elements from text body assembly
-            if el.type.lower() == "heading":
+            # Skip headings (rendered in section prefix) and non-text modalities
+            if el.type.lower() in ("heading", "table", "data_table", "image", "figure", "header", "footer"):
                 continue
-            if el.type.lower() in ("table", "data_table") and el.table_data:
-                from rag_document_pipeline.chunking.strategies.table import TableChunker
-
-                value = TableChunker.render_markdown(el)
-            else:
-                value = el.text.strip()
+            value = el.text.strip()
             if value:
                 parts.append(value)
         return "\n\n".join(parts)

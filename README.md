@@ -1,6 +1,81 @@
-# RAG Platform — Enterprise Production API
+# 🚀 Multimodal Enterprise Document Ingestion & RAG Platform
 
-A high-performance, modular-monolith Multimodal RAG (Retrieval-Augmented Generation) Platform built on **Python 3.13**, **FastAPI**, **PostgreSQL 16 (pgvector)**, and modern Clean Architecture principles (CQRS, Unit of Work, RBAC).
+> **Nền tảng RAG (Retrieval-Augmented Generation) Đa thể thức cấp Doanh nghiệp**, chuyên sâu cho các bài toán xử lý tài liệu phức tạp: **Mã hợp đồng, Báo cáo số liệu, Tài liệu kỹ thuật, Văn bản pháp luật**. Được xây dựng trên nền tảng **Python 3.13**, **FastAPI**, **PostgreSQL 16 (pgvector)**, **RabbitMQ**, và **Clean Architecture (CQRS, Unit of Work, RBAC)**.
+
+---
+
+## 🎯 Dự Án Này Làm Cái Gì? (Project Overview)
+
+Dự án này là một **Hệ thống AI Hỏi-Đáp & Tra Cứu Tri Thức Doanh Nghiệp (Enterprise Knowledge Retrieval System)** giải quyết triệt để các hạn chế của mô hình RAG truyền thống (Naive RAG). Thay vì chỉ cắt văn bản ngây thơ và ném vào Vector DB, hệ thống cung cấp một luồng xử lý toàn trình từ **Khâu Đọc hiểu (Parsing) $\rightarrow$ Cắt lát bảo toàn cấu trúc (Multimodal Chunking) $\rightarrow$ Lưu trữ & Truy xuất lai (Hybrid Retrieval) $\rightarrow$ Tái xếp hạng (Reranking) $\rightarrow$ Trả lời với trích dẫn minh bạch (Grounded Generation)**.
+
+### 🌟 4 Trọng Tâm Giải Quyết Bài Toán Doanh Nghiệp:
+
+1. **📄 Hợp Đồng Kinh Tế & Pháp Lý**:
+   - Tự động nhận diện cây phân cấp điều khoản (`Chương > Điều > Khoản > Điểm`) làm tiền tố ngữ cảnh (Section Prefix) cho từng chunk.
+   - Xử lý các điều khoản dài hàng nghìn chữ trong bảng mà không làm tràn context window hay mất mã định danh hợp đồng.
+
+2. **📊 Báo Cáo Tài Chính & Bảng Biểu Số Liệu**:
+   - **Bảo toàn cấu trúc bảng 2 chiều (Structure-Preserving Table Chunking)**: Nhân bản tiêu đề cột tự động (Repeated Headers), phẳng hóa Key-Value phục vụ tìm kiếm chính xác từng ô/hàng dữ liệu, tránh tình trạng LLM đọc nhầm số liệu giữa các cột.
+
+3. **🛠 Tài Liệu Kỹ Thuật & Cấu Hình**:
+   - Bảo toàn khối mã lệnh (Code Blocks), công thức kỹ thuật và định dạng Markdown chuẩn.
+   - Bóc tách hình ảnh, sơ đồ kiến trúc kèm OCR và mô tả phục vụ tìm kiếm đa phương thức.
+
+4. **⚡ Vận Hành Bền Bỉ, Chống Tràn RAM (Zero-RAM-Bloat)**:
+   - Xử lý mượt mà tài liệu lớn (hàng trăm trang) qua background worker (RabbitMQ) mà không gây sập worker (OOM Crash) nhờ cơ chế phân tầng bộ nhớ với MinIO S3.
+
+---
+
+## 💎 Các Tính Năng & Năng Lực Cốt Lõi (Core Capabilities)
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'darkMode': true, 'primaryColor': '#1e293b', 'edgeLabelBackground':'#0f172a'}}}%%
+flowchart LR
+    subgraph INGESTION["1. Ingestion & Parsing"]
+        A[PDF / DOCX / Scans] --> B[OpenDataLoader / Docling]
+        B --> C[Layout Elements: Headings, Text, Tables, Images]
+    end
+
+    subgraph CHUNKING["2. Multimodal Hybrid Chunking"]
+        C --> D[Multimodal Router]
+        D -->|Text| E[Semantic Text Chunker: Topic Shift]
+        D -->|Table| F[Table Chunker: Repeated Header & Key-Value]
+        D -->|Image| G[Image Chunker: OCR & Caption]
+    end
+
+    subgraph RETRIEVAL["3. Hybrid Retrieval & Rerank"]
+        E & F & G --> H[(PostgreSQL pgvector)]
+        I[User Query] --> J[Hybrid Search: Dense Vector + BM25 tsvector]
+        H --> J
+        J --> K[Cross-Encoder / Cohere Reranker]
+    end
+
+    subgraph GENERATION["4. Grounded Generation"]
+        K --> L[LLM: Gemini / OpenAI / Claude]
+        L --> M[SSE Streaming Answer + BBox Citations]
+    end
+```
+
+### 1. Phân Tách Ngữ Nghĩa Văn Bản An Toàn Cho Tiếng Việt (Vietnamese-Safe Semantic Chunking)
+- **Tách câu chống vỡ số liệu**: Nhận diện thông minh chữ viết tắt (`TP.`, `ThS.`, `NĐ-CP`, `v.v.`), số thập phân (`1.5%`), số tiền (`1.500.000 VNĐ`), ngày tháng để không bị ngắt câu sai lệch.
+- **Phát hiện chuyển dịch chủ đề (Topic-Shift Detection)**: Sử dụng độ tương đồng ngữ nghĩa (Cosine Distance của embeddings hoặc Jaccard Lexical Distance) để tìm ranh giới chuyển ý tự nhiên thay vì cắt vụn theo độ dài cố định.
+- **Section Hierarchy Inheritance**: Kế thừa đường dẫn tiêu đề (`### Chương I > Điều 2`) gắn vào đầu mỗi chunk giúp LLM luôn nắm rõ ngữ cảnh gốc.
+
+### 2. Xử Lý Bảng Biểu Chuyên Sâu (Structure-Preserving Table Chunking)
+- **Tách bảng độc lập 100% (`kind="table"`)**: Loại bỏ cơ chế nhúng lộn xộn vào text, giữ nguyên trật tự đọc và metadata tọa độ `bboxes`.
+- **Nhân bản tiêu đề (Repeated Headers)**: Tự động lặp lại Header và Caption ở đầu mọi chunk con khi bảng dài bị chia cắt.
+- **Băm dòng quá khổ (Oversized Row Splitting)**: Ô văn bản dài vượt kích thước chunk được cắt nhỏ thành các sub-table, bảo toàn các cột định danh (`Mã HĐ`, `Điều khoản`).
+- **Biểu diễn kép (Dual Representation)**: `content` lưu bảng Markdown 2D trực quan cho LLM; `metadata["searchable_text"]` lưu chuỗi Key-Value phẳng hóa tối ưu hóa 100% cho Dense Vector & BM25 Sparse Search.
+
+### 3. Truy Xuất Lai Đa Tầng (Hybrid Retrieval) & Reranking
+- **Dense Vector Search**: Tìm kiếm tương đồng ngữ nghĩa qua `pgvector` (HNSW / IVFFlat index) với Gemini/Cohere/OpenAI embeddings.
+- **Sparse Keyword Search**: Tìm kiếm từ khóa chính xác mã hợp đồng, số hiệu văn bản qua PostgreSQL Full-Text Search (`tsvector` / BM25).
+- **Reciprocal Rank Fusion (RRF) & Cross-Encoder Reranker**: Hợp nhất và tái chấm điểm ngữ cảnh top-k trước khi gửi vào LLM, triệt tiêu tài liệu nhiễu.
+
+### 4. Đa Khách Hàng (Multi-Tenancy) & Phân Quyền Doanh Nghiệp (RBAC)
+- Cô lập dữ liệu tuyệt đối theo **Workspace ID** và **Document ID**.
+- Mô hình phân quyền chi tiết (Admin, Editor, Viewer) dựa trên Principal & Claims.
+- Hỗ trợ lưu trữ phiên hội thoại (Chat Sessions, Message History) và phản hồi luồng thời gian thực qua **Server-Sent Events (SSE)**.
 
 ---
 

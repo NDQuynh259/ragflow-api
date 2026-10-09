@@ -166,7 +166,7 @@ def test_embed_fn_failure_falls_back_to_jaccard():
     assert chunks[0].content
 
 
-def test_oversized_single_row_is_flagged():
+def test_oversized_single_row_is_split_into_subtables():
     element = LayoutElement(
         id="t1",
         type="table",
@@ -176,8 +176,36 @@ def test_oversized_single_row_is_flagged():
     chunks = MultimodalChunker(chunk_size=120).chunk([element], document_id="doc-big-row")
 
     table_chunks = [c for c in chunks if c.kind == "table"]
-    assert table_chunks
-    assert any(c.metadata.get("oversized_row") for c in table_chunks)
+    assert len(table_chunks) > 1
+    # Every sub-table chunk must stay within chunk_size
+    assert all(len(c.content) <= 120 for c in table_chunks)
+    # Every chunk must preserve table structure with repeated header
+    assert all(c.content.startswith("| A |\n| --- |\n") for c in table_chunks)
+    assert all(c.metadata.get("has_repeated_header") is True for c in table_chunks)
+    # No oversized_row flag
+    assert all("oversized_row" not in c.metadata for c in table_chunks)
+
+
+def test_oversized_row_with_context_columns_preserved():
+    element = LayoutElement(
+        id="t2",
+        type="table",
+        table_data=TableData(
+            headers=["Mã", "Điều khoản", "Nội dung"],
+            rows=[["HĐ-01", "Bảo mật", "Thông tin bảo mật quan trọng. " * 20]],
+        ),
+    )
+
+    chunks = MultimodalChunker(chunk_size=200).chunk([element], document_id="doc-ctx")
+    table_chunks = [c for c in chunks if c.kind == "table"]
+    assert len(table_chunks) > 1
+    for c in table_chunks:
+        assert len(c.content) <= 200
+        # Context columns preserved in each chunk
+        assert "HĐ-01" in c.content
+        assert "Bảo mật" in c.content
+        assert "Mã = HĐ-01" in c.metadata["searchable_text"]
+        assert "Điều khoản = Bảo mật" in c.metadata["searchable_text"]
 
 
 def test_small_table_is_standalone_and_carries_searchable_text():
