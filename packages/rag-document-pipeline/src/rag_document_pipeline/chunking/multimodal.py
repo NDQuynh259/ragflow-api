@@ -25,7 +25,6 @@ class MultimodalChunker:
         self,
         *,
         chunk_size: int = 1200,
-        chunk_overlap: int = 200,
         text_chunker: Chunker | None = None,
         table_chunker: TableChunker | None = None,
         image_chunker: ImageChunker | None = None,
@@ -33,10 +32,9 @@ class MultimodalChunker:
         threshold_percentile: float = 80.0,
         embed_fn: Any = None,
         ocr_fn: Any = None,
-        **_: Any,
+        **_,
     ) -> None:
         self.chunk_size = chunk_size
-        self.chunk_overlap = chunk_overlap
         self.text_chunker = text_chunker or TextChunker(
             embed_fn=embed_fn,
             min_chunk_size=min_chunk_size if min_chunk_size is not None else min(300, chunk_size // 4),

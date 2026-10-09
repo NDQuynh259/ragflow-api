@@ -239,8 +239,8 @@ class FakeUnitOfWork(UnitOfWork):
 
 
 class FakeStorage(ObjectStoragePort):
-    def save(self, filename: str, content: bytes, workspace_id: uuid.UUID) -> str:
-        return f"fake://{workspace_id}/{filename}"
+    def save(self, filename: str, content: bytes, object_path: str) -> str:
+        return f"fake://{object_path}/{filename}"
 
     def get(self, storage_uri: str) -> bytes:
         return b"content"
@@ -270,7 +270,7 @@ class FakeQueue(IngestionQueuePort):
 
 
 class FakeRAGEngine(RAGEnginePort):
-    def answer(self, query: str, document_ids=None, top_k=None):
+    def answer(self, query: str, document_ids=None, top_k=None, workspace_id=None):
         citations = []
         if document_ids:
             citations.append(

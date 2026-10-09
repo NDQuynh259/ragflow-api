@@ -24,10 +24,10 @@ class InMemoryTestStorage(ObjectStoragePort):
     def __init__(self) -> None:
         self._storage: dict[str, bytes] = {}
 
-    def save(self, filename: str, content: bytes, workspace_id: uuid.UUID) -> str:
+    def save(self, filename: str, content: bytes, object_path: str) -> str:
         file_id = uuid.uuid4().hex[:8]
         safe_name = filename.split("/")[-1].split("\\")[-1]
-        uri = f"memory://{workspace_id}/{file_id}_{safe_name}"
+        uri = f"memory://{object_path}/{file_id}_{safe_name}"
         self._storage[uri] = bytes(content)
         return uri
 

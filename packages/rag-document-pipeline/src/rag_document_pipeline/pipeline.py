@@ -43,12 +43,11 @@ class DocumentPipeline:
         chunker: Chunker | None = None,
         *,
         chunk_size: int = 1200,
-        chunk_overlap: int = 200,
         embed_fn: Any = None,
         ocr_fn: Any = None,
     ) -> None:
-        if chunk_size <= 0 or not 0 <= chunk_overlap < chunk_size:
-            raise ValueError("Invalid chunk window")
+        if chunk_size <= 0:
+            raise ValueError("chunk_size must be positive")
 
         # Default: OpenDataLoader parser
         if parser is not None:
@@ -67,7 +66,6 @@ class DocumentPipeline:
                 max_chunk_size=chunk_size,
             )
         self.chunk_size = chunk_size
-        self.chunk_overlap = chunk_overlap
 
     @classmethod
     def hybrid_semantic(

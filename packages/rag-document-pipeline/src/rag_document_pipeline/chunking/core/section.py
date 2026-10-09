@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from copy import copy
+
 from rag_document_pipeline.models import LayoutElement
 
 
@@ -16,8 +18,12 @@ def propagate_sections(elements: list[LayoutElement]) -> list[LayoutElement]:
       H1: Chương II             -> ["Chương II"] (H1 mới xóa toàn bộ nhánh Chương I)
     """
     heading_stack: list[tuple[int, str]] = []  # Lưu danh sách (cấp_độ, tên_tiêu_đề)
+    propagated: list[LayoutElement] = []
 
-    for element in elements:
+    for source in elements:
+        # Work on a shallow copy so chunkers never mutate parser output.
+        element = copy(source)
+        propagated.append(element)
         is_heading = element.type.lower() == "heading"
         title = element.text.strip()
 
@@ -37,29 +43,42 @@ def propagate_sections(elements: list[LayoutElement]) -> list[LayoutElement]:
             element.section_path = [t for _, t in heading_stack]
 
         # TRƯỜNG HỢP 2: Phần tử là đoạn văn, bảng biểu, hình ảnh... (không phải tiêu đề)
-        elif not element.section_path and heading_stack:
-            # Kế thừa toàn bộ đường dẫn tiêu đề đang hiệu lực từ ngăn xếp
-            element.section_path = [t for _, t in heading_stack]
+        else:
+            # Ghi đè section_path cũ để luôn phản ánh cây tiêu đề hiện tại
+            element.section_path = [t for _, t in heading_stack] if heading_stack else []
 
-    return elements
+    return propagated
 
 
 def group_by_section(elements: list[LayoutElement]) -> list[list[LayoutElement]]:
-    """Gom nhóm các phần tử liền kề có cùng section_path và cùng số trang."""
-    if not elements:
-        return []
+    groups: list[list[LayoutElement]] = []
 
-    groups: list[list[LayoutElement]] = [[elements[0]]]
+    pending_headings: list[LayoutElement] = []
 
-    for element in elements[1:]:
-        previous = groups[-1][-1]
-        same_section = element.section_path == previous.section_path
-        same_page = element.page_number == previous.page_number
+    for element in elements:
+        if element.type.lower() == "heading":
+            pending_headings.append(element)
+            continue
 
-        if same_section and same_page:
-            groups[-1].append(element)
+        previous = groups[-1][-1] if groups else None
+        continues = (
+            previous is not None
+            and previous.type.lower() != "heading"
+            and element.section_path == previous.section_path
+            and element.page_number == previous.page_number
+        )
+        if not continues:
+            groups.append([])
+
+        groups[-1][:0] = pending_headings
+        pending_headings.clear()
+        groups[-1].append(element)
+
+    if pending_headings:
+        if groups:
+            groups[-1].extend(pending_headings)
         else:
-            groups.append([element])
+            groups.append(list(pending_headings))
 
     return groups
 

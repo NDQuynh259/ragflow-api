@@ -63,4 +63,5 @@ def test_rag_chat_orchestrator_service_flow() -> None:
         query="What is the policy?",
         document_ids=[str(doc_id)],
         top_k=3,
+        workspace_id=str(session.workspace_id),
     )

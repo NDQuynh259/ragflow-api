@@ -83,11 +83,13 @@ def test_index_document_handler_success() -> None:
     assert result == 1
     assert mock_chunk.workspace_id == str(ws_id)
     storage.get.assert_called_once_with(storage_uri)
-    pipeline.process.assert_called_once_with(
-        b"%PDF-1.4 sample content",
-        filename="test.pdf",
-        document_id=str(doc_id),
-    )
+    # Verify pipeline.process was called with image_dir argument
+    assert pipeline.process.call_count == 1
+    call_args = pipeline.process.call_args
+    assert call_args[0][0] == b"%PDF-1.4 sample content"
+    assert call_args[1]["filename"] == "test.pdf"
+    assert call_args[1]["document_id"] == str(doc_id)
+    assert "image_dir" in call_args[1]
     engine.index.assert_called_once_with([mock_chunk])
 
 

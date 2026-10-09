@@ -69,16 +69,13 @@ def test_multimodal_hybrid_semantic():
     ]
 
     chunks = hybrid_chunker.chunk(elements, document_id="doc_456")
-    assert all(c.kind == "text" for c in chunks)
-
-    # Compact tables stay inline with the surrounding text, preserving the header row.
-    text_chunk = next(c for c in chunks if "| Cấp bậc | Phụ cấp |" in c.content)
-    assert text_chunk.metadata["contains_table"] is True
-    assert text_chunk.metadata["table_ids"] == ["e3"]
+    assert any(c.kind == "text" for c in chunks)
+    table_chunk = next(c for c in chunks if c.kind == "table")
+    assert "| Cấp bậc | Phụ cấp |" in table_chunk.content
+    assert table_chunk.element_ids == ["e3"]
 
 
 def test_multimodal_hybrid_semantic_inline():
-    """Verify that the multimodal router inlines small tables into text chunks."""
     hybrid_chunker = MultimodalChunker(
         min_chunk_size=50,
         max_chunk_size=500,
@@ -110,10 +107,11 @@ def test_multimodal_hybrid_semantic_inline():
     ]
 
     chunks = hybrid_chunker.chunk(elements, document_id="doc_inline")
-    assert len(chunks) >= 1
-    # Bảng nhỏ phải được inlined vào content dạng Markdown
-    assert any("| Cấp bậc | Phụ cấp |" in c.content for c in chunks)
-    assert any(c.metadata.get("contains_table") for c in chunks)
+    assert len(chunks) >= 2
+    table_chunk = next(c for c in chunks if c.kind == "table")
+    assert "| Cấp bậc | Phụ cấp |" in table_chunk.content
+    assert table_chunk.element_ids == ["e3"]
+    assert "searchable_text" in table_chunk.metadata
 
 
 def test_vietnamese_sentence_boundary_detection_abbreviations():

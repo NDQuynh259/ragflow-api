@@ -21,8 +21,23 @@ class VectorStore(Protocol):
         *,
         top_k: int = 5,
         filters: dict[str, Any] | None = None,
+        query_text: str | None = None,
     ) -> list[SearchResult]:
-        """Search for nearest neighbors. Returns ranked results."""
+        """Search for nearest neighbors. Returns ranked results.
+
+        Args:
+            vector: Query embedding.
+            top_k: Maximum number of results to return.
+            filters: Optional metadata filters (workspace_id, document_ids, kind).
+            query_text: Optional raw query text. Backends that support sparse/full-text
+                retrieval (e.g. PostgreSQL hybrid search) use it to fuse a keyword
+                ranking with the dense ranking; other backends must ignore it and
+                fall back to dense-only retrieval.
+
+        Returns:
+            Ranked results. With ``query_text``, a backend may return results that
+            would not appear in the dense ranking alone.
+        """
         ...
 
     def delete_by_document(self, document_id: str, *, workspace_id: str | None = None) -> int:

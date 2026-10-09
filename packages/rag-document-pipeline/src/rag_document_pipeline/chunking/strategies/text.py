@@ -13,6 +13,7 @@ from rag_document_pipeline.chunking.core import (
     estimate_tokens,
     group_by_section,
     jaccard_distance,
+    propagate_sections,
 )
 from rag_document_pipeline.models import DocumentChunk, LayoutElement
 
@@ -54,9 +55,11 @@ class TextChunker:
         document_id: str,
     ) -> list[DocumentChunk]:
         """Group elements by section and split their body at semantic boundaries."""
+        # Propagate section context so direct callers get correct grouping even
+        # when this chunker is used without MultimodalChunker in front of it.
+        elements = propagate_sections(elements)
         chunks: list[DocumentChunk] = []
         for group in group_by_section(elements):
-            prefix = self._heading_prefix(group)
             body = self._group_text(group)
             if not body:
                 continue
@@ -83,9 +86,16 @@ class TextChunker:
             element_ids = [el.id for el in group if el.type.lower() != "heading"]
             bboxes = [el.bbox for el in group if el.bbox and el.type.lower() != "heading"]
             section_path = next((el.section_path for el in group if el.section_path), [])
+            heading_elements = [el for el in group if el.type.lower() == "heading"]
+            if heading_elements:
+                section_path = list(heading_elements[-1].section_path)
+
+            prefix_path = list(section_path)
+            if heading_elements:
+                prefix_path = list(heading_elements[-1].section_path)
 
             for segment in segments:
-                content = f"{prefix}\n\n{segment}".strip() if prefix else segment
+                content = f"### {' > '.join(prefix_path)}\n\n{segment}".strip() if prefix_path else segment
                 chunks.append(
                     DocumentChunk(
                         id=str(uuid.uuid4()),
@@ -116,6 +126,7 @@ class TextChunker:
     def _group_text(group: list[LayoutElement]) -> str:
         parts: list[str] = []
         for el in group:
+            # Skip all heading elements from text body assembly
             if el.type.lower() == "heading":
                 continue
             if el.type.lower() in ("table", "data_table") and el.table_data:

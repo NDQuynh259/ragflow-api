@@ -42,6 +42,7 @@ def test_multimodal_router_keeps_large_table_and_image_independent():
 
 
 def test_compact_table_is_inline_with_adjacent_text():
+    """All tables now route through independent TableChunker, regardless of size."""
     elements = [
         LayoutElement(id="p1", type="paragraph", text="Before table."),
         LayoutElement(
@@ -54,10 +55,13 @@ def test_compact_table_is_inline_with_adjacent_text():
 
     chunks = MultimodalChunker(chunk_size=500).chunk(elements, document_id="doc-2")
 
-    assert len(chunks) == 1
+    assert len(chunks) == 3
     assert chunks[0].kind == "text"
-    assert "| A |" in chunks[0].content
-    assert chunks[0].element_ids == ["p1", "t1", "p2"]
+    assert chunks[0].element_ids == ["p1"]
+    assert chunks[1].kind == "table"
+    assert chunks[1].element_ids == ["t1"]
+    assert chunks[2].kind == "text"
+    assert chunks[2].element_ids == ["p2"]
 
 
 def test_textless_image_is_metadata_only():
@@ -176,8 +180,8 @@ def test_oversized_single_row_is_flagged():
     assert any(c.metadata.get("oversized_row") for c in table_chunks)
 
 
-def test_inline_table_carries_searchable_text_to_text_chunk():
-    """Inline tables must propagate searchable_text for RAGEngine to embed."""
+def test_small_table_is_standalone_and_carries_searchable_text():
+    """Small tables must be routed to TableChunker and keep searchable_text."""
     elements = [
         LayoutElement(id="p1", type="paragraph", text="Revenue context."),
         LayoutElement(
@@ -192,13 +196,16 @@ def test_inline_table_carries_searchable_text_to_text_chunk():
     ]
 
     chunks = MultimodalChunker(chunk_size=800).chunk(elements, document_id="doc-inline")
-    text_chunk = chunks[0]
 
-    assert text_chunk.kind == "text"
-    assert text_chunk.metadata.get("contains_table") is True
-    assert "searchable_text" in text_chunk.metadata
-    assert "Quarter = Q1" in text_chunk.metadata["searchable_text"]
-    assert "Revenue = 150" in text_chunk.metadata["searchable_text"]
+    text_chunks = [c for c in chunks if c.kind == "text"]
+    table_chunks = [c for c in chunks if c.kind == "table"]
+
+    assert [c.element_ids for c in text_chunks] == [["p1"]]
+    assert len(table_chunks) == 1
+    assert table_chunks[0].element_ids == ["small"]
+    assert "searchable_text" in table_chunks[0].metadata
+    assert "Quarter = Q1" in table_chunks[0].metadata["searchable_text"]
+    assert "Revenue = 150" in table_chunks[0].metadata["searchable_text"]
 
 
 def test_large_table_has_searchable_text_in_standalone_chunks():

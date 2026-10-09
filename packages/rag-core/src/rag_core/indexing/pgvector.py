@@ -47,9 +47,10 @@ class PgVectorStore:
         chunks (
             id              TEXT PRIMARY KEY,
             document_id     TEXT NOT NULL,
-            content         TEXT NOT NULL,
-            embedding       vector(N),
-            kind            TEXT DEFAULT 'text',
+        content         TEXT NOT NULL,
+        embedding       vector(N),
+        tsv             tsvector,
+        kind            TEXT DEFAULT 'text',
             page_start      INTEGER DEFAULT 1,
             page_end        INTEGER DEFAULT 1,
             element_ids     JSONB DEFAULT '[]',
@@ -108,6 +109,7 @@ class PgVectorStore:
         conn = self._get_conn()
         with conn.cursor() as cur:
             cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
+            cur.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
             cur.execute(_sql(f"""
                 CREATE TABLE IF NOT EXISTS {self._table} (
                     id              TEXT PRIMARY KEY,
@@ -115,6 +117,7 @@ class PgVectorStore:
                     workspace_id    TEXT,
                     content         TEXT NOT NULL,
                     embedding       vector({self._dim}),
+                    tsv             tsvector GENERATED ALWAYS AS (to_tsvector('simple', content)) STORED,
                     kind            TEXT DEFAULT 'text',
                     page_start      INTEGER DEFAULT 1,
                     page_end        INTEGER DEFAULT 1,
@@ -125,6 +128,12 @@ class PgVectorStore:
                     indexable       BOOLEAN DEFAULT TRUE,
                     metadata        JSONB DEFAULT '{{}}'::jsonb
                 )
+            """))
+            # Keep existing deployments compatible with the new generated column.
+            cur.execute(_sql(f"""
+                ALTER TABLE {self._table}
+                ADD COLUMN IF NOT EXISTS tsv tsvector
+                GENERATED ALWAYS AS (to_tsvector('simple', content)) STORED
             """))
             # Create indexes
             cur.execute(_sql(f"""
@@ -145,6 +154,15 @@ class PgVectorStore:
                 ON {self._table}
                 USING hnsw (embedding vector_cosine_ops)
                 WITH (m = 16, ef_construction = 64)
+            """))
+            # GIN index for full-text ranking and trigram index for contract IDs.
+            cur.execute(_sql(f"""
+                CREATE INDEX IF NOT EXISTS idx_{self._index_prefix}_tsv_gin
+                ON {self._table} USING gin (tsv)
+            """))
+            cur.execute(_sql(f"""
+                CREATE INDEX IF NOT EXISTS idx_{self._index_prefix}_content_trgm
+                ON {self._table} USING gin (content gin_trgm_ops)
             """))
         logger.info("Schema ensured for table '%s'", self._table_name)
 
@@ -258,8 +276,9 @@ class PgVectorStore:
         *,
         top_k: int = 5,
         filters: dict[str, Any] | None = None,
+        query_text: str | None = None,
     ) -> list[SearchResult]:
-        """Cosine similarity search with optional metadata filtering."""
+        """Search densely, or fuse dense and sparse rankings when text is provided."""
         if top_k <= 0:
             raise ValueError("top_k must be greater than zero")
         if len(vector) != self._dim:
@@ -291,64 +310,69 @@ class PgVectorStore:
 
         where = " AND ".join(where_clauses)
 
-        query = f"""
-            SELECT id, document_id, workspace_id, content, kind,
-                   page_start, page_end, element_ids, bboxes,
-                   section_path, token_count, indexable, metadata,
-                   1 - (embedding <=> %s) AS score
-            FROM {self._table}
-            WHERE {where}
-            ORDER BY embedding <=> %s
-            LIMIT %s
+        columns = """
+            id, document_id, workspace_id, content, kind,
+            page_start, page_end, element_ids, bboxes,
+            section_path, token_count, indexable, metadata
         """
-        # We need the vector twice: once for score, once for ORDER BY
-        final_params = [_vec_literal(vector)] + filter_params + [_vec_literal(vector), top_k]
-
+        vec_literal = _vec_literal(vector)
         results: list[SearchResult] = []
-        with conn.cursor() as cur:
-            cur.execute(_sql(query), final_params)
-            for row in cur.fetchall():
-                (
-                    id_,
-                    doc_id,
-                    workspace_id,
-                    content,
-                    kind,
-                    p_start,
-                    p_end,
-                    el_ids,
-                    bboxes_json,
-                    sec_path,
-                    tok_count,
-                    indexable,
-                    meta,
-                    score,
-                ) = row
-                chunk = ChunkRecord(
-                    id=id_,
-                    document_id=doc_id,
-                    workspace_id=workspace_id or "",
-                    content=content,
-                    kind=kind,
-                    page_start=p_start,
-                    page_end=p_end,
-                    element_ids=el_ids if isinstance(el_ids, list) else json.loads(el_ids or "[]"),
-                    bboxes=[
-                        tuple(b)
-                        for b in (
-                            bboxes_json
-                            if isinstance(bboxes_json, list)
-                            else json.loads(bboxes_json or "[]")
-                        )
-                    ],
-                    section_path=sec_path
-                    if isinstance(sec_path, list)
-                    else json.loads(sec_path or "[]"),
-                    token_count=tok_count,
-                    indexable=indexable,
-                    metadata=meta if isinstance(meta, dict) else json.loads(meta or "{}"),
+
+        if query_text and query_text.strip():
+            query = f"""
+                WITH dense_ranked AS (
+                    SELECT {columns},
+                           ROW_NUMBER() OVER (
+                               ORDER BY embedding <=> %s
+                           ) AS dense_rank
+                    FROM {self._table}
+                    WHERE {where}
+                    ORDER BY embedding <=> %s
+                    LIMIT %s
+                ),
+                sparse_ranked AS (
+                    SELECT id, ROW_NUMBER() OVER (ORDER BY ts_rank_cd(tsv, query) DESC) AS sparse_rank
+                    FROM {self._table}, plainto_tsquery('simple', %s) AS query
+                    WHERE {where} AND tsv @@ query
+                    ORDER BY ts_rank_cd(tsv, query) DESC
+                    LIMIT %s
                 )
-                results.append(SearchResult(chunk=chunk, score=float(score)))
+                SELECT r.id, r.document_id, r.workspace_id, r.content, r.kind,
+                       r.page_start, r.page_end, r.element_ids, r.bboxes,
+                       r.section_path, r.token_count, r.indexable, r.metadata,
+                       (
+                           CASE WHEN d.dense_rank IS NULL THEN 0 ELSE 1.0 / (60.0 + d.dense_rank) END +
+                           CASE WHEN s.sparse_rank IS NULL THEN 0 ELSE 1.0 / (60.0 + s.sparse_rank) END
+                       ) AS rrf_score
+                FROM dense_ranked AS d
+                FULL JOIN sparse_ranked AS s ON d.id = s.id
+                JOIN {self._table} AS r ON r.id = COALESCE(d.id, s.id)
+                ORDER BY rrf_score DESC
+                LIMIT %s
+            """
+            # Filters appear in both CTEs; each occurrence needs its own params.
+            final_params = (
+                [vec_literal] + filter_params + [vec_literal, top_k]
+                + [query_text] + filter_params + [top_k]
+                + [top_k]
+            )
+            result_params: list[Any] = final_params
+        else:
+            query = f"""
+                SELECT {columns},
+                       1 - (embedding <=> %s) AS score
+                FROM {self._table}
+                WHERE {where}
+                ORDER BY embedding <=> %s
+                LIMIT %s
+            """
+            final_params = [vec_literal] + filter_params + [vec_literal, top_k]
+            result_params = final_params
+
+        with conn.cursor() as cur:
+            cur.execute(_sql(query), result_params)
+            for row in cur.fetchall():
+                results.append(_row_to_search_result(row))
 
         return results
 
@@ -380,3 +404,46 @@ def _vec_literal(vector: list[float]) -> str:
     if not vector or not all(math.isfinite(float(value)) for value in vector):
         raise VectorStoreError("Vector must be non-empty and contain finite values")
     return "[" + ",".join(str(float(value)) for value in vector) + "]"
+
+
+def _row_to_search_result(row: tuple[Any, ...]) -> SearchResult:
+    """Parse a database row into a SearchResult with ChunkRecord."""
+    (
+        id_,
+        doc_id,
+        workspace_id,
+        content,
+        kind,
+        p_start,
+        p_end,
+        el_ids,
+        bboxes_json,
+        sec_path,
+        tok_count,
+        indexable,
+        meta,
+        score,
+    ) = row
+    chunk = ChunkRecord(
+        id=id_,
+        document_id=doc_id,
+        workspace_id=workspace_id or "",
+        content=content,
+        kind=kind,
+        page_start=p_start,
+        page_end=p_end,
+        element_ids=el_ids if isinstance(el_ids, list) else json.loads(el_ids or "[]"),
+        bboxes=[
+            tuple(b)
+            for b in (
+                bboxes_json
+                if isinstance(bboxes_json, list)
+                else json.loads(bboxes_json or "[]")
+            )
+        ],
+        section_path=sec_path if isinstance(sec_path, list) else json.loads(sec_path or "[]"),
+        token_count=tok_count,
+        indexable=indexable,
+        metadata=meta if isinstance(meta, dict) else json.loads(meta or "{}"),
+    )
+    return SearchResult(chunk=chunk, score=float(score))
