@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from core.config import settings
+from core.exceptions import StorageException
 from core.storage.ports.storage_port import ObjectStoragePort
 
 
@@ -46,6 +47,12 @@ class LocalStorageAdapter(ObjectStoragePort):
             path.unlink()
             return True
         return False
+
+    def presigned_get_url(self, storage_uri: str, *, expires_in: int = 3600) -> str:
+        """Return the local file URI; local storage has no signed URL service."""
+        if expires_in <= 0:
+            raise ValueError("expires_in must be positive")
+        raise StorageException("Presigned URLs are unavailable for local storage")
 
     def exists(self, storage_uri: str) -> bool:
         clean_path = storage_uri.replace("file://", "")

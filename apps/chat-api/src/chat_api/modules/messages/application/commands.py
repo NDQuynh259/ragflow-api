@@ -12,6 +12,7 @@ from chat_api.shared.infrastructure.database import UnitOfWork
 from chat_api.shared.infrastructure.rag import RAGEnginePort
 from core.cqrs import Command, command_handler
 from core.exceptions import EntityNotFoundException
+from core.storage import ObjectStoragePort
 
 
 @dataclass(frozen=True)
@@ -27,10 +28,13 @@ class SendMessageHandler:
         uow: UnitOfWork,
         rag_engine: RAGEnginePort,
         orchestrator: RAGChatOrchestratorService | None = None,
+        storage: ObjectStoragePort | None = None,
     ) -> None:
         self.uow = uow
         self.rag_engine = rag_engine
-        self.orchestrator = orchestrator or RAGChatOrchestratorService(uow, rag_engine)
+        self.orchestrator = orchestrator or RAGChatOrchestratorService(
+            uow, rag_engine, storage=storage
+        )
 
     def handle(self, cmd: SendMessageCommand) -> MessageDTO:
         session = self.uow.sessions.get_by_id(cmd.session_id)

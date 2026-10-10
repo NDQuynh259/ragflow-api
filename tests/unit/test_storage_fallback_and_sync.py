@@ -41,6 +41,9 @@ class InMemoryTestTargetStorage(ObjectStoragePort):
             return True
         return False
 
+    def presigned_get_url(self, storage_uri: str, *, expires_in: int = 3600) -> str:
+        return storage_uri
+
     def exists(self, storage_uri: str) -> bool:
         return storage_uri in self.files
 

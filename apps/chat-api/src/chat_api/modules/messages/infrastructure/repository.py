@@ -78,6 +78,7 @@ class SqlAlchemyMessageRepository(MessageRepository):
                     bbox=cit.bbox,
                     quote=cit.quote,
                     relevance_score=cit.relevance_score,
+                    image_url=cit.image_url,
                 )
                 self.session.add(orm_cit)
 
@@ -94,6 +95,7 @@ class SqlAlchemyMessageRepository(MessageRepository):
                 bbox=c.bbox or [],
                 quote=c.quote,
                 relevance_score=c.relevance_score,
+                image_url=c.image_url,
                 created_at=c.created_at,
             )
             for c in orm.citations

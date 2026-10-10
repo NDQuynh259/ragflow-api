@@ -28,6 +28,11 @@ class ObjectStoragePort(ABC):
         """Delete stored file."""
         pass
 
+    @abstractmethod
+    def presigned_get_url(self, storage_uri: str, *, expires_in: int = 3600) -> str:
+        """Return a URL that permits temporary read access to stored content."""
+        pass
+
     def exists(self, storage_uri: str) -> bool:
         """Check whether file exists at storage URI. Default implementation probes get()."""
         try:

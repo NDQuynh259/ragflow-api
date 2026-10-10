@@ -113,6 +113,7 @@ class LayoutElement(BaseModel):
   - `uri: str | None`: Đường dẫn file ảnh đã trích xuất trên đĩa.
   - `caption: str | None`: Chú thích ảnh.
   - `ocr_text: str | None`: Text trích xuất từ OCR/VLM.
+  - *(Chi tiết kiến trúc xử lý hình ảnh xem tại [`image_processing_architecture.md`](file:///c:/Users/ndquynh/Documents/RAG/docs/image_processing_architecture.md))*.
 
 ### 3.3. Đối tượng Chunk hoàn chỉnh: `DocumentChunk`
 ```python

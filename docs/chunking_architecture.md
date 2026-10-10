@@ -341,6 +341,7 @@ flowchart LR
 - **Hình ảnh & Sơ đồ ([`image.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/strategies/image.py))**:
   - Gom tổng hợp từ `caption`, `description`, `ocr_text`, `footnote`.
   - **Bảo vệ không gian Vector (`indexable`)**: Nếu có nội dung chữ $\rightarrow$ `indexable = True` và embedding; nếu không có chữ $\rightarrow$ giữ metadata với `indexable = False` để tránh nhúng vector rác.
+  - *(Xem tài liệu chuyên sâu tại [`image_processing_architecture.md`](file:///c:/Users/ndquynh/Documents/RAG/docs/image_processing_architecture.md))*.
 
 ---
 

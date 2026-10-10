@@ -57,6 +57,10 @@ class CoreSettings(BaseSettings):
     # Image OCR (multimodal figure text extraction)
     OCR_ENABLED: bool = True
     OCR_MODEL: str = "gemini-2.0-flash"
+    OCR_FAST_ENABLED: bool = True
+    OCR_FAST_LANG: str = "eng+vie"
+    VISION_ANALYSIS_ENABLED: bool = True
+    VISION_MODEL: str = "gemini-2.0-flash"
 
 
 # Backward-compatible alias

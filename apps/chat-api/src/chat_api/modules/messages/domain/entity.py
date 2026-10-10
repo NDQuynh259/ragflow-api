@@ -26,6 +26,7 @@ class MessageCitation(Entity[uuid.UUID]):
     bbox: list[float] = field(default_factory=list)
     quote: str | None = None
     relevance_score: float | None = None
+    image_url: str | None = None
 
 
 @dataclass(kw_only=True)
@@ -57,6 +58,7 @@ class Message(AggregateRoot[uuid.UUID]):
         bbox: list[float] | None = None,
         quote: str | None = None,
         relevance_score: float | None = None,
+        image_url: str | None = None,
     ) -> MessageCitation:
         citation = MessageCitation(
             id=uuid7(),
@@ -67,6 +69,7 @@ class Message(AggregateRoot[uuid.UUID]):
             bbox=bbox or [],
             quote=quote,
             relevance_score=relevance_score,
+            image_url=image_url,
         )
         self.citations.append(citation)
         return citation

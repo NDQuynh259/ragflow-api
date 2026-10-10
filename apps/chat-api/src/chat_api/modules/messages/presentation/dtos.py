@@ -21,6 +21,7 @@ class CitationResponse(BaseModel):
     bbox: list[float] = Field(default_factory=list)
     quote: str | None = None
     relevance_score: float | None = None
+    image_url: str | None = None
 
 
 class MessageResponse(BaseModel):

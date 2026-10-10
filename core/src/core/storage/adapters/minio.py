@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import logging
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from core.exceptions import FileNotFoundStorageException, StorageException
@@ -114,6 +115,21 @@ class MinioStorageAdapter(ObjectStoragePort):
         except Exception as exc:
             logger.warning("Failed to delete MinIO object %s: %s", storage_uri, exc)
             return False
+
+    def presigned_get_url(self, storage_uri: str, *, expires_in: int = 3600) -> str:
+        """Return a temporary GET URL for a MinIO object."""
+        if not 1 <= expires_in <= 604800:
+            raise ValueError("expires_in must be between 1 and 604800 seconds")
+        bucket, object_key = self._parse_uri(storage_uri)
+        try:
+            return self._client.get_presigned_url(
+                "GET",
+                bucket,
+                object_key,
+                expires=timedelta(seconds=expires_in),
+            )
+        except Exception as exc:
+            raise StorageException(f"Failed to create presigned URL for {storage_uri}: {exc}") from exc
 
     def exists(self, storage_uri: str) -> bool:
         bucket, object_key = self._parse_uri(storage_uri)

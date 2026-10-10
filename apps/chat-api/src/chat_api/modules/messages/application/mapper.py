@@ -29,6 +29,7 @@ class MessageMapper:
                     bbox=cit.bbox,
                     quote=cit.quote,
                     relevance_score=cit.relevance_score,
+                    image_url=cit.image_url,
                 )
                 for cit in msg.citations
             ],

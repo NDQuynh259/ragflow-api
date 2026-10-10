@@ -120,6 +120,12 @@ class FallbackStorageAdapter(ObjectStoragePort):
             return self.primary.delete(storage_uri)
         return self.secondary.delete(storage_uri)
 
+    def presigned_get_url(self, storage_uri: str, *, expires_in: int = 3600) -> str:
+        """Create a temporary GET URL using the provider matching the URI scheme."""
+        if storage_uri.startswith(("s3://", "minio://")):
+            return self.primary.presigned_get_url(storage_uri, expires_in=expires_in)
+        return self.secondary.presigned_get_url(storage_uri, expires_in=expires_in)
+
     def exists(self, storage_uri: str) -> bool:
         """Check presence of object in the corresponding storage provider."""
         if storage_uri.startswith(("s3://", "minio://")):

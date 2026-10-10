@@ -6,7 +6,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, Query
 
-from chat_api.composition.dependencies import get_rag_engine
+from chat_api.composition.dependencies import get_rag_engine, get_storage
 from chat_api.modules.messages.application.commands import SendMessageCommand
 from chat_api.modules.messages.application.queries import GetSessionMessagesQuery
 from chat_api.modules.messages.presentation.dtos import (
@@ -22,6 +22,7 @@ from chat_api.shared.auth import (
     auth_openapi,
 )
 from chat_api.shared.infrastructure.rag.port import RAGEnginePort
+from core.storage import ObjectStoragePort
 
 router = APIRouter(
     prefix="/chat-sessions/{session_id}/messages",
@@ -41,11 +42,12 @@ def send_message(
     payload: SendMessageRequest,
     auth: CurrentAuth,
     rag_engine: RAGEnginePort = Depends(get_rag_engine),
+    storage: ObjectStoragePort = Depends(get_storage),
 ) -> MessageResponse:
     cmd = SendMessageCommand(session_id=session_id, content=payload.content)
     result = auth.command_bus.execute(
         cmd,
-        dependencies={RAGEnginePort: rag_engine},
+        dependencies={RAGEnginePort: rag_engine, ObjectStoragePort: storage},
     )
 
     return MessageResponse(

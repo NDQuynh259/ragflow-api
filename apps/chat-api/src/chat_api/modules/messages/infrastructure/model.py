@@ -82,6 +82,7 @@ class MessageCitation(Base, UUIDPrimaryKeyMixin):
     bbox: Mapped[list[float]] = mapped_column(JSONB, default=list, nullable=False)
     quote: Mapped[str | None] = mapped_column(Text, nullable=True)
     relevance_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),

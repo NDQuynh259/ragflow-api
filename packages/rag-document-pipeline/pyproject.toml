@@ -5,6 +5,7 @@ dependencies = [
     "pydantic>=2.8",
     "rag-contracts",
     "opendataloader-pdf>=2.0.0",
+    "pillow>=10.0",
 ]
 requires-python = ">=3.11"
 

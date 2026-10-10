@@ -17,6 +17,7 @@ class CitationDTO:
     bbox: list[float] = field(default_factory=list)
     quote: str | None = None
     relevance_score: float | None = None
+    image_url: str | None = None
 
 
 @dataclass(frozen=True)

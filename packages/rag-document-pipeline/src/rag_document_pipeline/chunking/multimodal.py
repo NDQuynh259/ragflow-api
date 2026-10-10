@@ -10,6 +10,10 @@ from rag_document_pipeline.chunking.strategies import (
     TableChunker,
     TextChunker,
 )
+from rag_document_pipeline.chunking.strategies.image import (
+    DEFAULT_MAX_ASPECT_RATIO,
+    DEFAULT_MIN_IMAGE_SIZE,
+)
 from rag_document_pipeline.models import DocumentChunk, LayoutElement
 
 TEXT_TYPES = {"text", "heading", "paragraph", "list", "caption", "formula"}
@@ -32,6 +36,10 @@ class MultimodalChunker:
         threshold_percentile: float = 80.0,
         embed_fn: Any = None,
         ocr_fn: Any = None,
+        vision_fn: Any = None,
+        triage_enabled: bool = True,
+        min_image_size: int = DEFAULT_MIN_IMAGE_SIZE,
+        max_aspect_ratio: float = DEFAULT_MAX_ASPECT_RATIO,
         **_,
     ) -> None:
         self.chunk_size = chunk_size
@@ -42,7 +50,13 @@ class MultimodalChunker:
             threshold_percentile=threshold_percentile,
         )
         self.table_chunker = table_chunker or TableChunker(chunk_size=chunk_size)
-        self.image_chunker = image_chunker or ImageChunker(ocr_fn=ocr_fn)
+        self.image_chunker = image_chunker or ImageChunker(
+            ocr_fn=ocr_fn,
+            vision_fn=vision_fn,
+            triage_enabled=triage_enabled,
+            min_image_size=min_image_size,
+            max_aspect_ratio=max_aspect_ratio,
+        )
 
     def chunk(self, elements: list[LayoutElement], *, document_id: str) -> list[DocumentChunk]:
         # Propagate section information to elements

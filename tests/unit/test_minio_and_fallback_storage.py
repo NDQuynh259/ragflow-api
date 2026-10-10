@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import uuid
+from datetime import timedelta
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -11,6 +13,7 @@ from core.config import CoreSettings
 from core.exceptions import FileNotFoundStorageException, StorageException
 from core.storage import (
     FallbackStorageAdapter,
+    LocalStorageAdapter,
     MinioStorageAdapter,
     ObjectStoragePort,
     create_storage_adapter,
@@ -38,6 +41,9 @@ class InMemoryMockStorage(ObjectStoragePort):
             del self._storage[storage_uri]
             return True
         return False
+
+    def presigned_get_url(self, storage_uri: str, *, expires_in: int = 3600) -> str:
+        return storage_uri
 
     def exists(self, storage_uri: str) -> bool:
         return storage_uri in self._storage
@@ -92,6 +98,67 @@ def test_minio_storage_adapter_save_and_ensure_bucket() -> None:
     assert call_kwargs["object_name"] == f"workspaces/{workspace_id}/report.pdf"
 
     assert uri.startswith("s3://my-bucket/workspaces/")
+
+
+def test_local_storage_adapter_presigned_get_url_is_unsupported(tmp_path: Path) -> None:
+    adapter = LocalStorageAdapter(base_dir=tmp_path)
+    storage_uri = adapter.save("file.txt", b"content", "documents")
+
+    with pytest.raises(StorageException, match="unavailable for local storage"):
+        adapter.presigned_get_url(storage_uri, expires_in=120)
+
+
+def test_local_storage_adapter_rejects_nonpositive_presigned_url_expiry(tmp_path: Path) -> None:
+    adapter = LocalStorageAdapter(base_dir=tmp_path)
+
+    with pytest.raises(ValueError, match="expires_in must be positive"):
+        adapter.presigned_get_url("file:///tmp/file.txt", expires_in=0)
+
+
+@pytest.mark.parametrize("expires_in", [0, 604801])
+def test_minio_storage_adapter_rejects_expiry_outside_supported_range(expires_in: int) -> None:
+    adapter = MinioStorageAdapter(bucket_name="my-bucket", client=MagicMock())
+
+    with pytest.raises(ValueError, match="expires_in must be between 1 and 604800 seconds"):
+        adapter.presigned_get_url("s3://my-bucket/doc.pdf", expires_in=expires_in)
+
+
+@pytest.mark.parametrize("scheme", ["s3", "minio"])
+def test_minio_storage_adapter_presigned_get_url_uses_get_method(scheme: str) -> None:
+    mock_client = MagicMock()
+    adapter = MinioStorageAdapter(bucket_name="my-bucket", client=mock_client)
+    mock_client.get_presigned_url.return_value = "https://minio.example/my-bucket/doc.pdf?signature=abc"
+
+    result = adapter.presigned_get_url(f"{scheme}://my-bucket/doc.pdf", expires_in=90)
+
+    assert result == mock_client.get_presigned_url.return_value
+    mock_client.get_presigned_url.assert_called_once_with(
+        "GET",
+        "my-bucket",
+        "doc.pdf",
+        expires=timedelta(seconds=90),
+    )
+
+
+def test_minio_storage_adapter_presigned_get_url_wraps_client_errors() -> None:
+    mock_client = MagicMock()
+    mock_client.get_presigned_url.side_effect = RuntimeError("signing failed")
+    adapter = MinioStorageAdapter(bucket_name="my-bucket", client=mock_client)
+
+    with pytest.raises(StorageException, match="Failed to create presigned URL"):
+        adapter.presigned_get_url("s3://my-bucket/doc.pdf")
+
+
+def test_fallback_storage_presigned_get_url_routes_by_uri_scheme() -> None:
+    primary = MagicMock()
+    secondary = MagicMock()
+    fallback = FallbackStorageAdapter(primary=primary, secondary=secondary)
+
+    fallback.presigned_get_url("minio://bucket/key", expires_in=300)
+    primary.presigned_get_url.assert_called_once_with("minio://bucket/key", expires_in=300)
+
+    fallback.presigned_get_url("file:///tmp/key", expires_in=300)
+    secondary.presigned_get_url.assert_called_once_with("file:///tmp/key", expires_in=300)
 
 
 def test_minio_storage_adapter_get_success() -> None:

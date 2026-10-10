@@ -7,6 +7,8 @@ import tempfile
 import uuid
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
+from urllib.request import url2pathname
 
 from rag_contracts import ElementType
 from rag_document_pipeline.models import ImageData, LayoutElement, TableData
@@ -141,6 +143,9 @@ class OpenDataLoaderParser:
                     uri=uri,
                     caption=caption,
                 )
+                dimensions = cls._image_dimensions(uri)
+                if dimensions is not None:
+                    metadata["width"], metadata["height"] = dimensions
 
             table_data: TableData | None = None
             if element_type in ("table", "data_table") and "rows" in item:
@@ -165,6 +170,44 @@ class OpenDataLoaderParser:
                 )
             )
         return elements
+
+    # region _image_dimensions
+    @classmethod
+    def _image_dimensions(cls, uri: str | None) -> tuple[int, int] | None:
+        """Return intrinsic ``(width, height)`` for a local image file.
+
+        Returns ``None`` for remote URIs, unreadable files, or a missing PIL
+        installation — the image chunker then falls back to the layout bbox.
+        """
+        if not uri:
+            return None
+        parsed = urlsplit(uri)
+        if parsed.scheme in ("", "file"):
+            if parsed.scheme == "file":
+                # ``file:///C:/x.png`` -> path ``/C:/x.png``; url2pathname
+                # strips the leading slash so Windows recognizes the drive.
+                raw_path = url2pathname(parsed.path)
+            else:
+                raw_path = uri
+        else:
+            # http(s), s3, gs, ... — not readable from the local filesystem.
+            return None
+        path = Path(raw_path)
+        if not path.is_file():
+            return None
+        try:
+            from PIL import Image  # type: ignore[import-untyped]
+        except ImportError:
+            logger.debug("Pillow not available; skipping image dimension probe for %s", uri)
+            return None
+        try:
+            with Image.open(path) as img:
+                width, height = img.size
+            if width and height:
+                return int(width), int(height)
+        except Exception as exc:  # noqa: BLE001 - dimension probe must never fail parsing
+            logger.debug("Could not read image dimensions for %s: %s", uri, exc)
+        return None
 
     # region _extract_table_data
     @classmethod

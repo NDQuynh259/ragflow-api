@@ -28,12 +28,14 @@ class Citation:
         page_number: int,
         bbox: tuple[float, float, float, float] | None = None,
         quote: str = "",
+        image_uri: str | None = None,
     ) -> None:
         self.document_id = document_id
         self.chunk_id = chunk_id
         self.page_number = page_number
         self.bbox = bbox
         self.quote = quote
+        self.image_uri = image_uri
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -42,6 +44,7 @@ class Citation:
             "page_number": self.page_number,
             "bbox": list(self.bbox) if self.bbox else None,
             "quote": self.quote,
+            "image_uri": self.image_uri,
         }
 
 
@@ -212,6 +215,7 @@ class GenerationService:
                             chunk_id=chunk.id,
                             page_number=chunk.page_start,
                             bbox=bbox,
+                            image_uri=(chunk.metadata.get("image_uri") if isinstance(chunk.metadata, dict) else None),
                         )
                     )
 

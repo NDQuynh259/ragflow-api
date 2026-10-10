@@ -45,6 +45,8 @@ class DocumentPipeline:
         chunk_size: int = 1200,
         embed_fn: Any = None,
         ocr_fn: Any = None,
+        vision_fn: Any = None,
+        triage_enabled: bool = True,
     ) -> None:
         if chunk_size <= 0:
             raise ValueError("chunk_size must be positive")
@@ -62,6 +64,8 @@ class DocumentPipeline:
             self.chunker = MultimodalChunker(
                 embed_fn=embed_fn,
                 ocr_fn=ocr_fn,
+                vision_fn=vision_fn,
+                triage_enabled=triage_enabled,
                 min_chunk_size=min(300, chunk_size // 4),
                 max_chunk_size=chunk_size,
             )
@@ -74,6 +78,8 @@ class DocumentPipeline:
         parser: Parser | None = None,
         embed_fn: Any = None,
         ocr_fn: Any = None,
+        vision_fn: Any = None,
+        triage_enabled: bool = True,
         min_chunk_size: int = 300,
         max_chunk_size: int = 1500,
         threshold_percentile: float = 80.0,
@@ -93,6 +99,8 @@ class DocumentPipeline:
         chunker = MultimodalChunker(
             embed_fn=embed_fn,
             ocr_fn=ocr_fn,
+            vision_fn=vision_fn,
+            triage_enabled=triage_enabled,
             min_chunk_size=min_chunk_size,
             max_chunk_size=max_chunk_size,
             threshold_percentile=threshold_percentile,

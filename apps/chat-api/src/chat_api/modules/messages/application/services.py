@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import logging
 import time
 import uuid
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from chat_api.modules.messages.domain.entity import Message, MessageRole
+from core.storage import ObjectStoragePort
 from core.uuid7 import uuid7
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from chat_api.modules.chat_sessions.domain.entity import ChatSession
@@ -27,9 +31,15 @@ class RAGChatResult:
 class RAGChatOrchestratorService:
     """Orchestrates document context resolution, RAG engine query, and message/citation persistence."""
 
-    def __init__(self, uow: UnitOfWork, rag_engine: RAGEnginePort) -> None:
+    def __init__(
+        self,
+        uow: UnitOfWork,
+        rag_engine: RAGEnginePort,
+        storage: ObjectStoragePort | None = None,
+    ) -> None:
         self.uow = uow
         self.rag_engine = rag_engine
+        self.storage = storage
 
     def resolve_context_document_ids(self, session: ChatSession) -> list[str] | None:
         """Resolve list of ready document IDs attached to the session."""
@@ -86,6 +96,17 @@ class RAGChatOrchestratorService:
             except (ValueError, KeyError):
                 continue
 
+            image_url = None
+            image_uri = citation.get("image_uri")
+            if image_uri and self.storage is not None:
+                try:
+                    image_url = self.storage.presigned_get_url(
+                        image_uri,
+                        expires_in=3600,
+                    )
+                except Exception as exc:
+                    logger.warning("Failed to generate presigned image URL: %s", exc)
+
             assistant_msg.add_citation(
                 chunk_id=citation.get("chunk_id", ""),
                 document_id=citation_document_id,
@@ -93,6 +114,7 @@ class RAGChatOrchestratorService:
                 bbox=citation.get("bbox") or [],
                 quote=citation.get("quote"),
                 relevance_score=citation.get("relevance_score"),
+                image_url=image_url,
             )
 
         self.uow.messages.save(assistant_msg)

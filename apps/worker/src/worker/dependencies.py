@@ -13,7 +13,7 @@ from core.config import settings
 from core.database import SqlAlchemyUnitOfWork
 from core.storage import ObjectStoragePort, create_storage_adapter
 from rag_core.engine import RAGEngine
-from rag_core.providers.ocr import GeminiOCR
+from rag_core.providers.ocr import DualOCRRouter, GeminiOCR, GeminiVisionAnalyzer, TesseractOCR
 from rag_document_pipeline.pipeline import DocumentPipeline
 
 logger = logging.getLogger(__name__)
@@ -52,10 +52,12 @@ def get_document_pipeline() -> DocumentPipeline:
             )
 
         ocr_fn = _get_ocr_fn()
+        vision_fn = _get_vision_analyzer_fn()
 
         return DocumentPipeline.hybrid_semantic(
             embed_fn=embed_fn,
             ocr_fn=ocr_fn,
+            vision_fn=vision_fn,
             min_chunk_size=getattr(settings, "CHUNK_MIN_SIZE", 300),
             max_chunk_size=getattr(settings, "CHUNK_MAX_SIZE", 1500),
             threshold_percentile=getattr(settings, "CHUNK_THRESHOLD_PERCENTILE", 80.0),
@@ -64,18 +66,43 @@ def get_document_pipeline() -> DocumentPipeline:
     return DocumentPipeline(
         chunk_size=getattr(settings, "CHUNK_MAX_SIZE", 1200),
         ocr_fn=_get_ocr_fn(),
+        vision_fn=_get_vision_analyzer_fn(),
     )
 
 
 @lru_cache(maxsize=1)
 def _get_ocr_fn():
-    """Return the OCR callback for image chunking, or None when disabled/unavailable."""
+    """Return the configured OCR callback, or None when unavailable."""
     if not getattr(settings, "OCR_ENABLED", True):
         return None
+
+    fast_ocr = None
+    if getattr(settings, "OCR_FAST_ENABLED", True):
+        try:
+            fast_ocr = TesseractOCR(lang=getattr(settings, "OCR_FAST_LANG", "eng+vie"))
+        except Exception as exc:
+            logger.warning("Fast OCR unavailable: %s", exc)
+
+    vlm_ocr = None
     try:
-        return GeminiOCR(model=getattr(settings, "OCR_MODEL", "gemini-2.0-flash"))
+        vlm_ocr = GeminiOCR(model=getattr(settings, "OCR_MODEL", "gemini-2.0-flash"))
     except Exception as exc:
-        logger.warning("Image OCR disabled, provider unavailable (%s)", exc)
+        logger.warning("VLM OCR unavailable: %s", exc)
+
+    if fast_ocr and vlm_ocr:
+        return DualOCRRouter(fast_ocr=fast_ocr, vlm_ocr=vlm_ocr)
+    return fast_ocr or vlm_ocr
+
+
+@lru_cache(maxsize=1)
+def _get_vision_analyzer_fn():
+    """Return the configured vision analyzer, or None when unavailable."""
+    if not getattr(settings, "VISION_ANALYSIS_ENABLED", True):
+        return None
+    try:
+        return GeminiVisionAnalyzer(model=getattr(settings, "VISION_MODEL", "gemini-2.0-flash"))
+    except Exception as exc:
+        logger.warning("Vision analysis unavailable: %s", exc)
         return None
 
 
