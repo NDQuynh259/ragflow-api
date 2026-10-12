@@ -13,13 +13,13 @@ from .strategies import ImageChunker, TableChunker, TextChunker
 
 __all__ = [
     "Chunker",
+    "ImageChunker",
+    "MultimodalChunker",
+    "TableChunker",
+    "TextChunker",
     "cosine_distance",
     "estimate_tokens",
     "group_by_section",
-    "propagate_sections",
-    "MultimodalChunker",
-    "TextChunker",
-    "TableChunker",
-    "ImageChunker",
     "jaccard_distance",
+    "propagate_sections",
 ]

@@ -337,11 +337,11 @@ flowchart LR
   - **Repeated Headers**: Khi chia theo nhóm hàng (row groups), tiêu đề cột và caption tự động được lặp lại ở đầu mỗi chunk con kèm cờ `has_repeated_header = True` trong metadata.
   - **Băm dòng quá khổ (Oversized Row Splitting)**: Hàng đơn lẻ chứa ô văn bản vượt `chunk_size` được tự động băm nhỏ thành các sub-table chunks, bảo toàn các cột định danh ngữ cảnh (mã hợp đồng, điều khoản).
   - **Biểu diễn kép (Dual Representation)**: `content` lưu bảng Markdown 2D trực quan cho LLM; `metadata["searchable_text"]` lưu chuỗi Key-Value phẳng hóa tối ưu cho Dense Vector & BM25.
-  - *(Xem tài liệu chuyên sâu tại [`table_chunking_architecture.md`](file:///c:/Users/ndquynh/Documents/RAG/docs/table_chunking_architecture.md))*.
+  - *(Xem tài liệu chuyên sâu tại [`table_chunking_architecture.md`](file:///c:/Users/ndquynh/Documents/RAG/docs/chunking/table_chunking_architecture.md))*.
 - **Hình ảnh & Sơ đồ ([`image.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/strategies/image.py))**:
   - Gom tổng hợp từ `caption`, `description`, `ocr_text`, `footnote`.
   - **Bảo vệ không gian Vector (`indexable`)**: Nếu có nội dung chữ $\rightarrow$ `indexable = True` và embedding; nếu không có chữ $\rightarrow$ giữ metadata với `indexable = False` để tránh nhúng vector rác.
-  - *(Xem tài liệu chuyên sâu tại [`image_processing_architecture.md`](file:///c:/Users/ndquynh/Documents/RAG/docs/image_processing_architecture.md))*.
+  - *(Xem tài liệu chuyên sâu tại [`image_processing_architecture.md`](file:///c:/Users/ndquynh/Documents/RAG/docs/chunking/image_processing_architecture.md))*.
 
 ---
 
@@ -416,7 +416,7 @@ Cụ thể kiến trúc triển khai:
    - **Băm dòng quá khổ (Oversized Row Splitting)**: Dòng có ô văn bản dài vượt `chunk_size` được cắt thành các sub-tables, bảo toàn các cột định danh (mã hợp đồng, điều khoản).
    - **Trường `metadata["searchable_text"]` (Vector & BM25 Retrieval)**: Được bộ `TableChunker` tự động sinh bằng thuật toán chuyển đổi **Row-wise Key-Value template** (tự động ghép Header tương ứng với từng Cell trên từng hàng).
    - **Vector Embedding**: Sinh vector dựa trên `searchable_text` (hoặc kết hợp `Caption + Section Path + Key-Value Text`) thay vì vector hóa các ký tự phân cách pipe `| --- |`.
-   - *(Chi tiết xem tại [`table_chunking_architecture.md`](file:///c:/Users/ndquynh/Documents/RAG/docs/table_chunking_architecture.md))*.
+   - *(Chi tiết xem tại [`table_chunking_architecture.md`](file:///c:/Users/ndquynh/Documents/RAG/docs/chunking/table_chunking_architecture.md))*.
 
 **Lập luận vì sao đây là giải pháp tối ưu nhất cho hệ thống này:**
 1. **Tuân thủ triệt để nguyên lý "Zero-RAM-Bloat & Zero-Ingestion-Cost"**: Thuật toán chuyển đổi Row Key-Value hoàn toàn chạy trên CPU bằng Python string template, tốc độ $< 1\text{ms}$, không tiêu tốn quota Gemini API hay làm nghẽn hàng đợi Celery/RabbitMQ lúc ingest hàng trăm trang tài liệu.
@@ -652,5 +652,5 @@ for chunk in processed.chunks:
 ## 10. Tài Liệu Tham Chiếu & Phân Tích Chuyên Sâu
 
 - 📄 [Kiến Trúc & Hướng Dẫn Document Pipeline](file:///c:/Users/ndquynh/Documents/RAG/docs/document_pipeline.md): Hướng dẫn API Orchestrator `DocumentPipeline`.
-- 🔍 [Phân tích Chuyên sâu: Hiện tượng Phân mảnh Ngữ cảnh trong Multimodal RAG](file:///c:/Users/ndquynh/Documents/RAG/docs/multimodal_context_fragmentation_analysis.md): So sánh chi tiết Anti-pattern tách rời phần tử với kiến trúc bảo toàn ngữ cảnh của hệ thống.
+- 🔍 [Phân tích Chuyên sâu: Hiện tượng Phân mảnh Ngữ cảnh trong Multimodal RAG](file:///c:/Users/ndquynh/Documents/RAG/docs/chunking/multimodal_context_fragmentation_analysis.md): So sánh chi tiết Anti-pattern tách rời phần tử với kiến trúc bảo toàn ngữ cảnh của hệ thống.
 - 🏗️ [Tài Liệu Thiết Kế Kiến Trúc Toàn Diện (Master Architecture)](file:///c:/Users/ndquynh/Documents/RAG/docs/architecture.md): Bức tranh toàn cảnh về kiến trúc hệ thống Monorepo, apps/chat-api, worker, scheduler và database.

@@ -266,7 +266,7 @@ def _enforce_bounds(self, clusters: list[str]) -> list[str]:
 
 ### 3.1. Lưu Layout JSON Lên MinIO/S3
 
-**Tuyên bố trong tài liệu** [`chunking_architecture.md`](./chunking_architecture.md):
+**Tuyên bố trong tài liệu** [`chunking_architecture.md`](../chunking/chunking_architecture.md):
 > File kết quả bóc tách `{document_id}_layout.json` được lưu lên S3. Thu hồi ngay bộ nhớ: `elements.clear()` & `gc.collect()`.
 
 **Xác minh từ mã nguồn** [`ingestion.py:73-95`](../apps/worker/src/worker/services/ingestion.py#L73-L95):
@@ -299,7 +299,7 @@ if hasattr(processed, "elements") and processed.elements:
 
 ### 3.2. Micro-batching (50 chunks/lần)
 
-**Tuyên bố trong tài liệu** [`chunking_architecture.md`](./chunking_architecture.md):
+**Tuyên bố trong tài liệu** [`chunking_architecture.md`](../chunking/chunking_architecture.md):
 > Gửi theo lô nhỏ sang mô hình Embedding và UPSERT vào bảng `chunks` trong PostgreSQL. Bộ nhớ RAM luôn giữ mức cố định phẳng (≤ 50 chunks ≈ 10MB RAM).
 
 **Xác minh từ mã nguồn** [`rag_core/engine.py:61-101`](../packages/rag-core/src/rag_core/engine.py#L61-L101):
@@ -423,7 +423,7 @@ chunks_v2 = chunker_v2.chunk(elements, document_id=document_id)
 
 ### 4.5. Timing của Layout JSON Persistence Khác Với Mô Tả
 
-**Tuyên bố trong tài liệu** [`chunking_architecture.md`](./chunking_architecture.md):
+**Tuyên bố trong tài liệu** [`chunking_architecture.md`](../chunking/chunking_architecture.md):
 > Lưu `{document_id}_layout.json` lên MinIO S3... Thu hồi ngay bộ nhớ: `elements.clear()` & `gc.collect()`... Re-chunking siêu tốc: Khi cần điều chỉnh chunk_size, chỉ cần tải lại layout.json từ S3 để cắt lại.
 
 **Thực tế từ mã nguồn** [`ingestion.py:56-95`](../apps/worker/src/worker/services/ingestion.py#L56-L95):

@@ -148,10 +148,7 @@ class DocumentPipeline:
             chunks=chunks,
         )
 
-    # ------------------------------------------------------------------
-    # Normalization
-    # ------------------------------------------------------------------
-
+    #region _normalize
     @classmethod
     def _normalize(cls, elements: list[LayoutElement]) -> list[LayoutElement]:
         """Unicode NFC normalization, mojibake repair, whitespace cleanup, and layout binding."""
@@ -166,6 +163,7 @@ class DocumentPipeline:
         elements = LayoutNormalizer.bind_captions_and_footnotes(elements)
         return elements
 
+    #region _clean_text
     @staticmethod
     def _clean_text(value: str) -> str:
         """Normalize Unicode, repair mojibake, clean whitespace."""
@@ -184,10 +182,7 @@ class DocumentPipeline:
 
         return value.strip()
 
-    # ------------------------------------------------------------------
-    # Validation
-    # ------------------------------------------------------------------
-
+    #region _validate
     @staticmethod
     def _validate(
         chunks: list[DocumentChunk],
@@ -229,10 +224,7 @@ class DocumentPipeline:
 
         return valid
 
-    # ------------------------------------------------------------------
-    # Default parser selection
-    # ------------------------------------------------------------------
-
+    # region _default_parser
     @staticmethod
     def _default_parser() -> Parser:
         """Choose parser based on PARSER_PROVIDER env var or default to OpenDataLoader."""

@@ -1,45 +1,34 @@
-"""Image/figure chunker.
+"""Image/figure chunker orchestration strategy.
 
-Images with captions or descriptions become indexable chunks.
-Images without any textual representation are kept as metadata-only
-records (``indexable=False``) so they are not embedded as empty strings.
-
-OCR extraction is bounded by max_ocr_length (default: 2000 characters).
-
-Two optional callbacks are supported:
-
-* ``ocr_fn`` — transcribes visible text (used for scanned text, invoices).
-* ``vision_fn`` — produces a structured semantic analysis of charts and
-  diagrams. It is tried when the image looks semantic (large, little text)
-  and OCR alone would lose the meaning of the figure.
+Lớp ImageChunker điều phối pipeline xử lý hình ảnh dựa trên các tiện ích
+lõi (triage heuristics, OCR/Vision extraction, text proxy) trong
+:mod:`rag_document_pipeline.chunking.core.image`.
 """
 
 from __future__ import annotations
 
-import logging
-import uuid
-from typing import Any
+from typing import Any, Final
 
-from rag_document_pipeline.chunking.core import estimate_tokens
+from rag_document_pipeline.chunking.core.image import (
+    DEFAULT_MAX_ASPECT_RATIO,
+    DEFAULT_MIN_IMAGE_SIZE,
+    DEFAULT_VISION_MAX_TEXT,
+    DEFAULT_VISION_MIN_SIZE,
+    build_image_chunk,
+    build_image_text_proxy,
+    image_metadata,
+    is_semantic_figure,
+    resolve_image_source,
+    safe_extract_text,
+    triage_skip_reason,
+)
 from rag_document_pipeline.models import DocumentChunk, LayoutElement
 
-logger = logging.getLogger(__name__)
-
-DEFAULT_MAX_OCR_LENGTH = 2000
-
-#: Images smaller than this (in points or pixels) are considered decorative.
-DEFAULT_MIN_IMAGE_SIZE = 100
-#: An aspect ratio beyond this is treated as a rule/divider line, not a figure.
-DEFAULT_MAX_ASPECT_RATIO = 10.0
-#: Images at least this large with little OCR text are treated as semantic
-#: figures (charts, diagrams) that warrant a vision analysis call.
-DEFAULT_VISION_MIN_SIZE = 400
-#: Below this many OCR characters a large image is assumed to be a chart.
-DEFAULT_VISION_MAX_TEXT = 80
+DEFAULT_MAX_OCR_LENGTH: Final[int] = 2000
 
 
 class ImageChunker:
-    """Chunk image/figure elements based on available textual content."""
+    """Chunk image/figure elements based on available textual context and visual analysis."""
 
     def __init__(
         self,
@@ -69,63 +58,13 @@ class ImageChunker:
         document_id: str,
         workspace_id: str = "",
     ) -> list[DocumentChunk]:
-        chunks: list[DocumentChunk] = []
+        """Chuyển đổi danh sách LayoutElement hình ảnh thành các DocumentChunk độc lập."""
+        return [
+            self._chunk_image(element, document_id=document_id, workspace_id=workspace_id)
+            for element in elements
+        ]
 
-        for el in elements:
-            chunks.append(self._chunk_image(el, document_id=document_id, workspace_id=workspace_id))
-
-        return chunks
-
-    # region triage
-    def _image_dimensions(self, element: LayoutElement) -> tuple[float, float] | None:
-        """Return the image's width and height, preferring real pixel dimensions.
-
-        Parsers may record intrinsic pixel sizes in ``metadata``; otherwise the
-        layout bbox is used as a proxy in PDF points.
-        """
-        width = element.metadata.get("width") or element.metadata.get("image_width")
-        height = element.metadata.get("height") or element.metadata.get("image_height")
-        try:
-            if width and height:
-                return float(width), float(height)
-        except (TypeError, ValueError):
-            logger.warning("Ignoring non-numeric image dimensions on element %s", element.id)
-
-        if element.bbox:
-            x0, y0, x1, y1 = element.bbox
-            return abs(x1 - x0), abs(y1 - y0)
-        return None
-
-    def _triage_skip_reason(self, element: LayoutElement) -> str | None:
-        """Return why an image should be skipped, or ``None`` to keep it."""
-        if not self.triage_enabled:
-            return None
-        dimensions = self._image_dimensions(element)
-        if dimensions is None:
-            return None
-        width, height = dimensions
-        if width <= 0 or height <= 0:
-            return "invalid_dimensions"
-        if width < self.min_image_size or height < self.min_image_size:
-            return "too_small"
-        aspect_ratio = max(width / height, height / width)
-        if aspect_ratio > self.max_aspect_ratio:
-            return "extreme_aspect_ratio"
-        return None
-
-    def _is_semantic_figure(self, element: LayoutElement, ocr_text: str | None) -> bool:
-        """Return ``True`` when the image is large but carries little text."""
-        if not self.vision_fn:
-            return False
-        dimensions = self._image_dimensions(element)
-        if dimensions is None:
-            return False
-        width, height = dimensions
-        if min(width, height) < self.vision_min_size:
-            return False
-        return len((ocr_text or "").strip()) < self.vision_max_text
-
-    def _decorative_chunk(
+    def _build_skipped_chunk(
         self,
         element: LayoutElement,
         *,
@@ -133,70 +72,19 @@ class ImageChunker:
         document_id: str,
         workspace_id: str = "",
     ) -> DocumentChunk:
-        """Build a non-indexed metadata record for a decorative image."""
-        img = element.image_data
-        metadata: dict[str, Any] = {
-            "chunker": "image",
-            "modality": "image",
-            "image_available": bool(img and img.uri),
-            "triage_skipped": True,
-            "triage_skip_reason": skip_reason,
-            "index_reason": skip_reason,
-        }
-        if img and img.uri:
-            metadata["image_uri"] = img.uri
+        """Tạo chunk cho ảnh bị triage skip (trang trí / icon / divider)."""
+        metadata = image_metadata(element)
+        metadata["triage_skipped"] = True
+        metadata["triage_skip_reason"] = skip_reason
 
-        content = "[IMAGE]"
-        return DocumentChunk(
-            id=str(uuid.uuid4()),
+        return build_image_chunk(
+            element,
             document_id=document_id,
             workspace_id=workspace_id,
-            content=content,
-            index=0,
-            page_start=element.page_number,
-            page_end=element.page_number,
-            element_ids=[element.id],
-            bboxes=[element.bbox] if element.bbox else [],
-            kind="figure",
-            section_path=element.section_path,
-            token_count=0,
-            indexable=False,
+            content="[IMAGE]",
             metadata=metadata,
         )
 
-    def _run_callback(
-        self,
-        callback: Any,
-        image_source: str,
-        *,
-        element: LayoutElement,
-        metadata: dict[str, Any],
-        label: str,
-    ) -> str | None:
-        """Invoke OCR/vision callback, bounded by max_ocr_length, failure-safe."""
-        try:
-            extracted = callback(image_source)
-        except Exception as exc:
-            logger.warning("%s extraction failed for %s: %s", label, image_source, exc)
-            metadata[f"{label.lower()}_error"] = str(exc)
-            return None
-
-        if not extracted or not isinstance(extracted, str) or not extracted.strip():
-            return None
-
-        text = extracted.strip()
-        if len(text) > self.max_ocr_length:
-            logger.warning(
-                "%s text for element %s exceeds max_ocr_length (%d), truncating",
-                label,
-                element.id,
-                self.max_ocr_length,
-            )
-            text = text[: self.max_ocr_length]
-            metadata[f"{label.lower()}_truncated"] = True
-        return text
-
-    # region _chunk_image
     def _chunk_image(
         self,
         element: LayoutElement,
@@ -204,119 +92,113 @@ class ImageChunker:
         document_id: str,
         workspace_id: str = "",
     ) -> DocumentChunk:
-        parts: list[str] = ["[IMAGE]"]
-        img = element.image_data
-
-        caption = (img.caption if img else None) or element.caption or ""
-        description = img.description if img else None
-
-        # 0. Image triage: drop decorative/degenerate images before paying for OCR.
-        skip_reason = self._triage_skip_reason(element)
+        # 1. Image Triage: Lọc ảnh rác theo hình học
+        skip_reason = triage_skip_reason(
+            element,
+            enabled=self.triage_enabled,
+            min_image_size=self.min_image_size,
+            max_aspect_ratio=self.max_aspect_ratio,
+        )
         if skip_reason:
-            return self._decorative_chunk(
+            return self._build_skipped_chunk(
                 element,
                 skip_reason=skip_reason,
                 document_id=document_id,
                 workspace_id=workspace_id,
             )
 
-        # 1. Check OCR text from ImageData, element metadata, or element text
+        img = element.image_data
+        caption = (img.caption if img else None) or element.caption or ""
+        description = img.description if img else None
         ocr_text = (
             (img.ocr_text if img else None)
             or element.metadata.get("ocr_text")
             or element.metadata.get("ocr")
         )
+        source = resolve_image_source(element)
 
-        metadata: dict[str, Any] = {
-            "chunker": "image",
-            "modality": "image",
-            "image_available": True,
-        }
+        metadata = image_metadata(element)
+
+        # 2. OCR Extraction: Trích xuất chữ khi chưa có OCR sẵn
         if self.ocr_fn:
             metadata["ocr_attempted"] = False
 
-        image_source = (
-            (img.uri if img else None)
-            or element.source
-            or element.metadata.get("image_path")
-            or element.metadata.get("uri")
-        )
-
-        if not ocr_text and self.ocr_fn and image_source:
+        if not ocr_text and self.ocr_fn and source:
             metadata["ocr_attempted"] = True
-            ocr_text = self._run_callback(
+            ocr_res = safe_extract_text(
                 self.ocr_fn,
-                image_source,
-                element=element,
-                metadata=metadata,
+                source,
                 label="OCR",
+                max_length=self.max_ocr_length,
+                element_id=element.id,
             )
-            if ocr_text and img:
-                img.ocr_text = ocr_text
-            if ocr_text:
+            if ocr_res.error:
+                metadata["ocr_error"] = ocr_res.error
+            if ocr_res.is_truncated:
+                metadata["ocr_truncated"] = True
+            if ocr_res.text:
+                ocr_text = ocr_res.text
                 element.metadata["ocr_text"] = ocr_text
-
-        # 2. Structured vision analysis for charts and diagrams, where OCR text
-        #    alone would strip the figure of its meaning.
-        if image_source and self._is_semantic_figure(element, ocr_text):
-            metadata["vision_attempted"] = True
-            analysis = self._run_callback(
-                self.vision_fn,
-                image_source,
-                element=element,
-                metadata=metadata,
-                label="Vision",
-            )
-            if analysis:
-                if ocr_text:
-                    metadata["ocr_text"] = ocr_text
-                ocr_text = analysis
-                metadata["has_vision_analysis"] = True
                 if img:
-                    img.description = analysis
+                    img.ocr_text = ocr_text
 
-        if caption:
-            parts.append(caption)
-        if description:
-            parts.append(description)
-        if ocr_text:
-            parts.append(f"OCR: {ocr_text}" if not ocr_text.lower().startswith("ocr:") else ocr_text)
-
-        # Also include any element text that isn't already covered
-        if element.text.strip() and element.text.strip() not in parts:
-            parts.append(element.text.strip())
-
-        footnote = element.metadata.get("footnote")
-        if footnote:
-            parts.append(f"Note: {footnote}")
-
-        has_content = len(parts) > 1  # more than just "[IMAGE]"
-        content = "\n".join(parts)
-
-        if img and img.uri:
-            metadata["image_uri"] = img.uri
         if ocr_text:
             metadata["has_ocr"] = True
             metadata["ocr_text"] = ocr_text
-        if not has_content:
+
+        # 3. Vision Analysis: Phân tích biểu đồ/sơ đồ ngữ nghĩa ít chữ
+        analysis: str | None = None
+        if source and is_semantic_figure(
+            element,
+            ocr_text,
+            vision_enabled=self.vision_fn is not None,
+            vision_min_size=self.vision_min_size,
+            vision_max_text=self.vision_max_text,
+        ):
+            metadata["vision_attempted"] = True
+            vision_res = safe_extract_text(
+                self.vision_fn,
+                source,
+                label="Vision",
+                max_length=self.max_ocr_length,
+                element_id=element.id,
+            )
+            if vision_res.error:
+                metadata["vision_error"] = vision_res.error
+            if vision_res.is_truncated:
+                metadata["vision_truncated"] = True
+            if vision_res.text:
+                analysis = vision_res.text
+                metadata["has_vision"] = True
+                metadata["has_vision_analysis"] = True
+                metadata["vision_text"] = analysis
+                if img:
+                    img.description = analysis
+
+        # 4. Ghép nối Text Proxy
+        content = build_image_text_proxy(
+            element,
+            caption=caption,
+            description=description,
+            analysis=analysis,
+            ocr_text=ocr_text,
+        )
+
+        # 5. Fallback index_reason nếu không có text
+        if not analysis and not ocr_text and content == "[IMAGE]":
             metadata["index_reason"] = "no_caption_or_description"
 
-        return DocumentChunk(
-            id=str(uuid.uuid4()),
+        # 6. Đóng gói DocumentChunk
+        return build_image_chunk(
+            element,
             document_id=document_id,
             workspace_id=workspace_id,
             content=content,
-            index=0,
-            page_start=element.page_number,
-            page_end=element.page_number,
-            element_ids=[element.id],
-            bboxes=[element.bbox] if element.bbox else [],
-            kind="figure",
-            section_path=element.section_path,
-            token_count=estimate_tokens(content) if has_content else 0,
-            indexable=has_content,
             metadata=metadata,
         )
 
 
-__all__ = ["ImageChunker"]
+__all__ = [
+    "DEFAULT_MAX_OCR_LENGTH",
+    "ImageChunker",
+]

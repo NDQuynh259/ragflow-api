@@ -144,7 +144,7 @@ Bảng biểu trong tài liệu kỹ thuật/tài chính chứa nhiều thông t
 
 ## 5. Chiến Lược Tối Ưu Bộ Nhớ (Zero-RAM-Bloat)
 
-Theo tiêu chuẩn kiến trúc tại [`docs/chunking_architecture.md`](./chunking_architecture.md):
+Theo tiêu chuẩn kiến trúc tại [`docs/chunking/chunking_architecture.md`](../chunking/chunking_architecture.md):
 1. **Lưu trữ trung gian Layout (Staging to MinIO/S3)**:
    - File kết quả bóc tách `{document_id}_layout.json` được lưu lên S3.
    - Thu hồi ngay bộ nhớ: `elements.clear()` & `gc.collect()`.

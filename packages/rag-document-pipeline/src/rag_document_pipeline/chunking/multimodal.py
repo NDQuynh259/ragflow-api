@@ -4,15 +4,17 @@ from __future__ import annotations
 
 from typing import Any
 
-from rag_document_pipeline.chunking.core import Chunker, group_by_section, propagate_sections
+from rag_document_pipeline.chunking.core import (
+    DEFAULT_MAX_ASPECT_RATIO,
+    DEFAULT_MIN_IMAGE_SIZE,
+    Chunker,
+    group_by_section,
+    propagate_sections,
+)
 from rag_document_pipeline.chunking.strategies import (
     ImageChunker,
     TableChunker,
     TextChunker,
-)
-from rag_document_pipeline.chunking.strategies.image import (
-    DEFAULT_MAX_ASPECT_RATIO,
-    DEFAULT_MIN_IMAGE_SIZE,
 )
 from rag_document_pipeline.models import DocumentChunk, LayoutElement
 
@@ -45,7 +47,9 @@ class MultimodalChunker:
         self.chunk_size = chunk_size
         self.text_chunker = text_chunker or TextChunker(
             embed_fn=embed_fn,
-            min_chunk_size=min_chunk_size if min_chunk_size is not None else min(300, chunk_size // 4),
+            min_chunk_size=min_chunk_size
+            if min_chunk_size is not None
+            else min(300, chunk_size // 4),
             max_chunk_size=chunk_size,
             threshold_percentile=threshold_percentile,
         )
@@ -99,4 +103,3 @@ class MultimodalChunker:
 
 
 __all__ = ["MultimodalChunker"]
-

@@ -2,7 +2,7 @@
 
 ## Context
 
-The architecture document `docs/image_processing_architecture.md` describes a comprehensive image processing pipeline for the RAG system with these key features:
+The architecture document `docs/chunking/image_processing_architecture.md` describes a comprehensive image processing pipeline for the RAG system with these key features:
 
 1. **Image Triage** — Size-based filtering to skip decorative/small images (< 100x100px)
 2. **Dual OCR Engine** — Fast on-premise OCR (PaddleOCR/Tesseract) for text-heavy images + VLM (Gemini) for charts/diagrams
