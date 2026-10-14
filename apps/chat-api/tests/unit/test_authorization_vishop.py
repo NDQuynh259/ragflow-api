@@ -14,6 +14,8 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 
+from core.uuid7 import uuid7
+
 import pytest
 
 from chat_api.modules.auth.domain.entity import UserSession
@@ -75,8 +77,8 @@ def test_effective_permissions_unknown_or_none():
 def test_principal_owner_bypass():
     """CurrentPrincipal with role='owner' passes all permission checks."""
     principal = CurrentPrincipal(
-        user_id=uuid.uuid4(),
-        session_id=uuid.uuid4(),
+        user_id=uuid7(),
+        session_id=uuid7(),
         role="owner",
         permissions=frozenset(),  # Even with empty permissions set!
     )
@@ -94,8 +96,8 @@ def test_principal_owner_bypass():
 def test_principal_and_guard_logic():
     """require_permission implements strict AND logic (all must be present)."""
     principal = CurrentPrincipal(
-        user_id=uuid.uuid4(),
-        session_id=uuid.uuid4(),
+        user_id=uuid7(),
+        session_id=uuid7(),
         role="member",
         permissions=frozenset({Permission.SESSION_READ.value, Permission.MESSAGE_SEND.value}),
     )
@@ -116,8 +118,8 @@ def test_principal_and_guard_logic():
 def test_principal_or_guard_logic():
     """require_any_permission implements OR logic (at least one must be present)."""
     principal = CurrentPrincipal(
-        user_id=uuid.uuid4(),
-        session_id=uuid.uuid4(),
+        user_id=uuid7(),
+        session_id=uuid7(),
         role="member",
         permissions=frozenset({Permission.SESSION_READ.value}),
     )
@@ -140,9 +142,9 @@ def test_principal_or_guard_logic():
 @pytest.mark.anyio
 async def test_fastapi_dependency_guards():
     """Test RequirePermission, RequireAnyPermission, RequireRole as FastAPI callables."""
-    user = User(id=uuid.uuid4(), email="test@example.com", full_name="Tester", is_active=True)
+    user = User(id=uuid7(), email="test@example.com", full_name="Tester", is_active=True)
     session = UserSession(
-        id=uuid.uuid4(),
+        id=uuid7(),
         user_id=user.id,
         token="fake_tok",
         expires_at=datetime.now(UTC) + timedelta(hours=1),
@@ -209,8 +211,8 @@ def test_sqlalchemy_workspace_repository_effective_permissions():
     mock_session = MagicMock()
     repo = SqlAlchemyWorkspaceRepository(mock_session)
 
-    ws_id = uuid.uuid4()
-    user_id = uuid.uuid4()
+    ws_id = uuid7()
+    user_id = uuid7()
 
     # Case 1: Role is Owner -> bypass and returns wildcard and all permissions
     mock_session.scalar.return_value = "owner"

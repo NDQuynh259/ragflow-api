@@ -83,13 +83,20 @@ Mô hình lai kết hợp: **Heading-Aware ở tầng vĩ mô (Macro)** để b�
 
 ```text
 packages/rag-document-pipeline/src/rag_document_pipeline/chunking/
-├── __init__.py          # Public exports và compatibility aliases
-├── base.py              # Protocol Chunker, estimate_tokens
-├── section.py           # Quản lý cây tiêu đề (_propagate_sections, group_by_section)
+├── __init__.py          # Facade: public exports cho app code
 ├── multimodal.py        # Orchestrator MultimodalChunker điều phối luồng đọc tự nhiên
-├── text.py              # TextChunker (tách câu tiếng Việt, sliding window, topic shifts)
-├── table.py             # TableChunker (render Markdown, repeated headers)
-└── image.py             # ImageChunker (caption, OCR, footnote, cờ indexable)
+├── core/
+│   ├── __init__.py      # Barrel hạ tầng + helper thuần
+│   ├── base.py          # Protocol Chunker
+│   ├── constants.py     # Hằng số chia sẻ: ngưỡng ảnh, loại phần tử, mẫu tách câu
+│   ├── section.py       # Quản lý cây tiêu đề (propagate_sections, group_by_section)
+│   ├── utils.py         # estimate_tokens, cosine_distance, jaccard_distance
+│   └── image.py         # Helper thuần cho ảnh (triage, OCR/Vision, text proxy, chunk builder)
+└── strategies/
+    ├── __init__.py
+    ├── text.py          # TextChunker (tách câu tiếng Việt, sliding window, topic shifts)
+    ├── table.py         # TableChunker (render Markdown, repeated headers)
+    └── image.py         # ImageChunker (caption, OCR, footnote, cờ indexable)
 ```
 
 ### Sơ Đồ Khái Niệm Phân Tầng:
@@ -638,12 +645,15 @@ for chunk in processed.chunks:
 
 | Tệp mã nguồn | Vai trò triển khai |
 | :--- | :--- |
-| [`chunking/base.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/base.py) | Định nghĩa `Chunker` Protocol, hàm tính `estimate_tokens`. |
-| [`chunking/section.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/section.py) | Quản lý cây tiêu đề (`_propagate_sections`), gom nhóm theo section (`_group_by_section`). |
+| [`chunking/core/base.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/core/base.py) | Định nghĩa `Chunker` Protocol. |
+| [`chunking/core/constants.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/core/constants.py) | Khai báo một nơi duy nhất các hằng số chia sẻ: `IMAGE_PLACEHOLDER`, ngưỡng triage/Vision/OCR, tập loại phần tử (`TEXT_TYPES`, `TABLE_TYPES`, `IMAGE_TYPES`, `SKIP_TYPES`) và mẫu tách câu (`MASK_CHAR`, `ABBREV_PATTERN`, `DECIMAL_PATTERN`). |
+| [`chunking/core/utils.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/core/utils.py) | Hàm tính `estimate_tokens`, `cosine_distance`, `jaccard_distance`. |
+| [`chunking/core/section.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/core/section.py) | Quản lý cây tiêu đề (`propagate_sections`), gom nhóm theo section (`group_by_section`). |
+| [`chunking/core/image.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/core/image.py) | Helper thuần cho ảnh: image triage, OCR/Vision extraction, text proxy, chunk builder và aliases. |
 | [`chunking/multimodal.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/multimodal.py) | Router multimodal (`MultimodalChunker`), điều phối luồng đọc tự nhiên, re-index chunks. |
-| [`chunking/text.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/text.py) | Tách câu tiếng Việt (masking), Sliding Window Buffer ($W=2$), tính Topic Shift, kẹp cận kích thước. |
-| [`chunking/table.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/table.py) | Chuyển đổi Markdown bảng, cắt theo nhóm hàng, lặp lại tiêu đề cột (`repeated_header`) và sinh `metadata.searchable_text` dạng row-wise key-value. |
-| [`chunking/image.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/image.py) | Tạo chunk hình ảnh từ caption/OCR/description, kiểm soát cờ `indexable`. |
+| [`chunking/strategies/text.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/strategies/text.py) | Tách câu tiếng Việt (masking), Sliding Window Buffer ($W=2$), tính Topic Shift, kẹp cận kích thước. |
+| [`chunking/strategies/table.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/strategies/table.py) | Chuyển đổi Markdown bảng, cắt theo nhóm hàng, lặp lại tiêu đề cột (`repeated_header`) và sinh `metadata.searchable_text` dạng row-wise key-value. |
+| [`chunking/strategies/image.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/chunking/strategies/image.py) | Orchestration ảnh: caption/OCR/description, kiểm soát cờ `indexable`. |
 | [`normalizers/layout.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/normalizers/layout.py) | Gắn kết Caption và Footnote vào Bảng/Ảnh trước khi phân luồng, xóa orphan elements. |
 | [`pipeline.py`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-document-pipeline/src/rag_document_pipeline/pipeline.py) | Lớp điều phối tổng thể: Parse (OpenDataLoader) $\to$ Normalize $\to$ Chunk $\to$ Validate. |
 

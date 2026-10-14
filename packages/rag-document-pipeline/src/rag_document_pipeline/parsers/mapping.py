@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import logging
 import math
-import uuid
 from pathlib import Path
 from typing import Any
+
+from core.uuid7 import uuid7_str
 from urllib.parse import urlsplit
 from urllib.request import url2pathname
 
@@ -63,7 +64,7 @@ def elements_from_payload(payload: Any, *, image_dir: Path | None = None) -> lis
 
         elements.append(
             LayoutElement(
-                id=str(item.get("id", item.get("element_id", uuid.uuid4()))),
+                id=str(item.get("id", item.get("element_id", uuid7_str()))),
                 type=ElementType(element_type) if element_type in known_types else ElementType.TEXT,
                 text=extract_visible_text(item),
                 page_number=max(1, parse_positive_int(item, *PAGE_KEYS, default=1)),

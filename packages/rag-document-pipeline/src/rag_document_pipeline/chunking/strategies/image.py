@@ -1,55 +1,74 @@
 """Image/figure chunker orchestration strategy.
 
 Lớp ImageChunker điều phối pipeline xử lý hình ảnh dựa trên các tiện ích
-lõi (triage heuristics, OCR/Vision extraction, text proxy) trong
+lõi (triage heuristics, Vision extraction, text proxy) trong
 :mod:`rag_document_pipeline.chunking.core.image`.
+
+Chiến lược hiện đại: Sử dụng trực tiếp mô hình thị giác AI (`vision_fn` - VLM) để
+phân tích toàn diện hình ảnh (bao gồm đọc văn bản, mô tả nội dung, bóc tách số liệu biểu đồ).
 """
 
 from __future__ import annotations
 
-from typing import Any, Final
+from rag_document_pipeline.models import DocumentChunk, LayoutElement
 
-from rag_document_pipeline.chunking.core.image import (
+from ..core.image import (
     DEFAULT_MAX_ASPECT_RATIO,
+    DEFAULT_MAX_VISION_LENGTH,
     DEFAULT_MIN_IMAGE_SIZE,
-    DEFAULT_VISION_MAX_TEXT,
-    DEFAULT_VISION_MIN_SIZE,
+    IMAGE_PLACEHOLDER,
+    Dimensions,
+    ExtractFn,
+    ExtractionResult,
     build_image_chunk,
     build_image_text_proxy,
+    image_dimensions,
     image_metadata,
-    is_semantic_figure,
+    image_source,
+    image_text_proxy,
+    make_image_chunk,
     resolve_image_source,
+    run_image_callback,
     safe_extract_text,
     triage_skip_reason,
 )
-from rag_document_pipeline.models import DocumentChunk, LayoutElement
-
-DEFAULT_MAX_OCR_LENGTH: Final[int] = 2000
 
 
 class ImageChunker:
-    """Chunk image/figure elements based on available textual context and visual analysis."""
+    """Chiến lược băm hình ảnh/sơ đồ dựa trên phân tích thị giác AI (Vision VLM).
+
+    Quy trình điều phối tuần tự:
+    1. Image Triage: Kiểm tra kích thước hình học để lọc bỏ ảnh icon hoặc viền trang trí.
+    2. Source Resolution: Tìm đường dẫn ảnh nội bộ hoặc URI lưu trữ đám mây.
+    3. Vision AI Analysis: Gọi mô hình Vision VLM (`vision_fn`) để phân tích toàn diện hình ảnh
+       (đọc chữ, giải thích sơ đồ, trích xuất dữ liệu biểu đồ).
+    4. Text Proxy Assembly: Tổng hợp toàn bộ thông tin thành văn bản Markdown đại diện.
+    5. Chunk Assembly: Đóng gói thành đối tượng `DocumentChunk` với cờ `indexable` chuẩn xác.
+    """
 
     def __init__(
         self,
         *,
-        ocr_fn: Any = None,
-        vision_fn: Any = None,
-        max_ocr_length: int = DEFAULT_MAX_OCR_LENGTH,
+        vision_fn: ExtractFn | None = None,
+        max_vision_length: int = DEFAULT_MAX_VISION_LENGTH,
         triage_enabled: bool = True,
         min_image_size: int = DEFAULT_MIN_IMAGE_SIZE,
         max_aspect_ratio: float = DEFAULT_MAX_ASPECT_RATIO,
-        vision_min_size: int = DEFAULT_VISION_MIN_SIZE,
-        vision_max_text: int = DEFAULT_VISION_MAX_TEXT,
     ) -> None:
-        self.ocr_fn = ocr_fn
+        """Khởi tạo ImageChunker với callback Vision AI và cấu hình Triage.
+
+        Args:
+            vision_fn: Callback thực thi Vision AI phân tích ảnh/biểu đồ/văn bản (VLM).
+            max_vision_length: Giới hạn ký tự tối đa cho kết quả trích xuất từ Vision AI.
+            triage_enabled: Bật/tắt cơ chế lọc Triage hình học để tiết kiệm chi phí gọi API.
+            min_image_size: Ngưỡng kích thước tối thiểu (px), nhỏ hơn sẽ bị đánh dấu trang trí.
+            max_aspect_ratio: Ngưỡng tỷ lệ cạnh tối đa (width/height), lớn hơn sẽ bị coi là đường kẻ.
+        """
         self.vision_fn = vision_fn
-        self.max_ocr_length = max_ocr_length
+        self.max_vision_length = max_vision_length
         self.triage_enabled = triage_enabled
         self.min_image_size = min_image_size
         self.max_aspect_ratio = max_aspect_ratio
-        self.vision_min_size = vision_min_size
-        self.vision_max_text = vision_max_text
 
     def chunk(
         self,
@@ -72,17 +91,25 @@ class ImageChunker:
         document_id: str,
         workspace_id: str = "",
     ) -> DocumentChunk:
-        """Tạo chunk cho ảnh bị triage skip (trang trí / icon / divider)."""
-        metadata = image_metadata(element)
-        metadata["triage_skipped"] = True
-        metadata["triage_skip_reason"] = skip_reason
+        """Tạo chunk metadata cho ảnh bị loại bởi bộ lọc Triage (icon/kẻ trang trí).
 
+        Chunk này có `indexable=False`, content là `[IMAGE]` và ghi rõ `triage_skip_reason`.
+        Nhờ đó, bước sinh embedding sẽ bỏ qua 100%, không tốn chi phí vector embedding.
+        """
+        img = element.image_data
+        metadata = image_metadata(img, image_available=bool(img and img.uri))
+        metadata.update(
+            triage_skipped=True,
+            triage_skip_reason=skip_reason,
+            index_reason=skip_reason,
+        )
         return build_image_chunk(
             element,
             document_id=document_id,
             workspace_id=workspace_id,
-            content="[IMAGE]",
+            content=IMAGE_PLACEHOLDER,
             metadata=metadata,
+            indexable=False,
         )
 
     def _chunk_image(
@@ -92,7 +119,10 @@ class ImageChunker:
         document_id: str,
         workspace_id: str = "",
     ) -> DocumentChunk:
-        # 1. Image Triage: Lọc ảnh rác theo hình học
+        """Thực thi toàn bộ pipeline băm cho một phần tử hình ảnh đơn lẻ."""
+        img = element.image_data
+
+        # BƯỚC 1: Image Triage - Lọc bỏ ảnh rác/trang trí trước khi gọi Vision API
         skip_reason = triage_skip_reason(
             element,
             enabled=self.triage_enabled,
@@ -107,88 +137,46 @@ class ImageChunker:
                 workspace_id=workspace_id,
             )
 
-        img = element.image_data
+        # BƯỚC 2: Thu thập thông tin văn bản có sẵn & đường dẫn tệp ảnh
         caption = (img.caption if img else None) or element.caption or ""
         description = img.description if img else None
-        ocr_text = (
-            (img.ocr_text if img else None)
-            or element.metadata.get("ocr_text")
-            or element.metadata.get("ocr")
-        )
         source = resolve_image_source(element)
 
-        metadata = image_metadata(element)
+        # Khởi tạo metadata cơ bản cho chunk hợp lệ
+        metadata = image_metadata(img, image_available=bool(source or (img and img.uri)))
 
-        # 2. OCR Extraction: Trích xuất chữ khi chưa có OCR sẵn
-        if self.ocr_fn:
-            metadata["ocr_attempted"] = False
-
-        if not ocr_text and self.ocr_fn and source:
-            metadata["ocr_attempted"] = True
-            ocr_res = safe_extract_text(
-                self.ocr_fn,
-                source,
-                label="OCR",
-                max_length=self.max_ocr_length,
-                element_id=element.id,
-            )
-            if ocr_res.error:
-                metadata["ocr_error"] = ocr_res.error
-            if ocr_res.is_truncated:
-                metadata["ocr_truncated"] = True
-            if ocr_res.text:
-                ocr_text = ocr_res.text
-                element.metadata["ocr_text"] = ocr_text
-                if img:
-                    img.ocr_text = ocr_text
-
-        if ocr_text:
-            metadata["has_ocr"] = True
-            metadata["ocr_text"] = ocr_text
-
-        # 3. Vision Analysis: Phân tích biểu đồ/sơ đồ ngữ nghĩa ít chữ
+        # BƯỚC 3: Phân tích hình ảnh toàn diện qua Vision AI (vision_fn)
         analysis: str | None = None
-        if source and is_semantic_figure(
-            element,
-            ocr_text,
-            vision_enabled=self.vision_fn is not None,
-            vision_min_size=self.vision_min_size,
-            vision_max_text=self.vision_max_text,
-        ):
+        if source and self.vision_fn:
             metadata["vision_attempted"] = True
-            vision_res = safe_extract_text(
+            analysis = run_image_callback(
                 self.vision_fn,
                 source,
+                element=element,
+                metadata=metadata,
                 label="Vision",
-                max_length=self.max_ocr_length,
-                element_id=element.id,
+                max_length=self.max_vision_length,
             )
-            if vision_res.error:
-                metadata["vision_error"] = vision_res.error
-            if vision_res.is_truncated:
-                metadata["vision_truncated"] = True
-            if vision_res.text:
-                analysis = vision_res.text
+            if analysis:
                 metadata["has_vision"] = True
                 metadata["has_vision_analysis"] = True
                 metadata["vision_text"] = analysis
                 if img:
-                    img.description = analysis
+                    img.description = metadata.get("main_message") or analysis
 
-        # 4. Ghép nối Text Proxy
+        # BƯỚC 4: Tổng hợp chuỗi văn bản đại diện (Text Proxy)
         content = build_image_text_proxy(
             element,
             caption=caption,
             description=description,
             analysis=analysis,
-            ocr_text=ocr_text,
         )
 
-        # 5. Fallback index_reason nếu không có text
-        if not analysis and not ocr_text and content == "[IMAGE]":
+        # Ghi nhận lý do không thể index nếu hoàn toàn không có nội dung văn bản nào
+        if not analysis and not description and not caption and content == IMAGE_PLACEHOLDER:
             metadata["index_reason"] = "no_caption_or_description"
 
-        # 6. Đóng gói DocumentChunk
+        # BƯỚC 5: Đóng gói DocumentChunk hoàn chỉnh
         return build_image_chunk(
             element,
             document_id=document_id,
@@ -199,6 +187,23 @@ class ImageChunker:
 
 
 __all__ = [
-    "DEFAULT_MAX_OCR_LENGTH",
+    "DEFAULT_MAX_ASPECT_RATIO",
+    "DEFAULT_MAX_VISION_LENGTH",
+    "DEFAULT_MIN_IMAGE_SIZE",
+    "Dimensions",
+    "ExtractFn",
+    "ExtractionResult",
+    "IMAGE_PLACEHOLDER",
     "ImageChunker",
+    "build_image_chunk",
+    "build_image_text_proxy",
+    "image_dimensions",
+    "image_metadata",
+    "image_source",
+    "image_text_proxy",
+    "make_image_chunk",
+    "resolve_image_source",
+    "run_image_callback",
+    "safe_extract_text",
+    "triage_skip_reason",
 ]

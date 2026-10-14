@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
-import uuid
 from unittest.mock import MagicMock, patch
+
+from core.uuid7 import uuid7, uuid7_str
 
 from core.events import (
     InMemoryEventPublisher,
@@ -39,9 +40,9 @@ def test_format_ping():
 
 
 def test_realtime_event_serialization():
-    ws_id = str(uuid.uuid4())
-    doc_id = str(uuid.uuid4())
-    job_id = str(uuid.uuid4())
+    ws_id = uuid7_str()
+    doc_id = uuid7_str()
+    job_id = uuid7_str()
 
     event = create_document_progress_event(
         workspace_id=ws_id,
@@ -65,9 +66,9 @@ def test_realtime_event_serialization():
 
 
 def test_domain_event_factories():
-    ws_id = uuid.uuid4()
-    doc_id = uuid.uuid4()
-    job_id = uuid.uuid4()
+    ws_id = uuid7()
+    doc_id = uuid7()
+    job_id = uuid7()
 
     ready_event = create_document_ready_event(ws_id, doc_id, job_id, pages=10, chunks=25)
     assert ready_event.event == "document_ready"
@@ -79,12 +80,12 @@ def test_domain_event_factories():
     assert failed_event.event == "document_failed"
     assert failed_event.data["error"] == "Corrupt PDF"
 
-    chat_token_event = create_chat_token_event(ws_id, uuid.uuid4(), uuid.uuid4(), delta="Hello ")
+    chat_token_event = create_chat_token_event(ws_id, uuid7(), uuid7(), delta="Hello ")
     assert chat_token_event.event == "chat_token"
     assert chat_token_event.data["delta"] == "Hello "
 
     chat_done_event = create_chat_done_event(
-        ws_id, uuid.uuid4(), uuid.uuid4(), citations=[{"chunk_id": "c1"}]
+        ws_id, uuid7(), uuid7(), citations=[{"chunk_id": "c1"}]
     )
     assert chat_done_event.event == "chat_done"
     assert len(chat_done_event.data["citations"]) == 1
@@ -92,8 +93,8 @@ def test_domain_event_factories():
 
 def test_in_memory_event_publisher():
     publisher = InMemoryEventPublisher()
-    ws_1 = str(uuid.uuid4())
-    ws_2 = str(uuid.uuid4())
+    ws_1 = uuid7_str()
+    ws_2 = uuid7_str()
 
     q_ws1 = publisher.subscribe(ws_1)
     q_global = publisher.subscribe(None)  # listens to all events

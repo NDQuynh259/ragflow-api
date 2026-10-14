@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import json
-import uuid
 from unittest.mock import MagicMock, patch
 
 from core.queue.rabbitmq import RabbitMQQueueAdapter
+from core.uuid7 import uuid7
 
 
 def test_rabbitmq_adapter_initialization():
@@ -39,9 +39,9 @@ def test_rabbitmq_adapter_enqueue_ingestion(mock_blocking_conn):
         auto_close=False,
     )
 
-    doc_id = uuid.uuid4()
-    job_id = uuid.uuid4()
-    ws_id = uuid.uuid4()
+    doc_id = uuid7()
+    job_id = uuid7()
+    ws_id = uuid7()
     storage_uri = "output/storage/doc.pdf"
 
     adapter.enqueue_ingestion(

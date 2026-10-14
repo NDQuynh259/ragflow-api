@@ -5,6 +5,8 @@ from __future__ import annotations
 import uuid
 from unittest.mock import AsyncMock, MagicMock
 
+from core.uuid7 import uuid7
+
 import pytest
 
 from chat_api.shared.auth.guards import AuthContext
@@ -13,7 +15,7 @@ from chat_api.shared.auth.workspace_resolver import WorkspaceResolutionService
 
 @pytest.mark.anyio
 async def test_resolve_from_path_param() -> None:
-    expected_ws_id = uuid.uuid4()
+    expected_ws_id = uuid7()
     request = MagicMock()
     request.path_params = {"workspace_id": str(expected_ws_id)}
     auth = MagicMock(spec=AuthContext)
@@ -24,7 +26,7 @@ async def test_resolve_from_path_param() -> None:
 
 @pytest.mark.anyio
 async def test_resolve_from_header() -> None:
-    expected_ws_id = uuid.uuid4()
+    expected_ws_id = uuid7()
     request = MagicMock()
     request.path_params = {}
     request.headers = {"X-Workspace-Id": str(expected_ws_id)}
@@ -36,7 +38,7 @@ async def test_resolve_from_header() -> None:
 
 @pytest.mark.anyio
 async def test_resolve_from_query_param() -> None:
-    expected_ws_id = uuid.uuid4()
+    expected_ws_id = uuid7()
     request = MagicMock()
     request.path_params = {}
     request.headers = {}
@@ -49,7 +51,7 @@ async def test_resolve_from_query_param() -> None:
 
 @pytest.mark.anyio
 async def test_resolve_from_body_json() -> None:
-    expected_ws_id = uuid.uuid4()
+    expected_ws_id = uuid7()
     request = MagicMock()
     request.path_params = {}
     request.headers = {}
@@ -64,7 +66,7 @@ async def test_resolve_from_body_json() -> None:
 
 @pytest.mark.anyio
 async def test_resolve_fallback_to_session() -> None:
-    expected_ws_id = uuid.uuid4()
+    expected_ws_id = uuid7()
     request = MagicMock()
     request.path_params = {}
     request.headers = {}

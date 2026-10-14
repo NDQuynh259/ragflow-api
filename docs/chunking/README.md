@@ -21,13 +21,20 @@ Hệ thống chunking được triển khai theo cấu trúc module độc lập
 
 ```
 packages/rag-document-pipeline/src/rag_document_pipeline/chunking/
-├── base.py                   # Protocol BaseChunker & Interface chung
-├── multimodal.py             # MultimodalChunker (Tầng 1 - Router điều phối vĩ mô)
+├── __init__.py             # Facade: public surface cho app code
+├── multimodal.py           # MultimodalChunker (Tầng 1 - Router điều phối vĩ mô)
+├── core/
+│   ├── __init__.py         # Barrel hạ tầng + helper thuần
+│   ├── base.py             # Protocol Chunker
+│   ├── constants.py        # Hằng số chia sẻ (ngưỡng ảnh, loại phần tử, mẫu tách câu)
+│   ├── section.py          # propagate_sections, group_by_section
+│   ├── utils.py            # estimate_tokens, cosine_distance, jaccard_distance
+│   └── image.py            # Helper thuần cho ảnh (triage, OCR/Vision, text proxy)
 └── strategies/
     ├── __init__.py
-    ├── text.py               # TextChunker (Heading-Aware + Semantic sliding window)
-    ├── table.py              # TableChunker (Repeated Header, Oversized Row Split, Key-Value text)
-    └── image.py              # ImageChunker (Caption, OCR, Visual Description & Indexable filter)
+    ├── text.py             # TextChunker (Heading-Aware + Semantic sliding window)
+    ├── table.py            # TableChunker (Repeated Header, Oversized Row Split, Key-Value text)
+    └── image.py            # ImageChunker (Caption, OCR, Visual Description & Indexable filter)
 ```
 
 ---

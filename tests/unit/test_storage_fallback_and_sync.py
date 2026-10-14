@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import tempfile
-import uuid
 from pathlib import Path
 
 from core.config import CoreSettings
 from core.exceptions import StorageException
+from core.uuid7 import uuid7
 from core.storage import (
     FallbackStorageAdapter,
     LocalStorageAdapter,
@@ -64,7 +64,7 @@ def test_fallback_save_creates_outbox_item_on_primary_failure() -> None:
             outbox_dir=tmp_path / "outbox",
         )
 
-        ws_id = uuid.uuid4()
+        ws_id = uuid7()
         content = b"PDF content saved in emergency"
         uri = fallback_adapter.save("report.pdf", content, f"workspaces/{ws_id}/report.pdf")
 
@@ -96,7 +96,7 @@ def test_storage_retry_sync_service_lifecycle() -> None:
             outbox_dir=tmp_path / "outbox",
         )
 
-        ws_id = uuid.uuid4()
+        ws_id = uuid7()
         content = b"Document pending sync"
         local_uri = fallback_adapter.save("important.pdf", content, f"workspaces/{ws_id}/important.pdf")
 
@@ -151,7 +151,7 @@ def test_storage_retry_sync_exceeds_max_retries() -> None:
             outbox_dir=tmp_path / "outbox",
         )
 
-        ws_id = uuid.uuid4()
+        ws_id = uuid7()
         fallback_adapter.save("broken.pdf", b"data", f"workspaces/{ws_id}/broken.pdf")
 
         sync_service = StorageRetrySyncService(

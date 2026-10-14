@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import uuid
-
 import pytest
+
+from core.uuid7 import uuid7
 
 from core.exceptions import (
     EmptyFileException,
@@ -25,7 +25,7 @@ class InMemoryTestStorage(ObjectStoragePort):
         self._storage: dict[str, bytes] = {}
 
     def save(self, filename: str, content: bytes, object_path: str) -> str:
-        file_id = uuid.uuid4().hex[:8]
+        file_id = uuid7().hex[:8]
         safe_name = filename.split("/")[-1].split("\\")[-1]
         uri = f"memory://{object_path}/{file_id}_{safe_name}"
         self._storage[uri] = bytes(content)
@@ -59,7 +59,7 @@ def test_file_uploader_flow() -> None:
     validator = FileValidator(max_size_bytes=1024)
     uploader = FileUploader(storage=storage, validator=validator)
 
-    workspace_id = uuid.uuid4()
+    workspace_id = uuid7()
     content = b"%PDF-1.4 valid test file content"
 
     result = uploader.upload(
@@ -83,7 +83,7 @@ def test_file_uploader_rejects_empty_and_oversized() -> None:
     storage = InMemoryTestStorage()
     validator = FileValidator(max_size_bytes=50)
     uploader = FileUploader(storage=storage, validator=validator)
-    workspace_id = uuid.uuid4()
+    workspace_id = uuid7()
 
     # Empty file
     with pytest.raises(EmptyFileException):

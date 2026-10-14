@@ -240,15 +240,15 @@ def test_pipeline_normalize_caption_binding():
     assert t.metadata.get("footnote") == "* Thời gian thực hiện: Q4/2024"
 
 
-def test_image_chunker_ocr_extraction():
-    """Verify ImageChunker uses ocr_fn to extract text when no caption is available."""
+def test_image_chunker_vision_extraction():
+    """Verify ImageChunker uses vision_fn to extract text and description when no caption is available."""
     called_with = []
 
-    def mock_ocr(path: str) -> str:
+    def mock_vision(path: str) -> str:
         called_with.append(path)
         return "Số hóa đơn: HD-2024-001\nTổng tiền: 5.000.000 VNĐ"
 
-    chunker = ImageChunker(ocr_fn=mock_ocr)
+    chunker = ImageChunker(vision_fn=mock_vision)
     element = LayoutElement(
         id="img_inv",
         type="image",
@@ -256,53 +256,46 @@ def test_image_chunker_ocr_extraction():
         image_data=ImageData(uri="documents/invoices/inv_01.png"),
     )
 
-    chunks = chunker.chunk([element], document_id="doc_ocr")
+    chunks = chunker.chunk([element], document_id="doc_vision")
     assert len(chunks) == 1
     c = chunks[0]
 
     assert c.kind == "figure"
     assert c.indexable is True
-    assert c.metadata["has_ocr"] is True
-    assert "Số hóa đơn: HD-2024-001" in c.metadata["ocr_text"]
-    assert "OCR: Số hóa đơn: HD-2024-001" in c.content
+    assert c.metadata["has_vision"] is True
+    assert "Số hóa đơn: HD-2024-001" in c.metadata["vision_text"]
+    assert "Số hóa đơn: HD-2024-001" in c.content
     assert called_with == ["documents/invoices/inv_01.png"]
     assert element.image_data is not None
-    assert element.image_data.ocr_text == c.metadata["ocr_text"]
+    assert element.image_data.description == c.metadata["vision_text"]
 
 
-def test_image_chunker_preserves_preexisting_ocr():
-    """Verify existing ocr_text is not overwritten and ocr_fn is not invoked unnecessarily."""
-    ocr_called = False
-
-    def mock_ocr(path: str) -> str:
-        nonlocal ocr_called
-        ocr_called = True
-        return "New OCR"
-
-    chunker = ImageChunker(ocr_fn=mock_ocr)
+def test_image_chunker_preserves_description_and_caption():
+    """Verify existing description and caption are preserved in metadata and content."""
+    chunker = ImageChunker()
     element = LayoutElement(
         id="img_pre",
         type="image",
         page_number=2,
         image_data=ImageData(
             uri="documents/figures/fig.png",
-            ocr_text="Đã có văn bản OCR trước đó",
+            caption="Sơ đồ hệ thống",
+            description="Mô tả cấu trúc microservices",
         ),
     )
 
-    chunks = chunker.chunk([element], document_id="doc_ocr_pre")
+    chunks = chunker.chunk([element], document_id="doc_img_pre")
     assert len(chunks) == 1
-    assert not ocr_called
     assert chunks[0].indexable is True
-    assert chunks[0].metadata["ocr_text"] == "Đã có văn bản OCR trước đó"
-    assert "OCR: Đã có văn bản OCR trước đó" in chunks[0].content
+    assert "Sơ đồ hệ thống" in chunks[0].content
+    assert "Mô tả cấu trúc microservices" in chunks[0].content
 
 
-def test_multimodal_chunker_pipeline_ocr_forwarding():
-    """Verify ocr_fn is forwarded from DocumentPipeline to MultimodalChunker and ImageChunker."""
-    mock_ocr = lambda path: "Bản vẽ thiết kế kỹ thuật - Tỷ lệ 1:100"
+def test_multimodal_chunker_pipeline_vision_forwarding():
+    """Verify vision_fn is forwarded from DocumentPipeline to MultimodalChunker and ImageChunker."""
+    mock_vision = lambda path: "Bản vẽ thiết kế kỹ thuật - Tỷ lệ 1:100"
 
-    pipeline = DocumentPipeline.hybrid_semantic(ocr_fn=mock_ocr)
+    pipeline = DocumentPipeline.hybrid_semantic(vision_fn=mock_vision)
     elements = [
         LayoutElement(id="h1", type="heading", text="Hồ sơ thiết kế", heading_level=1),
         LayoutElement(
@@ -314,10 +307,10 @@ def test_multimodal_chunker_pipeline_ocr_forwarding():
 
     # Normalize and chunk
     normalized = pipeline._normalize(elements)
-    chunks = pipeline.chunker.chunk(normalized, document_id="doc_pipe_ocr")
+    chunks = pipeline.chunker.chunk(normalized, document_id="doc_pipe_vision")
 
     img_chunk = next(c for c in chunks if c.kind == "figure")
     assert img_chunk.indexable is True
-    assert img_chunk.metadata.get("has_ocr") is True
-    assert "OCR: Bản vẽ thiết kế kỹ thuật - Tỷ lệ 1:100" in img_chunk.content
+    assert img_chunk.metadata.get("has_vision") is True
+    assert "Bản vẽ thiết kế kỹ thuật - Tỷ lệ 1:100" in img_chunk.content
 

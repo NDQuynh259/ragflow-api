@@ -4,6 +4,8 @@ import uuid
 
 import pytest
 
+from core.uuid7 import uuid7
+
 # Ensure domain event handlers are registered to EventBus
 import chat_api.modules.documents.application.event_handlers  # noqa: F401
 from chat_api.modules.auth.domain.entity import UserSession
@@ -264,7 +266,7 @@ class FakeQueue(IngestionQueuePort):
         self.raw_jobs = []
 
     def enqueue(self, action: str, payload: dict, job_id=None, routing_key=None) -> str:
-        jid = str(job_id or uuid.uuid4())
+        jid = str(job_id or uuid7())
         self.raw_jobs.append((action, payload, jid, routing_key))
         return jid
 

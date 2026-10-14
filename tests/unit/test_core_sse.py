@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-import uuid
 
 import pytest
+
+from core.uuid7 import uuid7, uuid7_str
 
 from core.sse import (
     SSEHub,
@@ -50,9 +51,9 @@ def test_sse_ping_message():
 
 
 def test_sse_domain_helpers():
-    ws_id = uuid.uuid4()
-    doc_id = uuid.uuid4()
-    job_id = uuid.uuid4()
+    ws_id = uuid7()
+    doc_id = uuid7()
+    job_id = uuid7()
 
     progress = document_progress_message(ws_id, doc_id, job_id, step="chunking", percent=65)
     assert progress.event == "document_progress"
@@ -66,11 +67,11 @@ def test_sse_domain_helpers():
     assert failed.event == "document_failed"
     assert failed.data["error"] == "File broken"
 
-    token = chat_token_message(ws_id, uuid.uuid4(), uuid.uuid4(), delta="Hello")
+    token = chat_token_message(ws_id, uuid7(), uuid7(), delta="Hello")
     assert token.event == "chat_token"
     assert token.data["delta"] == "Hello"
 
-    done = chat_done_message(ws_id, uuid.uuid4(), uuid.uuid4(), citations=[{"id": 1}])
+    done = chat_done_message(ws_id, uuid7(), uuid7(), citations=[{"id": 1}])
     assert done.event == "chat_done"
     assert len(done.data["citations"]) == 1
 
@@ -96,8 +97,8 @@ async def test_sse_stream_yields_message_and_ping():
 @pytest.mark.anyio
 async def test_sse_hub_pub_sub():
     hub = SSEHub(enable_rabbitmq=False)
-    ws_1 = str(uuid.uuid4())
-    ws_2 = str(uuid.uuid4())
+    ws_1 = uuid7_str()
+    ws_2 = uuid7_str()
 
     q_ws1 = hub.subscribe(ws_1)
     q_all = hub.subscribe(None)

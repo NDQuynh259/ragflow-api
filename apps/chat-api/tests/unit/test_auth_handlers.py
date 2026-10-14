@@ -4,6 +4,8 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
+from core.uuid7 import uuid7
+
 import pytest
 
 from chat_api.modules.auth.application.commands import (
@@ -62,7 +64,7 @@ def test_session_repository_only_persists_token_hash():
     repository = SqlAlchemyUserSessionRepository(database_session)
     raw_token = "raw-session-credential"
     session = UserSession(
-        user_id=uuid.uuid4(),
+        user_id=uuid7(),
         token=raw_token,
         expires_at=datetime.now(UTC) + timedelta(hours=1),
     )

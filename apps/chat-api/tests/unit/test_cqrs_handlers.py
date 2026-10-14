@@ -2,6 +2,8 @@
 
 import uuid
 
+from core.uuid7 import uuid7
+
 import pytest
 
 from chat_api.modules.chat_sessions.application.commands import (
@@ -32,7 +34,7 @@ from core.storage import ObjectStoragePort
 
 
 def test_create_and_get_session(fake_uow):
-    ws_id = uuid.uuid4()
+    ws_id = uuid7()
     fake_uow.workspaces.save(Workspace(id=ws_id, name="Test WS", slug="test-ws"))
 
     handler = CreateSessionHandler(fake_uow)
@@ -47,7 +49,7 @@ def test_create_and_get_session(fake_uow):
 
 
 def test_upload_document_and_attach(fake_uow, fake_storage, fake_queue):
-    ws_id = uuid.uuid4()
+    ws_id = uuid7()
     user = User(email="member@test.com")
     fake_uow.users.save(user)
     fake_uow.workspaces.save(
@@ -74,7 +76,7 @@ def test_upload_document_and_attach(fake_uow, fake_storage, fake_queue):
     command_bus = CommandBus(
         fake_uow,
         execution_context=ExecutionContext(
-            principal=CurrentPrincipal(user_id=user.id, session_id=uuid.uuid4())
+            principal=CurrentPrincipal(user_id=user.id, session_id=uuid7())
         ),
         dependencies={
             ObjectStoragePort: fake_storage,
@@ -104,7 +106,7 @@ def test_upload_document_and_attach(fake_uow, fake_storage, fake_queue):
 def test_member_cannot_upload_document_at_route_level(fake_uow, fake_storage, fake_queue):
     from chat_api.shared.auth import Permission, effective_permissions
 
-    workspace_id = uuid.uuid4()
+    workspace_id = uuid7()
     user = User(email="limited-member@test.com")
     fake_uow.users.save(user)
     fake_uow.workspaces.save(
@@ -124,7 +126,7 @@ def test_member_cannot_upload_document_at_route_level(fake_uow, fake_storage, fa
     # Auth is handled at Route / Principal level:
     principal = CurrentPrincipal(
         user_id=user.id,
-        session_id=uuid.uuid4(),
+        session_id=uuid7(),
         role=WorkspaceRole.MEMBER.value,
         permissions=effective_permissions(WorkspaceRole.MEMBER.value),
     )
@@ -151,14 +153,14 @@ def test_member_cannot_upload_document_at_route_level(fake_uow, fake_storage, fa
 
 
 def test_send_message_flow(fake_uow, fake_rag):
-    ws_id = uuid.uuid4()
+    ws_id = uuid7()
     fake_uow.workspaces.save(Workspace(id=ws_id, name="Test WS", slug="test-ws"))
 
     session = CreateSessionHandler(fake_uow).handle(CreateSessionCommand(workspace_id=ws_id))
 
     # Mark a document as ready
     doc = Document(
-        id=uuid.uuid4(),
+        id=uuid7(),
         workspace_id=ws_id,
         filename="manual.pdf",
         storage_uri="fake://uri",
@@ -192,8 +194,8 @@ def test_principal_permissions_and_roles():
 
     # 1. Owner has wildcard access to all permissions
     owner_principal = CurrentPrincipal(
-        user_id=uuid.uuid4(),
-        session_id=uuid.uuid4(),
+        user_id=uuid7(),
+        session_id=uuid7(),
         role="owner",
         permissions=get_permissions_for_role("owner"),
     )
@@ -205,8 +207,8 @@ def test_principal_permissions_and_roles():
 
     # 2. Member has limited permissions
     member_principal = CurrentPrincipal(
-        user_id=uuid.uuid4(),
-        session_id=uuid.uuid4(),
+        user_id=uuid7(),
+        session_id=uuid7(),
         role="member",
         permissions=get_permissions_for_role("member"),
     )
@@ -258,9 +260,9 @@ def test_index_document_handler(fake_uow, fake_storage):
     from chat_api.modules.documents.domain.value_objects import ContentHash, Filename, StorageUri
     from rag_contracts import DocumentChunk
 
-    ws_id = uuid.uuid4()
-    doc_id = uuid.uuid4()
-    job_id = uuid.uuid4()
+    ws_id = uuid7()
+    doc_id = uuid7()
+    job_id = uuid7()
     storage_uri = f"fake://{ws_id}/sop.pdf"
 
     doc = Document(

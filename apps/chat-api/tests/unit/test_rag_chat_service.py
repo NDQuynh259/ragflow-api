@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from unittest.mock import MagicMock
 
+from core.uuid7 import uuid7
 from chat_api.modules.chat_sessions.domain.entity import ChatSession
 from chat_api.modules.messages.application.mapper import MessageMapper
 from chat_api.modules.messages.application.services import RAGChatOrchestratorService
@@ -15,7 +16,7 @@ from chat_api.modules.messages.presentation.dtos import CitationResponse
 def test_rag_chat_orchestrator_preserves_citation_when_presigning_fails(caplog) -> None:
     uow = MagicMock()
     rag_engine = MagicMock()
-    document_id = uuid.uuid4()
+    document_id = uuid7()
     uow.documents.get_ready_documents_by_ids.return_value = []
     rag_engine.answer.return_value = (
         "Answer",
@@ -32,8 +33,8 @@ def test_rag_chat_orchestrator_preserves_citation_when_presigning_fails(caplog) 
     storage = MagicMock()
     storage.presigned_get_url.side_effect = RuntimeError("storage unavailable")
     session = ChatSession(
-        id=uuid.uuid4(),
-        workspace_id=uuid.uuid4(),
+        id=uuid7(),
+        workspace_id=uuid7(),
         title="Test Session",
         rag_config={},
     )
@@ -49,15 +50,15 @@ def test_rag_chat_orchestrator_preserves_citation_when_presigning_fails(caplog) 
 
 def test_message_add_citation_accepts_image_url() -> None:
     message = Message(
-        id=uuid.uuid4(),
-        session_id=uuid.uuid4(),
+        id=uuid7(),
+        session_id=uuid7(),
         role=MessageRole.ASSISTANT,
         content="Answer",
     )
 
     citation = message.add_citation(
         chunk_id="image-chunk",
-        document_id=uuid.uuid4(),
+        document_id=uuid7(),
         page_number=1,
         image_url="https://signed.example/image.png",
     )
@@ -69,13 +70,13 @@ def test_rag_chat_orchestrator_service_flow() -> None:
     uow = MagicMock()
     rag_engine = MagicMock()
 
-    doc_id = uuid.uuid4()
+    doc_id = uuid7()
     mock_doc = MagicMock(id=doc_id)
     uow.documents.get_ready_documents_by_ids.return_value = [mock_doc]
 
     session = ChatSession(
-        id=uuid.uuid4(),
-        workspace_id=uuid.uuid4(),
+        id=uuid7(),
+        workspace_id=uuid7(),
         title="Test Session",
         rag_config={"top_k": 3},
         attached_document_ids=[doc_id],

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import uuid
 from unittest.mock import MagicMock, patch
+
+from core.uuid7 import uuid7, uuid7_str
 
 from worker.dependencies import get_worker_command_bus
 from worker.dispatcher import build_dispatcher
@@ -21,9 +22,9 @@ def test_build_dispatcher_registers_expected_actions() -> None:
 
 
 def test_process_index_document_dispatches_via_command_bus() -> None:
-    job_id = str(uuid.uuid4())
-    doc_id = str(uuid.uuid4())
-    ws_id = str(uuid.uuid4())
+    job_id = uuid7_str()
+    doc_id = uuid7_str()
+    ws_id = uuid7_str()
     uri = "storage://documents/sample.pdf"
 
     mock_bus = MagicMock()
@@ -59,9 +60,9 @@ def test_get_worker_command_bus_execution(
     bus = get_worker_command_bus()
 
     cmd = IndexDocumentCommand(
-        job_id=uuid.uuid4(),
-        document_id=uuid.uuid4(),
-        workspace_id=uuid.uuid4(),
+        job_id=uuid7(),
+        document_id=uuid7(),
+        workspace_id=uuid7(),
         storage_uri="uri",
     )
 

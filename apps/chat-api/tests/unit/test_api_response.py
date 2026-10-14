@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 
+from core.uuid7 import uuid7
 from chat_api.modules.chat_sessions.presentation.dtos import SessionApiResponse, SessionResponse
 from chat_api.shared import (
     ApiResponse,
@@ -47,8 +48,8 @@ def test_response_api_aliases():
 
 
 def test_generic_type_wrapping():
-    session_id = uuid.uuid4()
-    ws_id = uuid.uuid4()
+    session_id = uuid7()
+    ws_id = uuid7()
     session = SessionResponse(
         id=session_id,
         workspace_id=ws_id,

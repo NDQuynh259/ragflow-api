@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-import uuid
 
 import pytest
+
+from core.uuid7 import uuid7
 
 from core.queue.constants import Actions
 from core.queue.consumer import JobDispatcher
@@ -41,8 +42,8 @@ def test_job_envelope_serialization():
 
 
 def test_document_job_payload():
-    doc_id = uuid.uuid4()
-    ws_id = uuid.uuid4()
+    doc_id = uuid7()
+    ws_id = uuid7()
     payload = DocumentJobPayload.create(
         document_id=doc_id,
         storage_uri="output/file.pdf",
@@ -68,9 +69,9 @@ def test_in_memory_queue_adapter():
     assert index_jobs[0].job_id == job1
 
     # Enqueue ingestion
-    doc_id = uuid.uuid4()
-    ws_id = uuid.uuid4()
-    job3 = uuid.uuid4()
+    doc_id = uuid7()
+    ws_id = uuid7()
+    job3 = uuid7()
     adapter.enqueue_ingestion(
         document_id=doc_id,
         job_id=job3,
@@ -97,9 +98,9 @@ def test_ingestion_queue_port_backward_compatibility():
     assert isinstance(fake, JobQueuePort)
 
     # Calling enqueue_ingestion works
-    d_id = uuid.uuid4()
-    j_id = uuid.uuid4()
-    w_id = uuid.uuid4()
+    d_id = uuid7()
+    j_id = uuid7()
+    w_id = uuid7()
     fake.enqueue_ingestion(d_id, j_id, "uri", w_id)
     assert len(fake.records) == 1
 

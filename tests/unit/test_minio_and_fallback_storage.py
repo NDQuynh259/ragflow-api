@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-import uuid
 from datetime import timedelta
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
+
+from core.uuid7 import uuid7
 
 from core.config import CoreSettings
 from core.exceptions import FileNotFoundStorageException, StorageException
@@ -82,7 +83,7 @@ def test_minio_storage_adapter_save_and_ensure_bucket() -> None:
         client=mock_client,
     )
 
-    workspace_id = uuid.uuid4()
+    workspace_id = uuid7()
     content = b"PDF dummy content"
     uri = adapter.save("report.pdf", content, f"workspaces/{workspace_id}/report.pdf")
 
@@ -219,7 +220,7 @@ def test_fallback_storage_success_primary() -> None:
     secondary = InMemoryMockStorage()
     fallback = FallbackStorageAdapter(primary=primary, secondary=secondary)
 
-    workspace_id = uuid.uuid4()
+    workspace_id = uuid7()
     content = b"Content via primary"
 
     uri = fallback.save("file.txt", content, f"workspaces/{workspace_id}/file.txt")
@@ -236,7 +237,7 @@ def test_fallback_storage_fails_over_to_secondary() -> None:
     secondary = InMemoryMockStorage()
     fallback = FallbackStorageAdapter(primary=broken_primary, secondary=secondary)
 
-    workspace_id = uuid.uuid4()
+    workspace_id = uuid7()
     content = b"Content saved to local fallback"
 
     uri = fallback.save("fallback_doc.pdf", content, f"workspaces/{workspace_id}/fallback_doc.pdf")

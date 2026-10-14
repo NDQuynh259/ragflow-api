@@ -44,7 +44,6 @@ class DocumentPipeline:
         *,
         chunk_size: int = 1200,
         embed_fn: Any = None,
-        ocr_fn: Any = None,
         vision_fn: Any = None,
         triage_enabled: bool = True,
     ) -> None:
@@ -63,7 +62,6 @@ class DocumentPipeline:
             # The multimodal reading-order router is always used.
             self.chunker = MultimodalChunker(
                 embed_fn=embed_fn,
-                ocr_fn=ocr_fn,
                 vision_fn=vision_fn,
                 triage_enabled=triage_enabled,
                 min_chunk_size=min(300, chunk_size // 4),
@@ -77,7 +75,6 @@ class DocumentPipeline:
         *,
         parser: Parser | None = None,
         embed_fn: Any = None,
-        ocr_fn: Any = None,
         vision_fn: Any = None,
         triage_enabled: bool = True,
         min_chunk_size: int = 300,
@@ -95,10 +92,11 @@ class DocumentPipeline:
            - Tách câu tiếng Việt chuẩn hóa (bảo vệ viết tắt, số thập phân).
            - Đo khoảng cách ngữ nghĩa qua Sliding Window Buffer.
            - Cắt ranh giới chunk mới tại điểm nhảy vọt chủ đề (threshold_percentile).
+        3. Xử lý đa phương tiện:
+           - Sử dụng duy nhất `vision_fn` (VLM) cho toàn bộ hình ảnh hợp lệ.
         """
         chunker = MultimodalChunker(
             embed_fn=embed_fn,
-            ocr_fn=ocr_fn,
             vision_fn=vision_fn,
             triage_enabled=triage_enabled,
             min_chunk_size=min_chunk_size,
@@ -204,9 +202,9 @@ class DocumentPipeline:
 
             # Unique ID
             if chunk.id in seen_ids:
-                import uuid
+                from core.uuid7 import uuid7_str
 
-                chunk.id = str(uuid.uuid4())
+                chunk.id = uuid7_str()
             seen_ids.add(chunk.id)
 
             # Page bounds

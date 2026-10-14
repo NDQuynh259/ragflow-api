@@ -103,9 +103,9 @@ flowchart TD
 Để khắc phục hiện tượng trên, hệ thống hiện tại trong repository áp dụng thuộc tính **`section_path`** xuyên suốt từ lớp Pipeline đến lớp Cơ sở dữ liệu:
 
 ```python
-# packages/rag-document-pipeline/src/rag_document_pipeline/chunking/table.py
+# packages/rag-document-pipeline/src/rag_document_pipeline/chunking/strategies/table.py
 return DocumentChunk(
-    id=str(uuid.uuid4()),
+    id=uuid7_str(),
     document_id=document_id,
     content=content,
     index=0,

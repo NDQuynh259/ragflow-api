@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 
+from core.uuid7 import uuid7
 import pytest
 from fastapi.testclient import TestClient
 
@@ -24,9 +25,9 @@ from core.cqrs import CommandBus, QueryBus
 
 @pytest.fixture
 def auth_client(fake_uow):
-    user = User(id=uuid.uuid4(), email="member@example.com", full_name="Workspace Member")
+    user = User(id=uuid7(), email="member@example.com", full_name="Workspace Member")
     session = UserSession(
-        id=uuid.uuid4(),
+        id=uuid7(),
         user_id=user.id,
         token="valid-token",
         expires_at=datetime.now(UTC) + timedelta(hours=1),

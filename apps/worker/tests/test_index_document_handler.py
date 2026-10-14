@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
-import uuid
 from unittest.mock import MagicMock
 
 import pytest
 from worker.handlers.index_document import IndexDocumentCommand, IndexDocumentHandler
 
 from core.exceptions import AccountSuspendedException
+from core.uuid7 import uuid7
 
 
 def test_index_document_handler_success() -> None:
-    job_id = uuid.uuid4()
-    doc_id = uuid.uuid4()
-    ws_id = uuid.uuid4()
-    user_id = uuid.uuid4()
+    job_id = uuid7()
+    doc_id = uuid7()
+    ws_id = uuid7()
+    user_id = uuid7()
     storage_uri = "storage://documents/sample.pdf"
 
     # Mock UnitOfWork and Session
@@ -94,10 +94,10 @@ def test_index_document_handler_success() -> None:
 
 
 def test_index_document_handler_aborts_when_user_suspended() -> None:
-    job_id = uuid.uuid4()
-    doc_id = uuid.uuid4()
-    ws_id = uuid.uuid4()
-    user_id = uuid.uuid4()
+    job_id = uuid7()
+    doc_id = uuid7()
+    ws_id = uuid7()
+    user_id = uuid7()
 
     uow = MagicMock()
     session = MagicMock()
@@ -150,9 +150,9 @@ def test_index_document_handler_aborts_when_user_suspended() -> None:
 
 
 def test_index_document_handler_skips_when_already_running() -> None:
-    job_id = uuid.uuid4()
-    doc_id = uuid.uuid4()
-    ws_id = uuid.uuid4()
+    job_id = uuid7()
+    doc_id = uuid7()
+    ws_id = uuid7()
 
     uow = MagicMock()
     session = MagicMock()

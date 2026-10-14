@@ -56,17 +56,9 @@ flowchart TD
         H --> I{"1. Image Triage<br/>(Size & Aspect Ratio)?"}
         I -- "Width < 100px OR Height < 100px<br/>OR Aspect Ratio > 10.0" --> J["Decorative Image<br/>- indexable = False<br/>- triage_skipped = True"]
         
-        I -- "Ảnh hợp lệ" --> K{"2. Kiểm tra Caption / Preexisting OCR?"}
-        K -- "Đã có đủ text" --> L["Giữ nguyên văn bản"]
-        
-        K -- "Chưa có text" --> M{"3. Phân biệt Heuristic<br/>Biểu đồ vs Scan văn bản?"}
-        M -- "Scan văn bản / Hóa đơn<br/>(Size trung bình hoặc nhiều text)" --> N["DualOCRRouter: Fast OCR<br/>TesseractOCR (eng+vie)"]
-        N -->|Thành công > 20 chars| Q["Text-Proxy (OCR Output)"]
-        N -->|Thất bại / Thiếu ký tự| O["Fallback: GeminiOCR"]
-        O --> Q
-        
-        M -- "Biểu đồ / Sơ đồ phức tạp<br/>(Size >= 400px & OCR <= 80 chars)" --> P["GeminiVisionAnalyzer<br/>(Structured VISION_ANALYSIS_PROMPT)"]
-        P --> Q
+        I -- "Ảnh hợp lệ" --> K["2. Bảo toàn Preexisting OCR/Caption<br/>(Từ Parser nếu có)"]
+        K --> L["3. Vision AI Model (vision_fn)<br/>- Đọc text, bảng số liệu, biểu đồ<br/>- Structured VISION_ANALYSIS_PROMPT"]
+        L --> Q["Text-Proxy (Vision Output + Caption + Footnote)"]
     end
     
     Q --> R["Đóng gói DocumentChunk<br/>- kind = 'figure'<br/>- indexable = True<br/>- image_uri & bboxes<br/>- section_path breadcrumb"]
@@ -186,17 +178,22 @@ Nếu chỉ yêu cầu mô hình Vision *"hãy mô tả biểu đồ này"*, mô
 Lớp [`GeminiVisionAnalyzer`](file:///c:/Users/ndquynh/Documents/RAG/packages/rag-core/src/rag_core/providers/ocr/vision.py) áp dụng quy tắc ép khuôn đầu ra nghiêm ngặt qua `VISION_ANALYSIS_PROMPT`:
 
 ```text
+Phân tích hình ảnh này cho hệ thống RAG doanh nghiệp bằng tiếng Việt.
+BẮT BUỘC trả về chính xác theo cấu trúc định dạng dưới đây, không thêm lời chào mở đầu hay kết thúc:
+
 [IMAGE_ANALYSIS]
-Phân tích biểu đồ hoặc sơ đồ trong hình ảnh. Chỉ trả về các mục sau bằng tiếng Việt:
+Loại hình: [Sơ đồ quy trình / Biểu đồ cột / Biểu đồ tròn / Bản vẽ kỹ thuật / Tài liệu scan / Ảnh chụp minh họa / Khác]
+Tiêu đề & Chủ đề: [Tiêu đề hoặc chủ đề chính của ảnh, nếu không có ghi 'Không rõ']
+Thông điệp chính: [Tóm tắt 1-2 câu về ý nghĩa, mục đích hoặc xu hướng chính của hình ảnh]
+Dữ liệu chi tiết & Nội dung:
+- [Liệt kê chi tiết từng nhánh, từng bước trong quy trình, hoặc từng số liệu định lượng]
+- [Đảm bảo trích xuất đầy đủ các mối quan hệ, luồng xử lý]
+Văn bản nhìn thấy:
+- [Trích xuất chính xác 100% tất cả các từ ngữ, câu chữ tiếng Việt và tiếng Anh đọc được trong ảnh, hoặc Không rõ]
 
-Loại hình: [biểu đồ cột, biểu đồ tròn, sơ đồ quy trình, sơ đồ tổ chức, hoặc loại phù hợp]
-Tiêu đề: [tiêu đề, nhãn trục hoặc Không rõ]
-Thông điệp chính: [xu hướng hoặc ý nghĩa chính, hoặc Không rõ]
-Dữ liệu chi tiết:
-- [liệt kê từng điểm dữ liệu nhìn thấy, kèm số liệu nếu có]
-Văn bản nhìn thấy (OCR): [tất cả nhãn và văn bản đọc được, hoặc Không rõ]
-
-Nếu dữ liệu không rõ, ghi "Không rõ". Do NOT invent numbers. Chỉ mô tả thông tin thực sự nhìn thấy trong hình ảnh.
+Quy tắc nghiêm ngặt:
+1. Không tự suy diễn hay bịa đặt số liệu (Zero Hallucination - Do NOT invent numbers). Nếu không rõ, ghi 'Không rõ'.
+2. Chỉ mô tả những thông tin thực sự nhìn thấy trên ảnh.
 ```
 
 #### Quy tắc Heuristic kích hoạt Vision Analysis trong `ImageChunker`:

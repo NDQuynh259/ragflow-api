@@ -1979,6 +1979,7 @@ name = "rag-document-pipeline"
 version = "0.1.0"
 source = { editable = "packages/rag-document-pipeline" }
 dependencies = [
+    { name = "core" },
     { name = "opendataloader-pdf" },
     { name = "pillow" },
     { name = "pydantic" },
@@ -1987,6 +1988,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "core", editable = "core" },
     { name = "opendataloader-pdf", specifier = ">=2.0.0" },
     { name = "pillow", specifier = ">=10.0" },
     { name = "pydantic", specifier = ">=2.8" },

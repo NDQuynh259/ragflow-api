@@ -51,12 +51,10 @@ def get_document_pipeline() -> DocumentPipeline:
                 exc,
             )
 
-        ocr_fn = _get_ocr_fn()
         vision_fn = _get_vision_analyzer_fn()
 
         return DocumentPipeline.hybrid_semantic(
             embed_fn=embed_fn,
-            ocr_fn=ocr_fn,
             vision_fn=vision_fn,
             min_chunk_size=getattr(settings, "CHUNK_MIN_SIZE", 300),
             max_chunk_size=getattr(settings, "CHUNK_MAX_SIZE", 1500),
@@ -65,7 +63,6 @@ def get_document_pipeline() -> DocumentPipeline:
 
     return DocumentPipeline(
         chunk_size=getattr(settings, "CHUNK_MAX_SIZE", 1200),
-        ocr_fn=_get_ocr_fn(),
         vision_fn=_get_vision_analyzer_fn(),
     )
 
@@ -100,7 +97,7 @@ def _get_vision_analyzer_fn():
     if not getattr(settings, "VISION_ANALYSIS_ENABLED", True):
         return None
     try:
-        return GeminiVisionAnalyzer(model=getattr(settings, "VISION_MODEL", "gemini-2.0-flash"))
+        return GeminiVisionAnalyzer(model=getattr(settings, "VISION_MODEL", "gemini-3.5-flash"))
     except Exception as exc:
         logger.warning("Vision analysis unavailable: %s", exc)
         return None

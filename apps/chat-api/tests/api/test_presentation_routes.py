@@ -3,6 +3,8 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
+from core.uuid7 import uuid7
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -18,7 +20,7 @@ from core.cqrs import CommandBus, QueryBus
 from core.security import CurrentPrincipal, ExecutionContext
 
 TEST_USER = User(email="api-user@test.com")
-TEST_SESSION_ID = uuid.uuid4()
+TEST_SESSION_ID = uuid7()
 
 
 def workspace_for_current_user(workspace_id: uuid.UUID, name: str, slug: str) -> Workspace:
@@ -36,7 +38,7 @@ def workspace_for_current_user(workspace_id: uuid.UUID, name: str, slug: str) ->
     )
 
 
-DEFAULT_WS_ID = uuid.uuid4()
+DEFAULT_WS_ID = uuid7()
 
 
 @pytest.fixture
@@ -180,7 +182,7 @@ def test_send_message_api(client):
 
 def test_workspace_routes_reject_non_member(client):
     tc, uow = client
-    workspace_id = uuid.uuid4()
+    workspace_id = uuid7()
     uow.workspaces.save(Workspace(id=workspace_id, name="Private", slug="private"))
     tc.set_active_workspace(workspace_id, role="guest")
 
@@ -195,7 +197,7 @@ def test_workspace_routes_reject_non_member(client):
 def test_route_guard_denies_member_lacking_permission(client):
     """Member role lacks DOCUMENT_DELETE permission; Route Guard returns 403 Forbidden."""
     tc, uow = client
-    ws_id = uuid.uuid4()
+    ws_id = uuid7()
     uow.workspaces.save(
         Workspace(
             id=ws_id,
@@ -213,7 +215,7 @@ def test_route_guard_denies_member_lacking_permission(client):
 
     from chat_api.modules.documents.domain.entity import Document, DocumentStatus
 
-    doc_id = uuid.uuid4()
+    doc_id = uuid7()
     uow.documents.save(
         Document(
             id=doc_id,
@@ -239,7 +241,7 @@ def test_documents_api_uses_active_workspace(client):
 
     from chat_api.modules.documents.domain.entity import Document, DocumentStatus
 
-    doc_id = uuid.uuid4()
+    doc_id = uuid7()
     uow.documents.save(
         Document(
             id=doc_id,

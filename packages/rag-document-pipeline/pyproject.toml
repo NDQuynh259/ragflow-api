@@ -4,6 +4,7 @@ version = "0.1.0"
 dependencies = [
     "pydantic>=2.8",
     "rag-contracts",
+    "core",
     "opendataloader-pdf>=2.0.0",
     "pillow>=10.0",
 ]
@@ -11,6 +12,7 @@ requires-python = ">=3.11"
 
 [tool.uv.sources]
 rag-contracts = { workspace = true }
+core = { workspace = true }
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
@@ -23,5 +25,6 @@ venvPath = "../.."
 venv = ".venv"
 extraPaths = [
     "../rag-contracts/src",
+    "../../core/src",
 ]
 

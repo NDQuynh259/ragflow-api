@@ -47,9 +47,8 @@ def test_image_triage_skips_extreme_aspect_ratio_dividers() -> None:
     assert chunk.metadata["triage_skip_reason"] == "extreme_aspect_ratio"
 
 
-def test_image_triage_triggers_vision_for_large_chart_with_little_ocr() -> None:
-    """A chart (>=400px) with little text (<80 chars) must invoke vision_fn and retain structured output."""
-    mock_ocr = Mock(return_value="Q1 Q2 Q3")
+def test_image_triage_triggers_vision_for_chart() -> None:
+    """A chart passing triage invokes vision_fn and retains structured output."""
     mock_vision = Mock(
         return_value=(
             "[IMAGE_ANALYSIS]\n"
@@ -62,18 +61,16 @@ def test_image_triage_triggers_vision_for_large_chart_with_little_ocr() -> None:
         )
     )
 
-    chunker = ImageChunker(
-        ocr_fn=mock_ocr,
-        vision_fn=mock_vision,
-        vision_min_size=400,
-        vision_max_text=80,
-    )
+    chunker = ImageChunker(vision_fn=mock_vision)
 
     element = LayoutElement(
         id="chart_1",
         type="figure",
         page_number=3,
-        image_data=ImageData(uri="charts/revenue.png", caption="Biểu đồ doanh thu 2024"),
+        image_data=ImageData(
+            uri="charts/revenue.png",
+            caption="Biểu đồ doanh thu 2024",
+        ),
         metadata={"width": 800, "height": 600},
     )
 
@@ -84,18 +81,14 @@ def test_image_triage_triggers_vision_for_large_chart_with_little_ocr() -> None:
     assert chunk.indexable is True
     assert chunk.metadata.get("has_vision") is True
     assert chunk.metadata.get("has_vision_analysis") is True
-    assert chunk.metadata.get("has_ocr") is True
-    assert chunk.metadata.get("ocr_text") == "Q1 Q2 Q3"
     assert "Biểu đồ doanh thu 2024" in chunk.content
     assert "[IMAGE_ANALYSIS]" in chunk.content
-    assert "OCR: [IMAGE_ANALYSIS]" not in chunk.content  # Structured analysis is not mangled with OCR prefix
-    mock_ocr.assert_called_once_with("charts/revenue.png")
     mock_vision.assert_called_once_with("charts/revenue.png")
 
 
-def test_image_chunker_uses_ocr_for_text_heavy_document() -> None:
-    """A scanned document with substantial OCR text must not trigger vision_fn."""
-    mock_ocr = Mock(
+def test_image_chunker_uses_vision_for_scanned_documents() -> None:
+    """ImageChunker relies strictly on vision_fn for scanned documents."""
+    mock_vision = Mock(
         return_value=(
             "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\n"
             "Độc lập - Tự do - Hạnh phúc\n"
@@ -103,14 +96,8 @@ def test_image_chunker_uses_ocr_for_text_heavy_document() -> None:
             "Căn cứ Bộ luật Dân sự năm 2015 và nhu cầu của hai bên..."
         )
     )
-    mock_vision = Mock()
 
-    chunker = ImageChunker(
-        ocr_fn=mock_ocr,
-        vision_fn=mock_vision,
-        vision_min_size=400,
-        vision_max_text=80,
-    )
+    chunker = ImageChunker(vision_fn=mock_vision)
 
     element = LayoutElement(
         id="scan_1",
@@ -125,8 +112,73 @@ def test_image_chunker_uses_ocr_for_text_heavy_document() -> None:
     chunk = chunks[0]
 
     assert chunk.indexable is True
-    assert chunk.metadata.get("has_ocr") is True
-    assert chunk.metadata.get("has_vision") is not True
-    assert "OCR: CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM" in chunk.content
-    mock_ocr.assert_called_once_with("scans/contract.png")
-    mock_vision.assert_not_called()
+    assert chunk.metadata.get("has_vision") is True
+    assert "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM" in chunk.content
+    mock_vision.assert_called_once_with("scans/contract.png")
+
+
+def test_image_chunker_maps_structured_json_vision_output() -> None:
+    """ImageChunker parses standardized JSON dict from vision_fn into chunk metadata & content."""
+    mock_json_result = {
+        "image_type": "Biểu đồ cột",
+        "title": "Doanh thu và Lợi nhuận",
+        "main_message": "Doanh thu và lợi nhuận tăng trưởng mạnh qua các quý năm 2020.",
+        "detailed_data": [
+            "Quý 3/2020: Lợi nhuận gộp 638.29, Doanh thu thuần 1,315.90",
+        ],
+        "visible_text": [
+            "Doanh thu và Lợi nhuận",
+            "Quý 3/2020",
+        ],
+        "confidence": "high",
+        "formatted_text": (
+            "[IMAGE_ANALYSIS]\n"
+            "Loại hình: Biểu đồ cột\n"
+            "Tiêu đề & Chủ đề: Doanh thu và Lợi nhuận\n"
+            "Thông điệp chính: Doanh thu và lợi nhuận tăng trưởng mạnh qua các quý năm 2020.\n"
+            "Độ tin cậy: Cao\n"
+            "Dữ liệu chi tiết & Nội dung:\n"
+            "- Quý 3/2020: Lợi nhuận gộp 638.29, Doanh thu thuần 1,315.90"
+        ),
+    }
+
+    mock_vision = Mock(return_value=mock_json_result)
+    chunker = ImageChunker(vision_fn=mock_vision)
+
+    element = LayoutElement(
+        id="chart_pdr",
+        type="figure",
+        page_number=2,
+        caption="Biểu đồ PDR",
+        image_data=ImageData(uri="images/pdr.png"),
+        metadata={"width": 800, "height": 600},
+    )
+
+    chunks = chunker.chunk([element], document_id="doc_pdr", workspace_id="ws_1")
+    assert len(chunks) == 1
+    chunk = chunks[0]
+
+    # Kiểm tra metadata cấp 1 đã được bóc tách từ JSON
+    assert chunk.metadata["has_vision"] is True
+    assert chunk.metadata["has_vision_analysis"] is True
+    assert chunk.metadata["image_type"] == "Biểu đồ cột"
+    assert chunk.metadata["figure_title"] == "Doanh thu và Lợi nhuận"
+    assert chunk.metadata["main_message"] == "Doanh thu và lợi nhuận tăng trưởng mạnh qua các quý năm 2020."
+    assert chunk.metadata["confidence"] == "high"
+    assert chunk.metadata["detailed_data"] == ["Quý 3/2020: Lợi nhuận gộp 638.29, Doanh thu thuần 1,315.90"]
+    assert chunk.metadata["visible_text"] == ["Doanh thu và Lợi nhuận", "Quý 3/2020"]
+    assert chunk.metadata["vision_structured"] == mock_json_result
+
+    # Kiểm tra content text proxy
+    assert "[IMAGE]" in chunk.content
+    assert "Biểu đồ PDR" in chunk.content
+    assert "[IMAGE_ANALYSIS]" in chunk.content
+    assert "Doanh thu và Lợi nhuận" in chunk.content
+
+    # Kiểm tra ImageData.description được gán thông điệp chính súc tích
+    assert element.image_data.description == "Doanh thu và lợi nhuận tăng trưởng mạnh qua các quý năm 2020."
+
+    # Kiểm tra chunk.id tuân thủ chuẩn RFC 9562 UUIDv7
+    import uuid
+    assert uuid.UUID(chunk.id).version == 7
+

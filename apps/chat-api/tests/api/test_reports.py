@@ -5,6 +5,8 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 
+from core.uuid7 import uuid7
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -88,10 +90,10 @@ class MockReportService:
 
 @pytest.fixture
 def auth_client_with_reports(fake_uow):
-    ws_id = uuid.uuid4()
-    user = User(id=uuid.uuid4(), email="admin@example.com", full_name="Workspace Admin")
+    ws_id = uuid7()
+    user = User(id=uuid7(), email="admin@example.com", full_name="Workspace Admin")
     session = UserSession(
-        id=uuid.uuid4(),
+        id=uuid7(),
         user_id=user.id,
         token="valid-token",
         expires_at=datetime.now(UTC) + timedelta(hours=1),

@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from unittest.mock import MagicMock
 
+from core.uuid7 import uuid7
 from chat_api.modules.users.domain.entity import User
 from chat_api.modules.workspaces.application import WorkspaceProvisioningService
 from chat_api.modules.workspaces.domain.entity import WorkspaceRole
@@ -13,7 +14,7 @@ from chat_api.modules.workspaces.domain.entity import WorkspaceRole
 def test_create_default_workspace_with_fullname() -> None:
     uow = MagicMock()
     user = User(
-        id=uuid.uuid4(),
+        id=uuid7(),
         email="john.doe@example.com",
         full_name="John Doe",
         hashed_password="hash",
@@ -33,7 +34,7 @@ def test_create_default_workspace_with_fullname() -> None:
 def test_create_default_workspace_without_fullname_uses_email_prefix() -> None:
     uow = MagicMock()
     user = User(
-        id=uuid.uuid4(),
+        id=uuid7(),
         email="alice@company.org",
         full_name=None,
         hashed_password="hash",

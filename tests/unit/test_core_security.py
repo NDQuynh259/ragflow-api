@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import uuid
-
 import pytest
+
+from core.uuid7 import uuid7
 
 from core.exceptions import ForbiddenException
 from core.security import (
@@ -40,8 +40,8 @@ def test_token_generation_and_hashing():
 
 
 def test_current_principal_permissions():
-    user_id = uuid.uuid4()
-    session_id = uuid.uuid4()
+    user_id = uuid7()
+    session_id = uuid7()
 
     # Member principal
     member = CurrentPrincipal(
@@ -71,8 +71,8 @@ def test_current_principal_permissions():
 
 def test_current_principal_owner_bypass():
     owner = CurrentPrincipal(
-        user_id=uuid.uuid4(),
-        session_id=uuid.uuid4(),
+        user_id=uuid7(),
+        session_id=uuid7(),
         role="owner",
         permissions=frozenset(),
     )
@@ -90,8 +90,8 @@ def test_current_principal_owner_bypass():
 
 def test_execution_context():
     principal = CurrentPrincipal(
-        user_id=uuid.uuid4(),
-        session_id=uuid.uuid4(),
+        user_id=uuid7(),
+        session_id=uuid7(),
     )
     ctx = ExecutionContext(principal=principal, request_id="req-12345")
     assert ctx.principal == principal

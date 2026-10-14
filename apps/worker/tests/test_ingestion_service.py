@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import uuid
 from unittest.mock import MagicMock
 
+from core.uuid7 import uuid7
 from worker.services.ingestion import DocumentIngestionService
 
 
@@ -13,8 +13,8 @@ def test_document_ingestion_service_execute_pipeline() -> None:
     pipeline = MagicMock()
     engine = MagicMock()
 
-    doc_id = uuid.uuid4()
-    ws_id = uuid.uuid4()
+    doc_id = uuid7()
+    ws_id = uuid7()
     storage_uri = "storage://test.pdf"
 
     storage.get.return_value = b"%PDF dummy content"
