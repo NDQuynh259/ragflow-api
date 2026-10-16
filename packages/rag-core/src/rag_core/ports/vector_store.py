@@ -40,8 +40,17 @@ class VectorStore(Protocol):
         """
         ...
 
-    def delete_by_document(self, document_id: str, *, workspace_id: str | None = None) -> int:
+    def get_by_ids(
+        self,
+        chunk_ids: list[str],
+        *,
+        workspace_id: str,
+        document_id: str,
+    ) -> list[SearchResult]:
+        """Return indexable chunks by ID within the required tenant/document scope."""
+        ...
 
+    def delete_by_document(self, document_id: str, *, workspace_id: str | None = None) -> int:
         """Delete all chunks belonging to a document. Returns deleted count."""
         ...
 

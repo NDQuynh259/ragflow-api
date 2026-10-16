@@ -6,8 +6,6 @@ import asyncio
 
 import pytest
 
-from core.uuid7 import uuid7, uuid7_str
-
 from core.sse import (
     SSEHub,
     SSEMessage,
@@ -20,6 +18,7 @@ from core.sse import (
     ping_message,
     sse_event_stream,
 )
+from core.uuid7 import uuid7, uuid7_str
 
 
 def test_sse_message_encoding_basic():

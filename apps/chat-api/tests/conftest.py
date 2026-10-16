@@ -4,8 +4,6 @@ import uuid
 
 import pytest
 
-from core.uuid7 import uuid7
-
 # Ensure domain event handlers are registered to EventBus
 import chat_api.modules.documents.application.event_handlers  # noqa: F401
 from chat_api.modules.auth.domain.entity import UserSession
@@ -25,6 +23,7 @@ from chat_api.shared.infrastructure.database import UnitOfWork
 from chat_api.shared.infrastructure.rag import RAGEnginePort
 from core.queue import IngestionQueuePort
 from core.storage import ObjectStoragePort
+from core.uuid7 import uuid7
 
 
 class InMemoryWorkspaceRepo(WorkspaceRepository):

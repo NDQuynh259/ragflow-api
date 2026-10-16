@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from core.uuid7 import uuid7
 from worker.services.ingestion import DocumentIngestionService
+
+from core.uuid7 import uuid7
 
 
 def test_document_ingestion_service_execute_pipeline() -> None:

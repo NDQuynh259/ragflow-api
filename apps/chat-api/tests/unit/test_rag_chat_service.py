@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import uuid
 from unittest.mock import MagicMock
 
-from core.uuid7 import uuid7
 from chat_api.modules.chat_sessions.domain.entity import ChatSession
 from chat_api.modules.messages.application.mapper import MessageMapper
 from chat_api.modules.messages.application.services import RAGChatOrchestratorService
 from chat_api.modules.messages.domain.entity import Message, MessageRole
 from chat_api.modules.messages.presentation.dtos import CitationResponse
+from core.uuid7 import uuid7
 
 
 def test_rag_chat_orchestrator_preserves_citation_when_presigning_fails(caplog) -> None:

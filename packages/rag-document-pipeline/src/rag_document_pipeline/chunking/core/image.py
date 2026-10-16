@@ -8,14 +8,12 @@ Mô-đun này chứa toàn bộ các tiện ích xử lý lõi (Core Processing)
 
 from __future__ import annotations
 
-import json
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
 from core.uuid7 import uuid7_str
-
 from rag_document_pipeline.models import DocumentChunk, ImageData, LayoutElement
 
 from .constants import (

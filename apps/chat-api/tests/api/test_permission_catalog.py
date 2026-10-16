@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import uuid
 from datetime import UTC, datetime, timedelta
 
-from core.uuid7 import uuid7
 import pytest
 from fastapi.testclient import TestClient
 
@@ -21,6 +19,7 @@ from chat_api.shared.auth import (
 )
 from chat_api.shared.infrastructure.database import get_uow
 from core.cqrs import CommandBus, QueryBus
+from core.uuid7 import uuid7
 
 
 @pytest.fixture

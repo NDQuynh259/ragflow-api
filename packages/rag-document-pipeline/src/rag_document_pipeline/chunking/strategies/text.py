@@ -23,7 +23,6 @@ from collections.abc import Callable
 from typing import Any
 
 from core.uuid7 import uuid7_str
-
 from rag_document_pipeline.models import DocumentChunk, LayoutElement
 
 from ..core import (

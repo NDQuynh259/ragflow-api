@@ -17,14 +17,14 @@ def test_semantic_text_chunker_basic():
             id="e2",
             type="paragraph",
             text="Nhân viên được nghỉ phép năm 12 ngày hưởng nguyên lương theo luật lao động. "
-                 "Trường hợp thâm niên trên 5 năm sẽ được cộng thêm 1 ngày phép hàng năm.",
+            "Trường hợp thâm niên trên 5 năm sẽ được cộng thêm 1 ngày phép hàng năm.",
             page_number=1,
         ),
         LayoutElement(
             id="e3",
             type="paragraph",
             text="Mọi thiết bị laptop công ty cấp phải cài đặt phần mềm diệt virus trước khi kết nối mạng. "
-                 "Nghiêm cấm cắm USB không rõ nguồn gốc vào máy tính văn phòng.",
+            "Nghiêm cấm cắm USB không rõ nguồn gốc vào máy tính văn phòng.",
             page_number=1,
         ),
     ]
@@ -69,10 +69,10 @@ def test_multimodal_hybrid_semantic():
     ]
 
     chunks = hybrid_chunker.chunk(elements, document_id="doc_456")
-    assert any(c.kind == "text" for c in chunks)
-    table_chunk = next(c for c in chunks if c.kind == "table")
-    assert "| Cấp bậc | Phụ cấp |" in table_chunk.content
-    assert table_chunk.element_ids == ["e3"]
+    table_chunks = [chunk for chunk in chunks if chunk.kind == "table"]
+    assert len(table_chunks) == 1
+    assert table_chunks[0].element_ids == ["e3"]
+    assert "| Cấp bậc | Phụ cấp |" in table_chunks[0].content
 
 
 def test_multimodal_hybrid_semantic_inline():
@@ -107,11 +107,10 @@ def test_multimodal_hybrid_semantic_inline():
     ]
 
     chunks = hybrid_chunker.chunk(elements, document_id="doc_inline")
-    assert len(chunks) >= 2
-    table_chunk = next(c for c in chunks if c.kind == "table")
-    assert "| Cấp bậc | Phụ cấp |" in table_chunk.content
-    assert table_chunk.element_ids == ["e3"]
-    assert "searchable_text" in table_chunk.metadata
+    table_chunks = [chunk for chunk in chunks if chunk.kind == "table"]
+    assert len(table_chunks) == 1
+    assert table_chunks[0].element_ids == ["e3"]
+    assert "| Cấp bậc | Phụ cấp |" in table_chunks[0].content
 
 
 def test_vietnamese_sentence_boundary_detection_abbreviations():
@@ -192,7 +191,7 @@ def test_document_pipeline_hybrid_semantic():
                     id="p1",
                     type="paragraph",
                     text="Hệ thống RAG sử dụng hybrid retrieval kết hợp BM25 và Dense Vectors. "
-                         "Vector search giúp nắm bắt ngữ nghĩa sâu xa của văn bản.",
+                    "Vector search giúp nắm bắt ngữ nghĩa sâu xa của văn bản.",
                     page_number=1,
                     section_path=["Chương 1: Khái quát hệ thống"],
                 ),

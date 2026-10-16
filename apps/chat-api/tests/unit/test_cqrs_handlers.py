@@ -1,8 +1,5 @@
 """Unit tests for CQRS Handlers across modules."""
 
-import uuid
-
-from core.uuid7 import uuid7
 
 import pytest
 
@@ -31,6 +28,7 @@ from core.exceptions import ForbiddenException
 from core.queue import IngestionQueuePort
 from core.security import CurrentPrincipal, ExecutionContext
 from core.storage import ObjectStoragePort
+from core.uuid7 import uuid7
 
 
 def test_create_and_get_session(fake_uow):

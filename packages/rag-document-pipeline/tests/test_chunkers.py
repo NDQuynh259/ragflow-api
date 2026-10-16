@@ -77,8 +77,8 @@ def test_figure_caption_binding():
     assert fig_el.image_data.caption == "Hình 2: Sơ đồ luồng dữ liệu hệ thống RAG"
 
 
-def test_table_uses_single_pipeline_regardless_of_size():
-    """Verify that tables always go through TableChunker, never inlined into text chunks."""
+def test_table_remains_independent_from_surrounding_text():
+    """Tables retain their own kind and are not merged with surrounding prose."""
     chunker = MultimodalChunker(chunk_size=1200)
 
     elements = [
@@ -115,27 +115,18 @@ def test_table_uses_single_pipeline_regardless_of_size():
 
     chunks = chunker.chunk(elements, document_id="doc_grouping")
 
-    table_chunks = [c for c in chunks if c.kind == "table"]
-    text_chunks = [c for c in chunks if c.kind == "text"]
-
-    assert len(table_chunks) == 1
-    assert "t1" in table_chunks[0].element_ids
-    assert "p1" not in table_chunks[0].element_ids
-    assert "| Chức vụ | Mức phụ cấp |" in table_chunks[0].content
-    assert table_chunks[0].metadata.get("searchable_text")
-
-    # Text stays in its own chunk, split either side of the table
-    assert all("t1" not in c.element_ids for c in text_chunks)
-    assert any("p1" in c.element_ids for c in text_chunks)
-    assert any("p2" in c.element_ids for c in text_chunks)
-    assert all(c.metadata.get("contains_table") is not True for c in text_chunks)
+    assert [chunk.kind for chunk in chunks] == ["text", "table", "text"]
+    assert chunks[1].element_ids == ["t1"]
+    assert chunks[1].section_path == ["Chương 2: Chính sách phụ cấp"]
+    assert "| Chức vụ | Mức phụ cấp |" in chunks[1].content
+    assert "Trưởng phòng" in chunks[1].content
+    assert "Công ty áp dụng" in chunks[0].content
+    assert "ngày 05" in chunks[2].content
 
 
-def test_large_table_is_chunked_independently():
-    """Verify that a large table is split into row-window chunks by TableChunker."""
-    chunker = MultimodalChunker(
-        chunk_size=300,
-    )
+def test_large_table_is_split_into_table_chunks():
+    """A large table is split into standalone chunks with repeated headers."""
+    chunker = MultimodalChunker(chunk_size=300)
 
     # 15 rows table (large)
     rows = [[f"Mục {i}", f"Giá trị {i}000"] for i in range(15)]
@@ -167,18 +158,11 @@ def test_large_table_is_chunked_independently():
 
     chunks = chunker.chunk(elements, document_id="doc_large")
 
-    # Should produce text chunk for leading paragraph + table chunks with repeated headers
-    kinds = [c.kind for c in chunks]
-    assert "table" in kinds
-    table_chunks = [c for c in chunks if c.kind == "table"]
-    assert len(table_chunks) >= 1
-    for tc in table_chunks:
-        assert "| Tên vật tư | Đơn giá |" in tc.content
-        assert tc.section_path == ["Chương 3: Bảng giá vật tư lớn"]
-        searchable = tc.metadata.get("searchable_text", "")
-        assert "Tên vật tư = Mục" in searchable
-        assert "Đơn giá = Giá trị" in searchable
-        assert "| --- |" not in searchable
+    table_chunks = [chunk for chunk in chunks if chunk.kind == "table"]
+    assert len(table_chunks) >= 2
+    assert all(chunk.element_ids == ["t_large"] for chunk in table_chunks)
+    assert all(chunk.section_path == ["Chương 3: Bảng giá vật tư lớn"] for chunk in table_chunks)
+    assert all("| Tên vật tư | Đơn giá |" in chunk.content for chunk in table_chunks)
 
 
 def test_table_searchable_text_preserves_header_value_intersections():
@@ -197,8 +181,7 @@ def test_table_searchable_text_preserves_header_value_intersections():
 
     assert "### Báo cáo 2024" in chunk.content
     assert chunk.metadata["searchable_text"] == (
-        "Bảng: Báo cáo 2024\n"
-        "Dòng 1: Quý = Q1 | Doanh thu = 150 tỷ | Lợi nhuận = 25 tỷ"
+        "Bảng: Báo cáo 2024\nDòng 1: Quý = Q1 | Doanh thu = 150 tỷ | Lợi nhuận = 25 tỷ"
     )
 
 
@@ -292,7 +275,7 @@ def test_image_chunker_preserves_description_and_caption():
 
 
 def test_multimodal_chunker_pipeline_vision_forwarding():
-    """Verify vision_fn is forwarded from DocumentPipeline to MultimodalChunker and ImageChunker."""
+    """Verify vision_fn is forwarded to the standalone image chunker."""
     mock_vision = lambda path: "Bản vẽ thiết kế kỹ thuật - Tỷ lệ 1:100"
 
     pipeline = DocumentPipeline.hybrid_semantic(vision_fn=mock_vision)
@@ -309,8 +292,9 @@ def test_multimodal_chunker_pipeline_vision_forwarding():
     normalized = pipeline._normalize(elements)
     chunks = pipeline.chunker.chunk(normalized, document_id="doc_pipe_vision")
 
-    img_chunk = next(c for c in chunks if c.kind == "figure")
-    assert img_chunk.indexable is True
-    assert img_chunk.metadata.get("has_vision") is True
-    assert "Bản vẽ thiết kế kỹ thuật - Tỷ lệ 1:100" in img_chunk.content
-
+    assert len(chunks) == 1
+    chunk = chunks[0]
+    assert chunk.kind == "figure"
+    assert chunk.element_ids == ["diag1"]
+    assert chunk.section_path == ["Hồ sơ thiết kế"]
+    assert "Bản vẽ thiết kế kỹ thuật - Tỷ lệ 1:100" in chunk.content

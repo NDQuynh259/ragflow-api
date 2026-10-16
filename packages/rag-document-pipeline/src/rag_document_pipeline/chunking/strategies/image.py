@@ -83,6 +83,51 @@ class ImageChunker:
             for element in elements
         ]
 
+    def extract_text(self, element: LayoutElement) -> str | None:
+        """Trích xuất text đại diện cho một phần tử ảnh (bước extraction, KHÔNG sinh chunk).
+
+        Quy trình: Triage hình học -> giải quyết nguồn ảnh -> gọi Vision VLM (nếu có)
+        -> ghép text proxy. Trả về None khi ảnh bị triage skip hoặc hoàn toàn không có
+        nội dung text (không caption/description/vision) — ảnh đó không góp text
+        vào dòng chunk chung.
+        """
+        skip_reason = triage_skip_reason(
+            element,
+            enabled=self.triage_enabled,
+            min_image_size=self.min_image_size,
+            max_aspect_ratio=self.max_aspect_ratio,
+        )
+        if skip_reason:
+            return None
+
+        img = element.image_data
+        caption = (img.caption if img else None) or element.caption or ""
+        description = img.description if img else None
+        source = resolve_image_source(element)
+
+        analysis: str | None = None
+        if source and self.vision_fn:
+            res = safe_extract_text(
+                self.vision_fn,
+                source,
+                label="Vision",
+                max_length=self.max_vision_length,
+                element_id=element.id,
+            )
+            analysis = res.text
+            if analysis and img:
+                img.description = (res.structured_data or {}).get("main_message") or analysis
+
+        content = build_image_text_proxy(
+            element,
+            caption=caption,
+            description=description,
+            analysis=analysis,
+        )
+        if content.strip() == IMAGE_PLACEHOLDER:
+            return None
+        return content
+
     def _build_skipped_chunk(
         self,
         element: LayoutElement,

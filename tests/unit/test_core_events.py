@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
-from core.uuid7 import uuid7, uuid7_str
-
 from core.events import (
     InMemoryEventPublisher,
     RabbitMQEventPublisher,
@@ -19,6 +17,7 @@ from core.events import (
     format_ping,
     format_sse,
 )
+from core.uuid7 import uuid7, uuid7_str
 
 
 def test_format_sse_basic():

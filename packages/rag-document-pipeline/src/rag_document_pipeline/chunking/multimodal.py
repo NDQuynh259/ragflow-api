@@ -2,26 +2,30 @@
 
 Module này điều phối luồng băm nhỏ tài liệu đa phương thức (Multimodal Reading-Order Routing):
 1. Nhận danh sách các `LayoutElement` đã qua chuẩn hóa và bóc tách bố cục.
-2. Lan truyền ngữ cảnh chương mục (`propagate_sections`) để mọi phần tử đều mang đường dẫn phân cấp (`section_path`).
-3. Gom nhóm theo thứ tự đọc tự nhiên (`group_by_section`), tránh xáo trộn dòng đọc giữa văn bản, bảng biểu và hình ảnh.
-4. Điều phối từng loại phần tử đến chiến lược xử lý chuyên biệt:
-   - Văn bản thường (`text`, `paragraph`, `list`...) -> gom đệm và gửi sang `TextChunker`.
-   - Bảng biểu (`table`, `data_table`) -> xả văn bản chờ, xử lý độc lập qua `TableChunker`.
-   - Hình ảnh (`image`, `figure`) -> xả văn bản chờ, xử lý độc lập qua `ImageChunker` (sử dụng mô hình `vision_fn`).
+2. Lan truyền ngữ cảnh chương mục (`propagate_sections`) xuống toàn bộ phần tử, duy nhất một lần.
+3. Bóc tách nội dung (EXTRACTION, không phải chunking) cho từng phần tử theo thứ tự đọc:
+   - Bảng biểu (`table`, `data_table`) -> render thành các khối Markdown (cửa sổ dòng,
+     lặp lại tiêu đề) qua `TableChunker` như một bộ biến đổi text.
+   - Hình ảnh (`image`, `figure`) -> trích xuất text proxy (caption + Vision VLM) qua
+     `ImageChunker.extract_text`.
+   - Văn bản thường giữ nguyên.
+4. Ghép toàn bộ kết quả extraction vào một dòng text duy nhất theo thứ tự đọc, rồi chạy
+   `TextChunker` MỘT LƯỢT DUY NHẤT — ranh giới chunk do ngữ nghĩa (topic shift) quyết định,
+   văn bản xung quanh bảng/ảnh nằm chung chunk với chính bảng/ảnh đó.
 5. Đánh số chỉ mục `index` tuần tự cho các chunk đầu ra, bảo toàn thứ tự đọc gốc của tài liệu.
 """
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
-from rag_document_pipeline.models import DocumentChunk, LayoutElement
+from rag_document_pipeline.models import DocumentChunk, ElementType, LayoutElement
 
 from .core import (
     DEFAULT_MAX_ASPECT_RATIO,
     DEFAULT_MIN_IMAGE_SIZE,
     Chunker,
-    group_by_section,
     propagate_sections,
 )
 from .core.constants import IMAGE_TYPES, SKIP_TYPES, TABLE_TYPES
@@ -33,11 +37,7 @@ from .strategies import (
 
 
 class MultimodalChunker:
-    """Bộ điều phối băm nhỏ tài liệu đa phương thức theo thứ tự đọc tự nhiên.
-
-    Định tuyến các phần tử văn bản, bảng biểu và hình ảnh đến từng chiến lược băm chuyên biệt,
-    đồng thời bảo toàn trọn vẹn ngữ cảnh chương mục và thứ tự xuất hiện gốc trong trang.
-    """
+    """Route text, tables and images to modality-specific chunkers in reading order."""
 
     def __init__(
         self,
@@ -94,75 +94,117 @@ class MultimodalChunker:
         )
 
     def chunk(self, elements: list[LayoutElement], *, document_id: str) -> list[DocumentChunk]:
-        """Thực hiện băm nhỏ danh sách LayoutElement theo thứ tự đọc của tài liệu.
-
-        Quy trình xử lý:
-        1. Lan truyền thông tin phân cấp tiêu đề (`propagate_sections`) xuống từng phần tử.
-        2. Gom nhóm các phần tử liên tục theo cùng `section_path` và `page_number`.
-        3. Duyệt tuần tự qua từng nhóm:
-           - Tích lũy các phần tử text vào `text_batch`.
-           - Khi gặp Table hoặc Image, xả hàng đợi text hiện tại (`_flush_text`) rồi băm độc lập phần tử đó.
-        4. Gán chỉ mục `chunk.index` tăng dần, bảo toàn 100% thứ tự đọc gốc.
-
-        Args:
-            elements: Danh sách phần tử layout sau bước chuẩn hóa (bỏ header/footer khi gom nhóm).
-            document_id: Mã tài liệu gán cho mọi chunk tạo thành.
-
-        Returns:
-            Danh sách DocumentChunk đã đánh số `index` liên tiếp theo thứ tự đọc của tài liệu.
-        """
-        # 1. Lan truyền cây chương mục xuống toàn bộ phần tử
-        elements = propagate_sections(elements)
-
-        # 2. Gom nhóm theo section_path và số trang, bỏ qua header/footer
-        groups = group_by_section([e for e in elements if e.type.lower() not in SKIP_TYPES])
-
-        # 3. Duyệt qua từng nhóm để phân làn xử lý
+        """Create modality-specific chunks and preserve document reading order."""
+        propagated = propagate_sections(elements)
+        ordered = [element for element in propagated if element.type.lower() not in SKIP_TYPES]
         chunks: list[DocumentChunk] = []
-        for group in groups:
-            text_batch: list[LayoutElement] = []
+        text_batch: list[LayoutElement] = []
+        active_section_path: list[str] = []
+        batch_has_heading = False
 
-            for element in group:
-                kind = element.type.lower()
-                if kind in TABLE_TYPES:
-                    # Gặp bảng biểu: Xả văn bản chờ phía trước, sau đó băm bảng độc lập
-                    chunks.extend(self._flush_text(text_batch, document_id))
-                    text_batch = []
-                    chunks.extend(self.table_chunker.chunk([element], document_id=document_id))
-                elif kind in IMAGE_TYPES:
-                    # Gặp hình ảnh: Xả văn bản chờ phía trước, sau đó băm ảnh độc lập
-                    chunks.extend(self._flush_text(text_batch, document_id))
-                    text_batch = []
-                    chunks.extend(self.image_chunker.chunk([element], document_id=document_id))
-                else:
-                    # Tích lũy các phần tử văn bản thông thường
-                    text_batch.append(element)
+        def flush_text() -> None:
+            nonlocal batch_has_heading
+            if text_batch:
+                batch = list(text_batch)
+                if active_section_path and not batch_has_heading:
+                    for level, title in enumerate(active_section_path, start=1):
+                        batch.insert(
+                            level - 1,
+                            LayoutElement(
+                                id=f"section-context-{level}-{title}",
+                                type=ElementType.HEADING,
+                                text=title,
+                                heading_level=level,
+                                section_path=list(active_section_path[:level]),
+                            ),
+                        )
+                chunks.extend(self.text_chunker.chunk(batch, document_id=document_id))
+                text_batch.clear()
+                batch_has_heading = False
 
-            # Xả lượng văn bản còn lại ở cuối nhóm
-            chunks.extend(self._flush_text(text_batch, document_id))
+        for element in ordered:
+            if element.type.lower() == "heading":
+                active_section_path = list(element.section_path)
+                batch_has_heading = True
+            elif element.section_path:
+                active_section_path = list(element.section_path)
+            kind = element.type.lower()
+            if kind in TABLE_TYPES:
+                flush_text()
+                chunks.extend(self.table_chunker.chunk([element], document_id=document_id))
+            elif kind in IMAGE_TYPES:
+                flush_text()
+                chunks.extend(self.image_chunker.chunk([element], document_id=document_id))
+            else:
+                text_batch.append(element)
+        flush_text()
 
-        # 4. Đánh lại index tuần tự theo đúng thứ tự đọc của tài liệu
+        self._link_explicit_references(ordered, chunks)
         for index, chunk in enumerate(chunks):
             chunk.index = index
         return chunks
 
-    # region _flush_text
-    def _flush_text(self, elements: list[LayoutElement], document_id: str) -> list[DocumentChunk]:
-        """Xả hàng đợi các phần tử văn bản và gửi sang TextChunker.
+    @staticmethod
+    def _link_explicit_references(
+        elements: list[LayoutElement], chunks: list[DocumentChunk]
+    ) -> None:
+        """Link text and modality chunks only for uniquely resolved numbered refs."""
+        targets: dict[tuple[str, str], list[DocumentChunk]] = {}
+        chunks_by_element = {
+            element_id: [chunk for chunk in chunks if element_id in chunk.element_ids]
+            for element in elements
+            for element_id in [element.id]
+        }
+        for element in elements:
+            if element.type.lower() not in TABLE_TYPES | IMAGE_TYPES:
+                continue
+            target_chunks = [
+                chunk
+                for chunk in chunks_by_element.get(element.id, [])
+                if chunk.kind in {"table", "figure"}
+            ]
+            caption = element.caption or (
+                element.table_data.caption
+                if element.table_data
+                else (element.image_data.caption if element.image_data else None)
+            )
+            match = re.match(
+                r"^\s*(Bảng|Table|Hình|Figure|Sơ đồ|Biểu đồ|Chart|Diagram)\s*(\d+(?:\.\d+)*)",
+                caption or "",
+                re.IGNORECASE,
+            )
+            if match:
+                targets.setdefault((match.group(1).casefold(), match.group(2)), []).extend(
+                    target_chunks
+                )
 
-        Bỏ qua các lô chỉ chứa tiêu đề đứng một mình mà không có nội dung văn bản kèm theo,
-        tránh tạo ra các chunk chỉ toàn heading rỗng.
-
-        Args:
-            elements: Lô phần tử văn bản đang chờ trong hàng đợi.
-            document_id: Mã tài liệu gán cho các chunk trả về.
-
-        Returns:
-            Danh sách chunk từ `TextChunker`, hoặc danh sách rỗng nếu lô chỉ có tiêu đề.
-        """
-        if not any(e.text.strip() or e.table_data for e in elements if e.type.lower() != "heading"):
-            return []
-        return self.text_chunker.chunk(elements, document_id=document_id)
+        text_chunks = [chunk for chunk in chunks if chunk.kind == "text"]
+        for element in elements:
+            if element.type.lower() in TABLE_TYPES | IMAGE_TYPES | SKIP_TYPES:
+                continue
+            references = re.findall(
+                r"\b(Bảng|Table|Hình|Figure|Sơ đồ|Biểu đồ|Chart|Diagram)\s*(\d+(?:\.\d+)*)",
+                element.text,
+                re.IGNORECASE,
+            )
+            text_chunk = next(
+                (chunk for chunk in text_chunks if element.id in chunk.element_ids), None
+            )
+            if text_chunk is None:
+                continue
+            for label, number in references:
+                matches = targets.get((label.casefold(), number), [])
+                if len(matches) != 1:
+                    continue
+                target = matches[0]
+                text_chunk.metadata.setdefault("related_chunk_ids", [])
+                target.metadata.setdefault("related_chunk_ids", [])
+                if target.id not in text_chunk.metadata["related_chunk_ids"]:
+                    text_chunk.metadata["related_chunk_ids"].append(target.id)
+                if text_chunk.id not in target.metadata["related_chunk_ids"]:
+                    target.metadata["related_chunk_ids"].append(text_chunk.id)
+                text_chunk.metadata["association_signal"] = "text_reference"
+                target.metadata["association_signal"] = "text_reference"
 
 
 __all__ = ["MultimodalChunker"]

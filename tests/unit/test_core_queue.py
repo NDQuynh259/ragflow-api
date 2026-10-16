@@ -6,13 +6,12 @@ import asyncio
 
 import pytest
 
-from core.uuid7 import uuid7
-
 from core.queue.constants import Actions
 from core.queue.consumer import JobDispatcher
 from core.queue.in_memory import InMemoryQueueAdapter
 from core.queue.port import IngestionQueuePort, JobQueuePort
 from core.queue.schema import DocumentJobPayload, JobEnvelope
+from core.uuid7 import uuid7
 
 
 def test_job_envelope_serialization():

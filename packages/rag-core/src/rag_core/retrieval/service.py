@@ -21,8 +21,8 @@ class RetrievalService:
     Steps:
     1. Embed the query text.
     2. Search the vector store with optional document/kind filters.
-    3. Optionally expand context with neighbor chunks.
-    4. Return ranked ``SearchResult`` list.
+    3. Rerank seed results and expand only explicit related-chunk IDs.
+    4. Return seeds followed by related ``SearchResult`` items.
     """
 
     def __init__(
@@ -110,6 +110,7 @@ class RetrievalService:
             )
 
         results = self.reranker.rerank(query, results, top_k=k)
+        results = self._expand_related(results, workspace_id=workspace_id)
 
         logger.info(
             "Retrieved %d chunks for query (top_k=%d, filter=%s)",
@@ -119,3 +120,38 @@ class RetrievalService:
         )
 
         return results
+
+    def _expand_related(
+        self,
+        results: list[SearchResult],
+        *,
+        workspace_id: str | None,
+    ) -> list[SearchResult]:
+        """Append explicitly associated chunks without crossing document/workspace scope."""
+        if not results or not hasattr(self.vector_store, "get_by_ids"):
+            return results
+
+        expanded = list(results)
+        seen = {result.chunk.id for result in results}
+        requests: dict[tuple[str, str], list[str]] = {}
+        for result in results:
+            ids = result.chunk.metadata.get("related_chunk_ids", [])
+            if not isinstance(ids, list):
+                continue
+            scope = (result.chunk.workspace_id, result.chunk.document_id)
+            for chunk_id in ids:
+                if isinstance(chunk_id, str) and chunk_id not in seen:
+                    requests.setdefault(scope, []).append(chunk_id)
+                    seen.add(chunk_id)
+
+        for (result_workspace, document_id), chunk_ids in requests.items():
+            scoped_workspace = workspace_id or result_workspace
+            if not scoped_workspace:
+                continue
+            related = self.vector_store.get_by_ids(
+                chunk_ids[: self.neighbor_window or 10],
+                workspace_id=scoped_workspace,
+                document_id=document_id,
+            )
+            expanded.extend(related)
+        return expanded

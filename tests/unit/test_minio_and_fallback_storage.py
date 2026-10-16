@@ -8,8 +8,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.uuid7 import uuid7
-
 from core.config import CoreSettings
 from core.exceptions import FileNotFoundStorageException, StorageException
 from core.storage import (
@@ -19,6 +17,7 @@ from core.storage import (
     ObjectStoragePort,
     create_storage_adapter,
 )
+from core.uuid7 import uuid7
 
 
 class InMemoryMockStorage(ObjectStoragePort):

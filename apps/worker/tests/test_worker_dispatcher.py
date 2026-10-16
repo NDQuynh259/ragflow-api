@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from core.uuid7 import uuid7, uuid7_str
-
 from worker.dependencies import get_worker_command_bus
 from worker.dispatcher import build_dispatcher
 from worker.handlers.index_document import IndexDocumentCommand, IndexDocumentHandler
 from worker.processors.index_document import process_index_document
 
 from core.queue import Actions
+from core.uuid7 import uuid7, uuid7_str
 
 
 def test_build_dispatcher_registers_expected_actions() -> None:

@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
-
-from core.uuid7 import uuid7
 from chat_api.modules.chat_sessions.presentation.dtos import SessionApiResponse, SessionResponse
 from chat_api.shared import (
     ApiResponse,
@@ -16,6 +13,7 @@ from chat_api.shared import (
     json_api_error,
     json_api_response,
 )
+from core.uuid7 import uuid7
 
 
 def test_api_response_ok_defaults():

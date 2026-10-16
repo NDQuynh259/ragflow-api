@@ -34,6 +34,105 @@ def test_workspace_filter_is_forwarded():
     assert store.filters == {"workspace_id": "workspace-1"}
 
 
+def test_retrieval_expands_only_explicit_related_chunks_with_scope():
+    seed = SearchResult(
+        chunk=ChunkRecord(
+            id="seed",
+            document_id="doc-1",
+            workspace_id="workspace-1",
+            content="Table data",
+            embedding=[0.1],
+            metadata={"related_chunk_ids": ["linked"]},
+        ),
+        score=0.95,
+    )
+    linked = SearchResult(
+        chunk=ChunkRecord(
+            id="linked",
+            document_id="doc-1",
+            workspace_id="workspace-1",
+            content="Referenced explanation",
+            embedding=[0.1],
+        ),
+        score=0.0,
+    )
+
+    class RelatedStore(RerankableStore):
+        def __init__(self):
+            super().__init__([seed])
+            self.related_scope = None
+
+        def get_by_ids(self, chunk_ids, *, workspace_id, document_id):
+            self.related_scope = (chunk_ids, workspace_id, document_id)
+            return [linked]
+
+    store = RelatedStore()
+    service = RetrievalService(StubEmbedder(), store)
+
+    results = service.retrieve("query", workspace_id="workspace-1", document_ids=["doc-1"])
+
+    assert [result.chunk.id for result in results] == ["seed", "linked"]
+    assert store.related_scope == (["linked"], "workspace-1", "doc-1")
+
+
+def test_retrieval_expansion_deduplicates_shared_related_chunks():
+    related = SearchResult(
+        chunk=ChunkRecord(id="shared", document_id="doc-1", workspace_id="ws", content="shared", embedding=[0.1]),
+        score=0.0,
+    )
+    seeds = [
+        SearchResult(
+            chunk=ChunkRecord(
+                id=f"seed-{index}",
+                document_id="doc-1",
+                workspace_id="ws",
+                content=f"seed {index}",
+                embedding=[0.1],
+                metadata={"related_chunk_ids": ["shared"]},
+            ),
+            score=0.9 - index / 10,
+        )
+        for index in range(2)
+    ]
+
+    class RelatedStore(RerankableStore):
+        def __init__(self):
+            super().__init__(seeds)
+            self.calls = 0
+
+        def get_by_ids(self, chunk_ids, *, workspace_id, document_id):
+            self.calls += 1
+            return [related]
+
+    store = RelatedStore()
+    results = RetrievalService(StubEmbedder(), store).retrieve("query")
+
+    assert [result.chunk.id for result in results] == ["seed-0", "seed-1", "shared"]
+    assert store.calls == 1
+
+
+def test_retrieval_does_not_expand_when_no_explicit_associations():
+    seed = SearchResult(
+        chunk=ChunkRecord(id="seed", document_id="doc-1", content="No links", embedding=[0.1]),
+        score=0.9,
+    )
+
+    class RelatedStore(RerankableStore):
+        def __init__(self):
+            super().__init__([seed])
+            self.expansion_called = False
+
+        def get_by_ids(self, chunk_ids, *, workspace_id, document_id):
+            self.expansion_called = True
+            return []
+
+    store = RelatedStore()
+    results = RetrievalService(StubEmbedder(), store).retrieve("query")
+
+    assert [result.chunk.id for result in results] == ["seed"]
+    assert store.expansion_called is False
+
+
 def test_top_k_must_be_positive():
     service = RetrievalService(StubEmbedder(), StubStore())
     with pytest.raises(ValueError, match="top_k"):

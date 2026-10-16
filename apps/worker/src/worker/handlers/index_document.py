@@ -31,6 +31,7 @@ class IndexDocumentCommand(Command[int]):
     workspace_id: uuid.UUID
     storage_uri: str
     user_id: uuid.UUID | None = None
+    document_type: str | None = None
 
 
 @command_handler(IndexDocumentCommand)
@@ -173,6 +174,7 @@ class IndexDocumentHandler:
                 filename=filename,
                 document_id=cmd.document_id,
                 workspace_id=cmd.workspace_id,
+                document_type=cmd.document_type,
             )
 
             # 7. Mark job completed and document ready

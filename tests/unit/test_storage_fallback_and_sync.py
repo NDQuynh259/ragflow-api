@@ -7,7 +7,6 @@ from pathlib import Path
 
 from core.config import CoreSettings
 from core.exceptions import StorageException
-from core.uuid7 import uuid7
 from core.storage import (
     FallbackStorageAdapter,
     LocalStorageAdapter,
@@ -16,6 +15,7 @@ from core.storage import (
     create_storage_adapter,
     create_storage_sync_service,
 )
+from core.uuid7 import uuid7
 
 
 class InMemoryTestTargetStorage(ObjectStoragePort):

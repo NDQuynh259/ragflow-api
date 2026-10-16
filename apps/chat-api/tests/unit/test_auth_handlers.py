@@ -4,8 +4,6 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
-from core.uuid7 import uuid7
-
 import pytest
 
 from chat_api.modules.auth.application.commands import (
@@ -32,6 +30,7 @@ from core.exceptions import (
     UnauthenticatedException,
 )
 from core.security import hash_session_token, verify_password
+from core.uuid7 import uuid7
 
 
 def test_register_success(fake_uow):

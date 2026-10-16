@@ -11,11 +11,10 @@ import logging
 import math
 from pathlib import Path
 from typing import Any
-
-from core.uuid7 import uuid7_str
 from urllib.parse import urlsplit
 from urllib.request import url2pathname
 
+from core.uuid7 import uuid7_str
 from rag_contracts import ElementType
 from rag_document_pipeline.models import ImageData, LayoutElement, TableData
 

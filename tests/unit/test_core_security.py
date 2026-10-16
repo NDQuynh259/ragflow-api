@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from core.uuid7 import uuid7
-
 from core.exceptions import ForbiddenException
 from core.security import (
     CurrentPrincipal,
@@ -15,6 +13,7 @@ from core.security import (
     hash_session_token,
     verify_password,
 )
+from core.uuid7 import uuid7
 
 
 def test_password_hashing_and_verification():

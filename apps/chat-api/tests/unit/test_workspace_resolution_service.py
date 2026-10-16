@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import uuid
 from unittest.mock import AsyncMock, MagicMock
-
-from core.uuid7 import uuid7
 
 import pytest
 
 from chat_api.shared.auth.guards import AuthContext
 from chat_api.shared.auth.workspace_resolver import WorkspaceResolutionService
+from core.uuid7 import uuid7
 
 
 @pytest.mark.anyio

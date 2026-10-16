@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from core.uuid7 import uuid7
-
 from core.exceptions import (
     EmptyFileException,
     FileNotFoundStorageException,
@@ -16,6 +14,7 @@ from core.storage import (
     FileValidator,
     ObjectStoragePort,
 )
+from core.uuid7 import uuid7
 
 
 class InMemoryTestStorage(ObjectStoragePort):

@@ -11,10 +11,7 @@ Validates:
 
 from __future__ import annotations
 
-import uuid
 from datetime import UTC, datetime, timedelta
-
-from core.uuid7 import uuid7
 
 import pytest
 
@@ -35,6 +32,7 @@ from chat_api.shared.auth import (
 )
 from core.cqrs import CommandBus, QueryBus
 from core.exceptions import ForbiddenException, UnauthenticatedException
+from core.uuid7 import uuid7
 
 
 def test_effective_permissions_owner_bypass():

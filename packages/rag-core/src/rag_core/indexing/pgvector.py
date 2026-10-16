@@ -376,6 +376,38 @@ class PgVectorStore:
 
         return results
 
+    def get_by_ids(
+        self,
+        chunk_ids: list[str],
+        *,
+        workspace_id: str,
+        document_id: str,
+    ) -> list[SearchResult]:
+        """Fetch indexable related chunks within the required workspace and document."""
+        if not chunk_ids:
+            return []
+        conn = self._get_conn()
+        placeholders = ", ".join(["%s"] * len(chunk_ids))
+        query = f"""
+            SELECT id, document_id, workspace_id, content, kind,
+                   page_start, page_end, element_ids, bboxes,
+                   section_path, token_count, indexable, metadata, 1.0 AS score
+            FROM {self._table}
+            WHERE id IN ({placeholders})
+              AND workspace_id = %s
+              AND document_id = %s
+              AND indexable = TRUE
+        """
+        results: list[SearchResult] = []
+        with conn.cursor() as cur:
+            cur.execute(
+                _sql(query),
+                [*chunk_ids, workspace_id, document_id],
+            )
+            for row in cur.fetchall():
+                results.append(_row_to_search_result(row))
+        return results
+
     def delete_by_document(self, document_id: str, *, workspace_id: str | None = None) -> int:
         """Delete all chunks for a document, optionally scoped to a workspace."""
         conn = self._get_conn()

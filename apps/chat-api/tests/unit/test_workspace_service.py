@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import uuid
 from unittest.mock import MagicMock
 
-from core.uuid7 import uuid7
 from chat_api.modules.users.domain.entity import User
 from chat_api.modules.workspaces.application import WorkspaceProvisioningService
 from chat_api.modules.workspaces.domain.entity import WorkspaceRole
+from core.uuid7 import uuid7
 
 
 def test_create_default_workspace_with_fullname() -> None:

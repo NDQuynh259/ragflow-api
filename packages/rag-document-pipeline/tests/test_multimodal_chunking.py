@@ -2,7 +2,8 @@ from rag_document_pipeline.chunking.multimodal import MultimodalChunker
 from rag_document_pipeline.models import ImageData, LayoutElement, TableData
 
 
-def test_multimodal_router_keeps_large_table_and_image_independent():
+def test_multimodal_keeps_table_and_image_as_standalone_chunks():
+    """Tables and images retain their own chunk kinds and source provenance."""
     elements = [
         LayoutElement(id="h1", type="heading", text="Chapter", heading_level=1),
         LayoutElement(id="p1", type="paragraph", text="Introductory text.", page_number=1),
@@ -26,23 +27,23 @@ def test_multimodal_router_keeps_large_table_and_image_independent():
 
     chunks = MultimodalChunker(chunk_size=180).chunk(elements, document_id="doc-1")
 
-    kinds = [chunk.kind for chunk in chunks]
-    assert kinds[0] == "text"
-    assert kinds[-1] == "text"
-    assert "table" in kinds
-    assert "figure" in kinds
-    # The image must remain its own chunk, never merged into a text chunk.
-    figure = next(chunk for chunk in chunks if chunk.kind == "figure")
-    assert figure.element_ids == ["i1"]
-    assert figure.indexable is True
-    # Tables must never be merged into text chunks.
-    assert all("t1" not in chunk.element_ids for chunk in chunks if chunk.kind == "text")
+    table_chunks = [chunk for chunk in chunks if chunk.kind == "table"]
+    image_chunks = [chunk for chunk in chunks if chunk.kind == "figure"]
+    text_chunks = [chunk for chunk in chunks if chunk.kind == "text"]
+    assert len(table_chunks) > 1
+    assert len(image_chunks) == 1
+    assert len(text_chunks) == 2
+    assert table_chunks[0].element_ids == ["t1"]
+    assert table_chunks[0].page_start == table_chunks[0].page_end == 1
+    assert image_chunks[0].element_ids == ["i1"]
+    assert "Architecture diagram" in image_chunks[0].content
+    assert {chunk.element_ids[0] for chunk in text_chunks} == {"p1", "p2"}
+    assert all(chunk.section_path == ["Chapter"] for chunk in chunks)
     assert [chunk.index for chunk in chunks] == list(range(len(chunks)))
-    assert chunks[0].section_path == ["Chapter"]
 
 
-def test_compact_table_is_inline_with_adjacent_text():
-    """All tables now route through independent TableChunker, regardless of size."""
+def test_compact_table_stays_separate_from_adjacent_text():
+    """A compact table is not associated with prose based on adjacency alone."""
     elements = [
         LayoutElement(id="p1", type="paragraph", text="Before table."),
         LayoutElement(
@@ -55,16 +56,37 @@ def test_compact_table_is_inline_with_adjacent_text():
 
     chunks = MultimodalChunker(chunk_size=500).chunk(elements, document_id="doc-2")
 
-    assert len(chunks) == 3
-    assert chunks[0].kind == "text"
-    assert chunks[0].element_ids == ["p1"]
-    assert chunks[1].kind == "table"
-    assert chunks[1].element_ids == ["t1"]
-    assert chunks[2].kind == "text"
-    assert chunks[2].element_ids == ["p2"]
+    assert [chunk.kind for chunk in chunks] == ["text", "table", "text"]
+    assert [chunk.element_ids for chunk in chunks] == [["p1"], ["t1"], ["p2"]]
+    assert "Before table" not in chunks[1].content
+    assert "After table" not in chunks[1].content
+    assert not chunks[0].metadata.get("related_chunk_ids")
+    assert not chunks[1].metadata.get("related_chunk_ids")
 
 
-def test_textless_image_is_metadata_only():
+def test_explicit_table_reference_links_without_merging_chunks():
+    elements = [
+        LayoutElement(id="p1", type="paragraph", text="Xem Bảng 2 để biết ngân sách."),
+        LayoutElement(
+            id="t1",
+            type="table",
+            caption="Bảng 2: Ngân sách",
+            table_data=TableData(headers=["Mục", "Số tiền"], rows=[["A", "100"]]),
+        ),
+    ]
+
+    chunks = MultimodalChunker().chunk(elements, document_id="doc-link")
+
+    text_chunk, table_chunk = chunks
+    assert text_chunk.kind == "text"
+    assert table_chunk.kind == "table"
+    assert table_chunk.id in text_chunk.metadata["related_chunk_ids"]
+    assert text_chunk.id in table_chunk.metadata["related_chunk_ids"]
+    assert text_chunk.metadata["association_signal"] == "text_reference"
+
+
+def test_textless_image_remains_non_indexable_with_provenance():
+    """An image without text remains as a non-indexable chunk with its source metadata."""
     element = LayoutElement(
         id="i1",
         type="figure",
@@ -73,13 +95,15 @@ def test_textless_image_is_metadata_only():
         image_data=ImageData(uri="images/figure.png"),
     )
 
-    chunk = MultimodalChunker().chunk([element], document_id="doc-3")[0]
+    chunks = MultimodalChunker().chunk([element], document_id="doc-3")
 
-    assert chunk.kind == "figure"
-    assert chunk.indexable is False
-    assert chunk.token_count == 0
-    assert chunk.metadata["image_uri"] == "images/figure.png"
-    assert chunk.bboxes == [(1, 2, 3, 4)]
+    assert len(chunks) == 1
+    assert chunks[0].kind == "figure"
+    assert chunks[0].element_ids == ["i1"]
+    assert chunks[0].page_start == chunks[0].page_end == 3
+    assert chunks[0].bboxes == [(1, 2, 3, 4)]
+    assert chunks[0].indexable is False
+    assert chunks[0].metadata["image_uri"] == "images/figure.png"
 
 
 def test_split_table_metadata_only_marks_repeated_headers_when_split():
@@ -166,7 +190,8 @@ def test_embed_fn_failure_falls_back_to_jaccard():
     assert chunks[0].content
 
 
-def test_oversized_single_row_is_split_into_subtables():
+def test_oversized_single_row_is_split_into_table_chunks():
+    """An oversized single row is split into table chunks with repeated header."""
     element = LayoutElement(
         id="t1",
         type="table",
@@ -175,18 +200,15 @@ def test_oversized_single_row_is_split_into_subtables():
 
     chunks = MultimodalChunker(chunk_size=120).chunk([element], document_id="doc-big-row")
 
-    table_chunks = [c for c in chunks if c.kind == "table"]
-    assert len(table_chunks) > 1
-    # Every sub-table chunk must stay within chunk_size
-    assert all(len(c.content) <= 120 for c in table_chunks)
-    # Every chunk must preserve table structure with repeated header
-    assert all(c.content.startswith("| A |\n| --- |\n") for c in table_chunks)
-    assert all(c.metadata.get("has_repeated_header") is True for c in table_chunks)
-    # No oversized_row flag
-    assert all("oversized_row" not in c.metadata for c in table_chunks)
+    assert len(chunks) > 1
+    assert all(chunk.kind == "table" for chunk in chunks)
+    assert all(len(chunk.content) <= 120 for chunk in chunks)
+    assert all(chunk.element_ids == ["t1"] for chunk in chunks)
+    assert all("| A |" in chunk.content for chunk in chunks)
 
 
 def test_oversized_row_with_context_columns_preserved():
+    """Context columns are preserved in each independently indexed table chunk."""
     element = LayoutElement(
         id="t2",
         type="table",
@@ -197,19 +219,19 @@ def test_oversized_row_with_context_columns_preserved():
     )
 
     chunks = MultimodalChunker(chunk_size=200).chunk([element], document_id="doc-ctx")
-    table_chunks = [c for c in chunks if c.kind == "table"]
-    assert len(table_chunks) > 1
-    for c in table_chunks:
-        assert len(c.content) <= 200
-        # Context columns preserved in each chunk
-        assert "HĐ-01" in c.content
-        assert "Bảo mật" in c.content
-        assert "Mã = HĐ-01" in c.metadata["searchable_text"]
-        assert "Điều khoản = Bảo mật" in c.metadata["searchable_text"]
+
+    assert all(chunk.kind == "table" for chunk in chunks)
+    assert len(chunks) > 1
+    for chunk in chunks:
+        assert len(chunk.content) <= 200
+        assert "HĐ-01" in chunk.content
+        assert "Bảo mật" in chunk.content
+        assert chunk.element_ids == ["t2"]
+        assert "HĐ-01" in chunk.metadata["searchable_text"]
 
 
-def test_small_table_is_standalone_and_carries_searchable_text():
-    """Small tables must be routed to TableChunker and keep searchable_text."""
+def test_small_table_stays_independent_with_searchable_context():
+    """A small table remains separate while preserving its searchable text."""
     elements = [
         LayoutElement(id="p1", type="paragraph", text="Revenue context."),
         LayoutElement(
@@ -225,34 +247,29 @@ def test_small_table_is_standalone_and_carries_searchable_text():
 
     chunks = MultimodalChunker(chunk_size=800).chunk(elements, document_id="doc-inline")
 
-    text_chunks = [c for c in chunks if c.kind == "text"]
-    table_chunks = [c for c in chunks if c.kind == "table"]
-
-    assert [c.element_ids for c in text_chunks] == [["p1"]]
-    assert len(table_chunks) == 1
-    assert table_chunks[0].element_ids == ["small"]
-    assert "searchable_text" in table_chunks[0].metadata
-    assert "Quarter = Q1" in table_chunks[0].metadata["searchable_text"]
-    assert "Revenue = 150" in table_chunks[0].metadata["searchable_text"]
+    assert [chunk.kind for chunk in chunks] == ["text", "table"]
+    assert chunks[1].element_ids == ["small"]
+    assert "Revenue context" not in chunks[1].content
+    assert "| Quarter | Revenue |" in chunks[1].content
+    assert "Quarter = Q1" in chunks[1].metadata["searchable_text"]
 
 
-def test_large_table_has_searchable_text_in_standalone_chunks():
-    """Large tables split into standalone chunks must each carry searchable_text."""
+def test_large_table_is_split_with_repeated_headers():
+    """A large table is split into standalone chunks, each retaining repeated headers."""
     element = LayoutElement(
         id="large",
         type="table",
         table_data=TableData(
             headers=["Quarter", "Revenue"],
-            rows=[[f"Q{i}", f"{100+i*10}"] for i in range(12)],
+            rows=[[f"Q{i}", f"{100 + i * 10}"] for i in range(12)],
             caption="Annual report",
         ),
     )
 
     chunks = MultimodalChunker(chunk_size=180).chunk([element], document_id="doc-large")
-    table_chunks = [chunk for chunk in chunks if chunk.kind == "table"]
 
-    assert table_chunks
-    for chunk in table_chunks:
-        assert "searchable_text" in chunk.metadata
-        assert "Quarter = Q" in chunk.metadata["searchable_text"]
-        assert "Revenue = " in chunk.metadata["searchable_text"]
+    assert all(chunk.kind == "table" for chunk in chunks)
+    assert len(chunks) > 1
+    assert all(chunk.element_ids == ["large"] for chunk in chunks)
+    assert all("| Quarter | Revenue |" in chunk.content for chunk in chunks)
+    assert all(chunk.metadata["searchable_text"] for chunk in chunks)
