@@ -93,8 +93,42 @@ class MultimodalChunker:
             max_aspect_ratio=max_aspect_ratio,
         )
 
-    def chunk(self, elements: list[LayoutElement], *, document_id: str) -> list[DocumentChunk]:
+    def chunk(
+        self,
+        elements: list[LayoutElement],
+        *,
+        document_id: str,
+        chunk_size: int | None = None,
+        threshold_percentile: float | None = None,
+        semantic_enabled: bool = True,
+    ) -> list[DocumentChunk]:
         """Create modality-specific chunks and preserve document reading order."""
+        text_chunker = self.text_chunker
+        table_chunker = self.table_chunker
+        if isinstance(self.text_chunker, TextChunker):
+            effective_chunk_size = chunk_size or self.chunk_size
+            if (
+                chunk_size is not None
+                or semantic_enabled != self.text_chunker.semantic_enabled
+                or (
+                    threshold_percentile is not None
+                    and threshold_percentile != self.text_chunker.threshold_percentile
+                )
+            ):
+                text_chunker = TextChunker(
+                    embed_fn=self.text_chunker.embed_fn,
+                    min_chunk_size=min(self.text_chunker.min_chunk_size, effective_chunk_size),
+                    max_chunk_size=effective_chunk_size,
+                    threshold_percentile=(
+                        threshold_percentile
+                        if threshold_percentile is not None
+                        else self.text_chunker.threshold_percentile
+                    ),
+                    window_size=self.text_chunker.window_size,
+                    semantic_enabled=semantic_enabled,
+                )
+            if chunk_size is not None:
+                table_chunker = TableChunker(chunk_size=effective_chunk_size)
         propagated = propagate_sections(elements)
         ordered = [element for element in propagated if element.type.lower() not in SKIP_TYPES]
         chunks: list[DocumentChunk] = []
@@ -118,7 +152,7 @@ class MultimodalChunker:
                                 section_path=list(active_section_path[:level]),
                             ),
                         )
-                chunks.extend(self.text_chunker.chunk(batch, document_id=document_id))
+                chunks.extend(text_chunker.chunk(batch, document_id=document_id))
                 text_batch.clear()
                 batch_has_heading = False
 
@@ -131,7 +165,7 @@ class MultimodalChunker:
             kind = element.type.lower()
             if kind in TABLE_TYPES:
                 flush_text()
-                chunks.extend(self.table_chunker.chunk([element], document_id=document_id))
+                chunks.extend(table_chunker.chunk([element], document_id=document_id))
             elif kind in IMAGE_TYPES:
                 flush_text()
                 chunks.extend(self.image_chunker.chunk([element], document_id=document_id))

@@ -34,6 +34,7 @@ def process_index_document(
         workspace_id=uuid.UUID(str(workspace_id)),
         storage_uri=str(storage_uri),
         user_id=user_id,
+        document_type=kwargs.get("document_type"),
     )
 
     bus = get_worker_command_bus()

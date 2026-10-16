@@ -48,6 +48,7 @@ router = APIRouter(
 async def upload_document(
     auth: CurrentAuth,
     file: UploadFile = File(...),
+    document_type: str | None = Query(default=None),
     storage: ObjectStoragePort = Depends(get_storage),
     queue: IngestionQueuePort = Depends(get_queue),
 ) -> UploadDocumentResponse:
@@ -58,6 +59,7 @@ async def upload_document(
         content=content,
         mime_type=file.content_type or "application/pdf",
         uploaded_by=auth.principal.user_id,
+        document_type=document_type,
     )
     doc_dto = auth.command_bus.execute(
         cmd,

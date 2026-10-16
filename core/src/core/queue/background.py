@@ -42,12 +42,14 @@ class BackgroundQueueAdapter(IngestionQueuePort):
         storage_uri: str,
         workspace_id: uuid.UUID,
         user_id: uuid.UUID | None = None,
+        document_type: str | None = None,
     ) -> None:
         payload = DocumentJobPayload.create(
             document_id=document_id,
             storage_uri=storage_uri,
             workspace_id=workspace_id,
             user_id=user_id,
+            document_type=document_type,
         ).to_dict()
 
         self.enqueue(

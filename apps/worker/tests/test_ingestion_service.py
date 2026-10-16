@@ -33,6 +33,7 @@ def test_document_ingestion_service_execute_pipeline() -> None:
         filename="test.pdf",
         document_id=doc_id,
         workspace_id=ws_id,
+        document_type="business_plan",
     )
 
     assert result.page_count == 3
@@ -47,5 +48,6 @@ def test_document_ingestion_service_execute_pipeline() -> None:
     process_kwargs = pipeline.process.call_args.kwargs
     assert process_kwargs["filename"] == "test.pdf"
     assert process_kwargs["document_id"] == str(doc_id)
+    assert process_kwargs["document_type"] == "business_plan"
     assert "image_dir" in process_kwargs
     engine.index.assert_called_once_with([mock_chunk_1, mock_chunk_2])

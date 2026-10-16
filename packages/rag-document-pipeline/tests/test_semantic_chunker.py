@@ -208,3 +208,69 @@ def test_document_pipeline_hybrid_semantic():
     # Tiền tố context breadcrumb ### Chương 1
     assert "### Chương 1: Khái quát hệ thống" in result.chunks[0].content
     assert result.chunks[0].metadata.get("chunker") == "semantic_hybrid"
+
+
+def test_document_pipeline_uses_explicit_type_profile():
+    from rag_document_pipeline.pipeline import DocumentPipeline
+
+    class MockParser:
+        def parse(self, content: bytes, *, filename: str, image_dir=None):
+            return [LayoutElement(id="p1", type="paragraph", text="Internal wiki policy.")]
+
+    pipeline = DocumentPipeline.hybrid_semantic(parser=MockParser(), max_chunk_size=900)
+    processed = pipeline.process(
+        b"dummy",
+        filename="policy.pdf",
+        document_id="doc-legal",
+        document_type="legal_policy",
+    )
+
+    from rag_document_pipeline.pipeline import CHUNKING_PROFILES, normalize_document_type
+
+    assert normalize_document_type("legal-policy") == "legal_policy"
+    assert CHUNKING_PROFILES["legal_policy"].chunk_size == 2000
+    chunk = processed.chunks[0]
+    assert chunk.metadata["document_type"] == "legal_policy"
+    assert chunk.metadata["chunk_size_chars"] == 2000
+    assert chunk.metadata["semantic_chunking"] is False
+
+
+def test_document_pipeline_infers_guide_profile_and_keeps_router_immutable():
+    from rag_document_pipeline.pipeline import DocumentPipeline
+
+    class MockParser:
+        def parse(self, content: bytes, *, filename: str, image_dir=None):
+            return [
+                LayoutElement(id="h1", type="heading", text="Quy trình thao tác", heading_level=1),
+                LayoutElement(id="p1", type="paragraph", text="Bước 1: Đăng nhập hệ thống. " * 40),
+            ]
+
+    pipeline = DocumentPipeline.hybrid_semantic(parser=MockParser(), max_chunk_size=700)
+    original_chunker = pipeline.chunker.text_chunker
+    result = pipeline.process(b"dummy", filename="guide.pdf", document_id="doc-guide")
+
+    from rag_document_pipeline.pipeline import CHUNKING_PROFILES, infer_document_type
+
+    assert result.chunks
+    assert pipeline.chunker.text_chunker is original_chunker
+    assert infer_document_type(result.elements) == "guide_sop"
+    assert CHUNKING_PROFILES["guide_sop"].chunk_size == 1500
+    assert result.chunks[0].metadata["document_type"] == "guide_sop"
+    assert result.chunks[0].metadata["chunk_size_chars"] == 1500
+
+
+def test_document_pipeline_falls_back_to_internal_for_weak_inference():
+    from rag_document_pipeline.pipeline import DocumentPipeline
+
+    class MockParser:
+        def parse(self, content: bytes, *, filename: str, image_dir=None):
+            return [LayoutElement(id="p1", type="paragraph", text="General information.")]
+
+    pipeline = DocumentPipeline.hybrid_semantic(parser=MockParser(), max_chunk_size=900)
+    from rag_document_pipeline.pipeline import infer_document_type
+
+    processed = pipeline.process(b"dummy", filename="general.pdf", document_id="doc-internal")
+
+    assert infer_document_type(processed.elements) == "internal"
+    assert processed.chunks[0].metadata["chunk_size_chars"] == 900
+    assert pipeline.chunker.chunk_size == 1200

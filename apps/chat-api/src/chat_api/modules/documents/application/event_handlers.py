@@ -7,6 +7,7 @@ enqueueing background jobs.  The domain events themselves are defined in
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 from chat_api.modules.documents.domain.events import DocumentIngestionRequested
@@ -28,6 +29,17 @@ class EnqueueDocumentIngestionHandler:
             "storage_uri": event.storage_uri,
             "workspace_id": event.workspace_id,
         }
-        if "user_id" in inspect.signature(self.queue.enqueue_ingestion).parameters:
+        parameters = inspect.signature(self.queue.enqueue_ingestion).parameters
+        if "user_id" in parameters:
             kwargs["user_id"] = event.user_id
+        if "document_type" in parameters:
+            kwargs["document_type"] = event.document_type
+        elif event.document_type is not None:
+            payload = {
+                key: str(value) if isinstance(value, uuid.UUID) else value
+                for key, value in kwargs.items()
+            }
+            payload["document_type"] = event.document_type
+            self.queue.enqueue("index", payload, job_id=event.job_id)
+            return
         self.queue.enqueue_ingestion(**kwargs)

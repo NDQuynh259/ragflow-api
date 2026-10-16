@@ -35,6 +35,7 @@ def test_process_index_document_dispatches_via_command_bus() -> None:
             document_id=doc_id,
             workspace_id=ws_id,
             storage_uri=uri,
+            document_type="guide_sop",
         )
         assert result == 42
         mock_bus.execute.assert_called_once()
@@ -44,6 +45,7 @@ def test_process_index_document_dispatches_via_command_bus() -> None:
         assert str(cmd.document_id) == doc_id
         assert str(cmd.workspace_id) == ws_id
         assert cmd.storage_uri == uri
+        assert cmd.document_type == "guide_sop"
 
 
 @patch("worker.dependencies.get_rag_engine")

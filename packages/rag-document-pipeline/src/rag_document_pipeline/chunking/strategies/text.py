@@ -50,6 +50,7 @@ class TextChunker:
         threshold_percentile: float = 80.0,
         window_size: int = 2,
         embed_fn: Callable[[list[str]], list[list[float]]] | None = None,
+        semantic_enabled: bool = True,
     ) -> None:
         """Khởi tạo TextChunker với các tham số giới hạn và mô hình nhúng.
 
@@ -72,6 +73,7 @@ class TextChunker:
         self.threshold_percentile = threshold_percentile
         self.window_size = window_size
         self.embed_fn = embed_fn
+        self.semantic_enabled = semantic_enabled
 
     def chunk(
         self,
@@ -98,7 +100,8 @@ class TextChunker:
                 continue
 
             # 1. Tách văn bản tại điểm nhảy vọt ngữ nghĩa, sau đó ép cận min/max kích thước
-            segments = self._enforce_bounds(self._split_semantically(body))
+            raw_segments = self._split_semantically(body) if self.semantic_enabled else [body]
+            segments = self._enforce_bounds(raw_segments)
             metadata: dict[str, Any] = {"chunker": "semantic_hybrid", "modality": "text"}
 
             # Lọc các phần tử văn bản để lấy thông tin metadata (bỏ qua heading, table, image)

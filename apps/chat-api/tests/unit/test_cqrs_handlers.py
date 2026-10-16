@@ -86,12 +86,14 @@ def test_upload_document_and_attach(fake_uow, fake_storage, fake_queue):
             workspace_id=ws_id,
             filename="sop.pdf",
             content=b"Sample PDF Content",
+            document_type="guide_sop",
         )
     )
 
     assert doc_dto.filename == "sop.pdf"
     assert doc_dto.status == "queued"
-    assert len(fake_queue.enqueued) == 1
+    assert doc_dto.metadata["document_type"] == "guide_sop"
+    assert fake_queue.enqueued[0][-1] == "guide_sop"
 
     # Attach to session
     attach_handler = AttachDocumentHandler(fake_uow)

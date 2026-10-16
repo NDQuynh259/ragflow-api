@@ -269,8 +269,10 @@ class FakeQueue(IngestionQueuePort):
         self.raw_jobs.append((action, payload, jid, routing_key))
         return jid
 
-    def enqueue_ingestion(self, document_id, job_id, storage_uri, workspace_id):
-        self.enqueued.append((document_id, job_id, storage_uri, workspace_id))
+    def enqueue_ingestion(
+        self, document_id, job_id, storage_uri, workspace_id, user_id=None, document_type=None
+    ):
+        self.enqueued.append((document_id, job_id, storage_uri, workspace_id, user_id, document_type))
 
 
 class FakeRAGEngine(RAGEnginePort):

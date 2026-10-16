@@ -33,6 +33,7 @@ class UploadDocumentCommand(Command[DocumentDTO]):
     parser_name: str = "opendataloader"
     chunker_name: str = "multimodal"
     uploaded_by: uuid.UUID | None = None
+    document_type: str | None = None
 
 
 @command_handler(UploadDocumentCommand)
@@ -90,6 +91,7 @@ class UploadDocumentHandler:
             mime_type=MimeType(validated.detected_mime_type),
             file_size=validated.file_size,
             status=DocumentStatus.QUEUED,
+            metadata={"document_type": cmd.document_type} if cmd.document_type else {},
         )
         job = document.create_ingestion_job(
             parser_name=cmd.parser_name,
@@ -104,6 +106,7 @@ class UploadDocumentHandler:
                 storage_uri=str(document.storage_uri),
                 workspace_id=cmd.workspace_id,
                 user_id=cmd.uploaded_by,
+                document_type=cmd.document_type,
             )
         )
         self.uow.track(document)

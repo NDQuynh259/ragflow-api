@@ -52,6 +52,15 @@ def test_document_job_payload():
     assert d["document_id"] == str(doc_id)
     assert d["workspace_id"] == str(ws_id)
     assert d["storage_uri"] == "output/file.pdf"
+    assert d["document_type"] is None
+
+    typed_payload = DocumentJobPayload.create(
+        document_id=doc_id,
+        storage_uri="output/file.pdf",
+        workspace_id=ws_id,
+        document_type="guide_sop",
+    )
+    assert typed_payload.to_dict()["document_type"] == "guide_sop"
 
 
 def test_in_memory_queue_adapter():
@@ -110,6 +119,16 @@ def test_ingestion_queue_port_backward_compatibility():
         job_id=j_id,
     )
     assert len(fake.records) == 2
+
+    modern_fake = InMemoryQueueAdapter()
+    modern_fake.enqueue_ingestion(
+        document_id=d_id,
+        job_id=j_id,
+        storage_uri="uri3",
+        workspace_id=w_id,
+        document_type="legal_policy",
+    )
+    assert modern_fake.enqueued_jobs[0].payload["document_type"] == "legal_policy"
 
 
 def test_job_dispatcher_sync_and_async_handlers():

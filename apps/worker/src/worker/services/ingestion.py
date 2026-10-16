@@ -107,6 +107,7 @@ class DocumentIngestionService:
         filename: str,
         document_id: uuid.UUID,
         workspace_id: uuid.UUID,
+        document_type: str | None = None,
     ) -> IngestionPipelineResult:
         """Fetch bytes from storage, process chunks through pipeline, persist layout to storage, and index in RAGEngine."""
         import gc
@@ -119,6 +120,8 @@ class DocumentIngestionService:
         # Extract images to a temp directory so they can be uploaded to object storage
         image_dir: Path | None = None
         temp_dir: tempfile.TemporaryDirectory[str] | None = None
+        image_dir: Path | None = None
+        temp_dir: tempfile.TemporaryDirectory[str] | None = None
         try:
             temp_dir = tempfile.TemporaryDirectory(prefix="rag-ingest-images-")
             image_dir = Path(temp_dir.name)
@@ -127,6 +130,7 @@ class DocumentIngestionService:
                 filename=filename,
                 document_id=str(document_id),
                 image_dir=image_dir,
+                document_type=document_type,
             )
         except TypeError:
             # Parser does not accept image_dir
@@ -134,6 +138,7 @@ class DocumentIngestionService:
                 file_bytes,
                 filename=filename,
                 document_id=str(document_id),
+                document_type=document_type,
             )
         # 1. Release raw file bytes immediately from RAM
         del file_bytes
