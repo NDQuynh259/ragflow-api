@@ -7,6 +7,7 @@ dependencies = [
     "opendataloader-pdf>=2.0.0",
     "langchain-core>=0.3",
     "langchain-text-splitters>=0.3",
+    "boto3>=1.35",
 ]
 requires-python = ">=3.11"
 [tool.uv.sources]
