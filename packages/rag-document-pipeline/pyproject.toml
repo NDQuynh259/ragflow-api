@@ -7,8 +7,16 @@ dependencies = [
     "opendataloader-pdf>=2.0.0",
     "langchain-core>=0.3",
     "langchain-text-splitters>=0.3",
+    "boto3>=1.35.0",
+    "moto[s3]>=5.0.0",
 ]
 requires-python = ">=3.11"
+
+[project.optional-dependencies]
+benchmark = [
+    "pytest-benchmark>=4.0.0",
+]
+
 [tool.uv.sources]
 rag-contracts = { workspace = true }
 [build-system]
