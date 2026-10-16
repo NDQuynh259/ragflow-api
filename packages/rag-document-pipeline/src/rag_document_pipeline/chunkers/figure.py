@@ -8,7 +8,6 @@ records (``indexable=False``) so they are not embedded as empty strings.
 from __future__ import annotations
 
 import uuid
-from pathlib import Path
 
 from rag_document_pipeline.chunkers.base import estimate_tokens
 from rag_document_pipeline.models import DocumentChunk, LayoutElement
@@ -54,11 +53,6 @@ class ImageChunker:
         if element.text.strip() and element.text.strip() not in parts:
             parts.append(element.text.strip())
 
-        if len(parts) <= 1 and img and img.uri:
-            parts.append(
-                f"Visual image/diagram on page {element.page_number} ({Path(img.uri).name})"
-            )
-
         has_content = len(parts) > 1  # more than just "[IMAGE]"
         content = "\n".join(parts)
 
@@ -74,7 +68,7 @@ class ImageChunker:
         return DocumentChunk(
             id=str(uuid.uuid4()),
             document_id=document_id,
-            content=content if has_content else f"[IMAGE] Visual on page {element.page_number}",
+            content=content,
             index=0,
             page_start=element.page_number,
             page_end=element.page_number,
