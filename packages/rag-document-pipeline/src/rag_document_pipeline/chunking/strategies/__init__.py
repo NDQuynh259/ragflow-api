@@ -10,11 +10,14 @@ Gói này cài đặt Strategy Pattern cho từng loại nội dung chuyên bi�
 """
 
 from .image import ImageChunker
+from .legal import LegalHierarchyChunker, LegalHierarchyConfig
 from .table import TableChunker
 from .text import TextChunker
 
 __all__ = [
     "ImageChunker",
+    "LegalHierarchyChunker",
+    "LegalHierarchyConfig",
     "TableChunker",
     "TextChunker",
 ]

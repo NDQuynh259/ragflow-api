@@ -37,8 +37,8 @@ Loại tài liệu (`document_type`) được quản lý xuyên suốt từ tầ
                 "internal" (Mặc định)                           "legal_policy" | "business_plan" |
             chunk_size = 1200 chars                              "progress_report" | "guide_sop"
         threshold_percentile = 80.0                                 chunk_size = 1500 - 2000 chars
-          semantic_chunking = True                                     semantic_chunking = False
-                                                                (Bảo toàn ranh giới cấu trúc/section)
+          semantic_chunking = True                                     semantic_chunking = True
+                                                            (Hierarchy-Aware + Semantic Topic Shift)
 ```
 
 ### 1.1. Chuẩn hóa Alias (`normalize_document_type`)

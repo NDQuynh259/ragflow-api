@@ -14,8 +14,21 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from rag_document_pipeline.chunking.classifier import (
+    DOCUMENT_TYPE_PATTERNS,
+    DocumentType,
+    classify_document,
+    classify_section,
+    infer_document_type,
+    normalize_document_type,
+)
 from rag_document_pipeline.chunking.core import Chunker
 from rag_document_pipeline.chunking.multimodal import MultimodalChunker
+from rag_document_pipeline.chunking.router import (
+    CHUNKING_PROFILES,
+    AdaptiveChunkingRouter,
+    ChunkingProfile,
+)
 from rag_document_pipeline.models import (
     DocumentChunk,
     LayoutElement,
@@ -23,71 +36,6 @@ from rag_document_pipeline.models import (
 )
 from rag_document_pipeline.normalizers.layout import LayoutNormalizer
 from rag_document_pipeline.parsers.base import Parser
-
-
-@dataclass(frozen=True)
-class ChunkingProfile:
-    chunk_size: int
-    threshold_percentile: float | None = None
-
-
-CHUNKING_PROFILES = {
-    "internal": ChunkingProfile(chunk_size=1200, threshold_percentile=80.0),
-    "business_plan": ChunkingProfile(chunk_size=1500),
-    "progress_report": ChunkingProfile(chunk_size=1500),
-    "legal_policy": ChunkingProfile(chunk_size=2000),
-    "guide_sop": ChunkingProfile(chunk_size=1500),
-}
-
-DOCUMENT_TYPE_PATTERNS = {
-    "legal_policy": re.compile(
-        r"\b(chương|điều khoản|điều|khoản|căn cứ|quy định|hợp đồng|terms of service|liability)\b",
-        re.I,
-    ),
-    "guide_sop": re.compile(
-        r"\b(hướng dẫn|quy trình|thao tác|bước\s+\d+|cảnh báo|sop|user guide)\b", re.I
-    ),
-    "progress_report": re.compile(
-        r"\b(báo cáo tiến độ|kỳ báo cáo|milestone|sprint|kpi|tiến độ|hoàn thành)\b", re.I
-    ),
-    "business_plan": re.compile(
-        r"\b(kế hoạch kinh doanh|business plan|ngân sách|doanh thu|giả định|mục tiêu chiến lược)\b",
-        re.I,
-    ),
-}
-
-
-def normalize_document_type(document_type: str | None) -> str | None:
-    if not document_type:
-        return None
-    normalized = re.sub(r"[\s-]+", "_", document_type.strip().lower())
-    aliases = {
-        "internal": "internal",
-        "general_internal": "internal",
-        "business": "business_plan",
-        "business_plan": "business_plan",
-        "progress": "progress_report",
-        "progress_report": "progress_report",
-        "legal": "legal_policy",
-        "policy": "legal_policy",
-        "legal_policy": "legal_policy",
-        "guide": "guide_sop",
-        "sop": "guide_sop",
-        "guide_sop": "guide_sop",
-    }
-    return aliases.get(normalized)
-
-
-def infer_document_type(elements: list[LayoutElement]) -> str:
-    headings = " ".join(el.text for el in elements if el.type.lower() == "heading")
-    text = " ".join(el.text for el in elements if el.type.lower() not in {"header", "footer"})
-    scores: dict[str, int] = {}
-    for kind, pattern in DOCUMENT_TYPE_PATTERNS.items():
-        scores[kind] = 2 * len(pattern.findall(headings)) + len(pattern.findall(text))
-    ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
-    if not ranked or ranked[0][1] < 3 or (len(ranked) > 1 and ranked[0][1] == ranked[1][1]):
-        return "internal"
-    return ranked[0][0]
 
 
 class DocumentPipeline:
@@ -199,29 +147,34 @@ class DocumentPipeline:
         # 2. Normalize
         elements = self._normalize(elements)
 
-        # 3. Chunk using an explicit type or infer a conservative document profile.
+        # 3. 3-Tier Classification & Adaptive Chunking
         explicit_type = normalize_document_type(document_type)
-        resolved_type = explicit_type or infer_document_type(elements)
+        resolved_type = explicit_type or classify_document(elements, filename=filename)
         profile = CHUNKING_PROFILES[resolved_type]
         if explicit_type is None and resolved_type == "internal":
             profile = ChunkingProfile(
                 chunk_size=self.chunk_size,
                 threshold_percentile=profile.threshold_percentile,
+                semantic_enabled=profile.semantic_enabled,
+                image_triage_mode=profile.image_triage_mode,
+                min_chunk_size=profile.min_chunk_size,
             )
-        if isinstance(self.chunker, MultimodalChunker):
+        if isinstance(self.chunker, (MultimodalChunker, AdaptiveChunkingRouter)):
             chunks = self.chunker.chunk(
                 elements,
                 document_id=document_id,
                 chunk_size=profile.chunk_size,
                 threshold_percentile=profile.threshold_percentile,
-                semantic_enabled=resolved_type == "internal",
+                semantic_enabled=profile.semantic_enabled,
+                document_type=resolved_type,
+                filename=filename,
             )
         else:
             chunks = self.chunker.chunk(elements, document_id=document_id)
         for chunk in chunks:
             chunk.metadata.setdefault("document_type", resolved_type)
             chunk.metadata.setdefault("chunk_size_chars", profile.chunk_size)
-            chunk.metadata.setdefault("semantic_chunking", resolved_type == "internal")
+            chunk.metadata.setdefault("semantic_chunking", profile.semantic_enabled)
 
         # 4. Validate
         chunks = self._validate(chunks, document_id=document_id)
