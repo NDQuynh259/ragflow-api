@@ -19,13 +19,13 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from rag_document_pipeline.enrichment.relationships import add_bidirectional_relationship
 from rag_document_pipeline.models import DocumentChunk, ElementType, LayoutElement
 
 from .classifier import (
     DocumentType,
     classify_document,
     classify_section,
-    normalize_document_type,
 )
 from .core import (
     DEFAULT_MAX_ASPECT_RATIO,
@@ -200,9 +200,7 @@ def extract_domain_metadata(
             meta["unit"] = unit_match.group(1).strip()
 
     elif section_type == DocumentType.INTERNAL:
-        dept_match = re.search(
-            r"(?i)(?:phòng ban|bộ phận|khoa|khối)\s*:\s*([^\n,.;]+)", text
-        )
+        dept_match = re.search(r"(?i)(?:phòng ban|bộ phận|khoa|khối)\s*:\s*([^\n,.;]+)", text)
         if dept_match:
             meta["department"] = dept_match.group(1).strip()
         if heading_text:
@@ -229,12 +227,16 @@ def enrich_chunk_metadata(
         chunk.content, section_type=section_type, heading_text=heading_text
     )
     for key, val in domain_meta.items():
-        chunk.metadata.setdefault(key, val)
+        if key not in chunk.metadata:
+            chunk.metadata[key] = val
+            chunk.metadata.setdefault("metadata_provenance", {})[key] = {
+                "source": "regex",
+                "confidence": None,
+            }
 
 
 class AdaptiveChunkingRouter:
     """Adaptive multimodal reading-order chunk router.
-    
     Tự động định tuyến và băm nhỏ tài liệu thích ứng theo loại tài liệu tổng thể
     và từng phân đoạn section cụ thể, đồng thời giữ nguyên các loại chunk độc lập
     (text, table, figure) và liên kết chéo bảng/ảnh.
@@ -323,16 +325,12 @@ class AdaptiveChunkingRouter:
 
             # Nhận diện loại section của batch này
             section_type = classify_section(text_batch, fallback=resolved_doc_type)
-            profile = CHUNKING_PROFILES.get(
-                section_type, CHUNKING_PROFILES[DocumentType.INTERNAL]
-            )
+            profile = CHUNKING_PROFILES.get(section_type, CHUNKING_PROFILES[DocumentType.INTERNAL])
 
             # Xác định các tham số hiệu dụng cho TextChunker
             eff_chunk_size = chunk_size or profile.chunk_size
             eff_semantic = (
-                semantic_enabled
-                if semantic_enabled is not None
-                else profile.semantic_enabled
+                semantic_enabled if semantic_enabled is not None else profile.semantic_enabled
             )
             eff_threshold = (
                 threshold_percentile
@@ -415,8 +413,7 @@ class AdaptiveChunkingRouter:
             if element.type.lower() == "heading":
                 # Flush text nếu batch hiện tại đã chứa nội dung thân của section trước
                 has_body_text = any(
-                    el.type.lower() not in {"heading", "header", "footer"}
-                    for el in text_batch
+                    el.type.lower() not in {"heading", "header", "footer"} for el in text_batch
                 )
                 if has_body_text:
                     flush_text()
@@ -467,6 +464,9 @@ class AdaptiveChunkingRouter:
                 i_chunks = self.image_chunker.chunk([element], document_id=document_id)
                 active_heading = active_section_path[-1] if active_section_path else ""
                 for ic in i_chunks:
+                    if kind == "chart":
+                        ic.metadata["modality"] = "chart"
+                        ic.metadata["chart_processing"] = "figure_fallback"
                     enrich_chunk_metadata(
                         ic,
                         section_type=sec_type,
@@ -543,12 +543,7 @@ class AdaptiveChunkingRouter:
                 if len(matches) != 1:
                     continue
                 target = matches[0]
-                text_chunk.metadata.setdefault("related_chunk_ids", [])
-                target.metadata.setdefault("related_chunk_ids", [])
-                if target.id not in text_chunk.metadata["related_chunk_ids"]:
-                    text_chunk.metadata["related_chunk_ids"].append(target.id)
-                if text_chunk.id not in target.metadata["related_chunk_ids"]:
-                    target.metadata["related_chunk_ids"].append(text_chunk.id)
+                add_bidirectional_relationship(text_chunk, target)
                 text_chunk.metadata["association_signal"] = "text_reference"
                 target.metadata["association_signal"] = "text_reference"
 

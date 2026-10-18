@@ -1,7 +1,7 @@
-"""OpenDataLoader adapter: invoke the SDK, read JSON, delegate schema mapping.
+"""Bộ điều hợp (Adapter) OpenDataLoader: gọi SDK cục bộ, đọc kết quả JSON và chuyển đổi lược đồ.
 
-Schema translation lives in :mod:`rag_document_pipeline.parsers.mapping` so this
-module only deals with process/IO concerns.
+Quá trình chuyển đổi cấu trúc (schema translation) được tách biệt trong mô-đun
+:mod:`rag_document_pipeline.parsers.mapping` để tệp này chỉ tập trung vào việc quản lý tiến trình và I/O.
 """
 
 from __future__ import annotations
@@ -20,11 +20,11 @@ logger = logging.getLogger(__name__)
 
 
 class OpenDataLoaderParser:
-    """Parse PDFs with OpenDataLoader's local Python SDK.
+    """Bộ phân tích cú pháp tệp PDF sử dụng thư viện Python OpenDataLoader (yêu cầu Java 11+).
 
-    OpenDataLoader requires Java 11+ and writes JSON artifacts to an output
-    directory. The adapter keeps that implementation detail out of the RAG
-    application and converts its schema to our stable LayoutElement contract.
+    OpenDataLoader phân tích cấu trúc trang, bảng và hình ảnh, xuất ra tệp trung gian JSON.
+    Lớp điều hợp này che giấu chi tiết triển khai tệp tạm thời và Java runtime,
+    đồng thời chuyển đổi lược đồ đầu ra thành các đối tượng chuẩn `LayoutElement`.
     """
 
     def __init__(
@@ -34,6 +34,13 @@ class OpenDataLoaderParser:
         image_output: str = "external",
         image_dir: str | Path | None = None,
     ) -> None:
+        """Khởi tạo OpenDataLoaderParser.
+
+        Args:
+            output_format: Định dạng đầu ra mong muốn từ SDK (bắt buộc là 'json').
+            image_output: Chế độ xuất hình ảnh ('external' để lưu ảnh ra thư mục ngoài).
+            image_dir: Thư mục mặc định để lưu các tệp ảnh được trích xuất.
+        """
         if output_format != "json":
             raise ValueError("OpenDataLoaderParser requires output_format='json'")
         self.output_format = output_format
@@ -48,7 +55,18 @@ class OpenDataLoaderParser:
         filename: str,
         image_dir: str | Path | None = None,
     ) -> list[LayoutElement]:
-        """Convert PDF bytes into layout elements using a temporary workdir."""
+        """Chuyển đổi dữ liệu nhị phân PDF thành danh sách các phần tử bố cục LayoutElement.
+
+        Sử dụng thư mục làm việc tạm thời an toàn để thực thi phân tích.
+
+        Args:
+            content: Dữ liệu bytes của tệp PDF.
+            filename: Tên tệp tin (phải có phần mở rộng .pdf).
+            image_dir: Thư mục ghi đè để lưu hình ảnh trích xuất.
+
+        Returns:
+            list[LayoutElement]: Danh sách các phần tử văn bản, bảng biểu và hình ảnh.
+        """
         payload = self._load_payload(content, filename=filename, image_dir=image_dir)
         try:
             return elements_from_payload(payload, image_dir=self._resolve_image_dir(image_dir))
@@ -65,7 +83,7 @@ class OpenDataLoaderParser:
         filename: str,
         image_dir: str | Path | None,
     ) -> Any:
-        """Run the SDK conversion and return the decoded JSON artifact."""
+        """Thực thi chuyển đổi tài liệu qua SDK OpenDataLoader và trả về dữ liệu JSON đã giải mã."""
         if not content:
             raise ParserError("Cannot parse an empty document.")
         if not filename.lower().endswith(".pdf"):
@@ -99,8 +117,7 @@ class OpenDataLoaderParser:
                     convert_kwargs["image_dir"] = str(target_image_dir.resolve())
                 opendataloader_pdf.convert(**convert_kwargs)
             except Exception as exc:
-                # Log the underlying failure but keep the public error generic so
-                # temporary paths and JVM exception details are not exposed.
+                # Ghi log lỗi nội bộ nhưng giữ thông báo ngoại lệ công khai tổng quát để tránh lộ đường dẫn nhạy cảm
                 logger.error("OpenDataLoader conversion failed: %s", exc, exc_info=True)
                 raise ParserError(f"OpenDataLoader could not parse '{filename}'.") from exc
 
@@ -115,13 +132,14 @@ class OpenDataLoaderParser:
     # endregion
 
     def _resolve_image_dir(self, image_dir: str | Path | None) -> Path | None:
-        """Prefer the per-call image directory over the constructor default."""
+        """Ưu tiên đường dẫn thư mục ảnh truyền theo từng lệnh gọi hơn là thư mục mặc định trong constructor."""
         if image_dir:
             return Path(image_dir)
         return self.image_dir
 
     @staticmethod
     def _find_result(output: Path) -> Path | None:
+        """Tìm tệp tin kết quả JSON đầu tiên được sinh ra trong thư mục output."""
         candidates = sorted(output.rglob("*.json"))
         return candidates[0] if candidates else None
 

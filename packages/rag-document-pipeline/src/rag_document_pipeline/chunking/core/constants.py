@@ -40,7 +40,7 @@ TEXT_TYPES = {"text", "heading", "paragraph", "list", "caption", "formula"}
 TABLE_TYPES = {"table", "data_table"}
 
 #: Tập hợp các loại phần tử dạng hình ảnh, sơ đồ, biểu đồ
-IMAGE_TYPES = {"image", "figure"}
+IMAGE_TYPES = {"image", "figure", "chart"}
 
 #: Tập hợp các phần tử trang trí cần bỏ qua trong luồng nội dung chính (header/footer trang)
 SKIP_TYPES = {"header", "footer"}

@@ -22,6 +22,7 @@ class ElementType(str, Enum):
     DATA_TABLE = "data_table"
     IMAGE = "image"
     FIGURE = "figure"
+    CHART = "chart"
     CAPTION = "caption"
     FOOTNOTE = "footnote"
     FORMULA = "formula"

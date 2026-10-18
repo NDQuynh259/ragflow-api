@@ -1,9 +1,9 @@
-"""Layout normalizer — binds adjacent contextual elements.
+"""Bộ chuẩn hóa bố cục — gắn kết các phần tử ngữ cảnh liền kề (Layout Normalizer).
 
-Handles:
-- Binding isolated 'caption' elements to adjacent 'table' or 'image/figure' elements.
-- Binding isolated 'footnote' elements to preceding 'table' or 'image/figure' elements.
-- Eliminating absorbed orphan elements so they do not pollute general text chunks.
+Xử lý:
+- Gắn kết các phần tử 'caption' (chú thích) đứng riêng lẻ vào bảng biểu ('table') hoặc hình ảnh ('image/figure') liền kề.
+- Gắn kết các phần tử 'footnote' (chú thích chân bảng/ảnh) đứng riêng lẻ vào bảng hoặc ảnh đứng trước.
+- Loại bỏ các phần tử mồ côi đã được hấp thụ để chúng không làm nhiễu các chunk văn bản thông thường.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from collections.abc import Sequence
 
 from rag_document_pipeline.models import LayoutElement
 
-# Regex patterns for heuristic detection of captions and footnotes
+# Các mẫu regex nhận diện heuristic cho tiêu đề chú thích (caption) và chú thích chân (footnote)
 CAPTION_RE = re.compile(
     r"^(Bảng|Table|Hình|Figure|Sơ đồ|Biểu đồ|Chart|Diagram)\s*[\d\.\:\-]+",
     re.IGNORECASE,
@@ -25,17 +25,25 @@ FOOTNOTE_RE = re.compile(
 
 
 class LayoutNormalizer:
-    """Normalizes layout elements by stitching adjacent contextual elements."""
+    """Chuẩn hóa các phần tử bố cục bằng cách ghép nối các phần tử ngữ cảnh liền kề."""
 
     @classmethod
     def bind_captions_and_footnotes(
         cls,
         elements: Sequence[LayoutElement],
     ) -> list[LayoutElement]:
-        """Bind standalone caption/footnote elements to adjacent tables/figures.
+        """Gắn kết các phần tử caption/footnote đứng độc lập vào bảng biểu hoặc hình ảnh liền kề.
 
-        Returns a new list of LayoutElement with captions/footnotes attached to their
-        target elements, and the absorbed standalone elements removed.
+        Duyệt qua danh sách phần tử và kiểm tra các phần tử liền trước/liền sau:
+        - Bảng biểu (Table): caption thường nằm ở phía trên (preceding), footnote nằm ở phía dưới (succeeding).
+        - Hình ảnh (Figure): caption thường nằm ở phía dưới (succeeding), footnote nằm ngay sau caption.
+
+        Args:
+            elements: Chuỗi các LayoutElement ban đầu từ parser.
+
+        Returns:
+            list[LayoutElement]: Danh sách LayoutElement mới với caption/footnote đã được gắn vào phần tử
+            mục tiêu và các phần tử mồ côi đã bị hấp thụ được loại bỏ.
         """
         if not elements:
             return []
@@ -51,7 +59,7 @@ class LayoutNormalizer:
             elif el_type in ("image", "figure"):
                 cls._bind_to_figure(elements_list, i, absorbed_indices)
 
-        # Build final list excluding absorbed standalone elements
+        # Tạo danh sách kết quả cuối cùng loại bỏ các phần tử đã bị hấp thụ
         result: list[LayoutElement] = [
             el for idx, el in enumerate(elements_list) if idx not in absorbed_indices
         ]

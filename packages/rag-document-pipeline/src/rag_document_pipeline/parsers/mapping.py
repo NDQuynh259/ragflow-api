@@ -1,8 +1,7 @@
-"""Pure mapping helpers: OpenDataLoader JSON → LayoutElement contract.
+"""Hàm ánh xạ thuần túy: chuyển đổi OpenDataLoader JSON → Hợp đồng LayoutElement.
 
-Keeping these helpers module-level (instead of ``@staticmethod`` members of the
-parser) lets the adapter stay focused on invoking the SDK and reading JSON,
-while the schema translation remains independently testable.
+Các hàm tiện ích cấp mô-đun giúp tách biệt logic trích xuất và ánh xạ lược đồ dữ liệu
+khỏi logic tiến trình/I/O của parser, giúp dễ dàng kiểm thử đơn vị độc lập.
 """
 
 from __future__ import annotations
@@ -20,17 +19,31 @@ from rag_document_pipeline.models import ImageData, LayoutElement, TableData
 
 logger = logging.getLogger(__name__)
 
+# Các khóa trích xuất nội dung văn bản phổ biến từ kết quả phân tích JSON
 TEXT_KEYS = ("content", "text", "value", "label", "title")
+# Các khóa danh sách phần tử con
 CHILD_KEYS = ("kids", "children", "items", "list_items", "list items")
-IMAGE_TYPES = ("image", "figure")
+# Định danh các phần tử thuộc loại hình ảnh / biểu đồ
+IMAGE_TYPES = ("image", "figure", "chart")
+# Định danh các phần tử thuộc loại bảng biểu
 TABLE_TYPES = ("table", "data_table")
+# Các khóa biểu diễn tọa độ khung viền (bounding box)
 BBOX_KEYS = ("bounding box", "bbox", "bounding_box")
+# Các khóa biểu diễn số trang
 PAGE_KEYS = ("page_number", "page number", "page")
 
 
 # region elements_from_payload
 def elements_from_payload(payload: Any, *, image_dir: Path | None = None) -> list[LayoutElement]:
-    """Convert a decoded OpenDataLoader payload into stable layout elements."""
+    """Chuyển đổi dữ liệu JSON từ OpenDataLoader thành danh sách các đối tượng chuẩn LayoutElement.
+
+    Args:
+        payload: Dữ liệu JSON đã giải mã từ OpenDataLoader (dict hoặc list).
+        image_dir: Thư mục chứa các tệp ảnh đã xuất (dùng để giải quyết đường dẫn ảnh).
+
+    Returns:
+        list[LayoutElement]: Danh sách các LayoutElement đã chuẩn hóa cấu trúc.
+    """
     raw = (
         payload.get("elements", payload.get("kids", payload))
         if isinstance(payload, dict)
@@ -258,7 +271,7 @@ def parse_bbox(item: dict[str, Any]) -> tuple[float, float, float, float] | None
         value = _split_numeric_string(value)
     if isinstance(value, dict):
         value = [value.get(k) for k in ("left", "bottom", "right", "top")]
-    if not isinstance(value, (list, tuple)):
+    if not isinstance(value, list | tuple):
         return None
 
     coords = _to_floats(value)

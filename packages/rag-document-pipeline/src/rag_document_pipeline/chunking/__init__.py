@@ -10,6 +10,7 @@ Module này cung cấp các điểm truy cập chính (Public API) cho ứng d�
 - `classify_document`, `classify_section`: Bộ phân loại tài liệu 3 tầng và phân đoạn section.
 """
 
+from .business_plan import BusinessPlanPolicy
 from .classifier import (
     DOCUMENT_TYPE_ALIASES,
     DOCUMENT_TYPE_PATTERNS,
@@ -20,7 +21,10 @@ from .classifier import (
     normalize_document_type,
 )
 from .core import Chunker
+from .legal import LegalPolicy
 from .multimodal import MultimodalChunker
+from .procedure import ProcedurePolicy
+from .report import ReportPolicy
 from .router import (
     CHUNKING_PROFILES,
     AdaptiveChunkingRouter,
@@ -28,6 +32,7 @@ from .router import (
     enrich_chunk_metadata,
     extract_domain_metadata,
 )
+from .semantic import SemanticPolicy
 from .strategies import (
     ImageChunker,
     LegalHierarchyChunker,
@@ -35,8 +40,17 @@ from .strategies import (
     TableChunker,
     TextChunker,
 )
+from .text import StructureAwareTextPolicy
+from .wiki import WikiPolicy
 
 __all__ = [
+    "BusinessPlanPolicy",
+    "LegalPolicy",
+    "ProcedurePolicy",
+    "ReportPolicy",
+    "SemanticPolicy",
+    "StructureAwareTextPolicy",
+    "WikiPolicy",
     "AdaptiveChunkingRouter",
     "CHUNKING_PROFILES",
     "Chunker",

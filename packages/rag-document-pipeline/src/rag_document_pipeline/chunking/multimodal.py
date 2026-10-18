@@ -25,7 +25,7 @@ from .router import (
 
 
 class MultimodalChunker(AdaptiveChunkingRouter):
-    """Route text, tables and images to modality-specific chunkers in reading order with adaptive routing."""
+    """Bộ điều phối băm nhỏ tài liệu đa phương thức (Text, Table, Image) theo đúng thứ tự đọc và thích ứng theo ngữ cảnh."""
 
     pass
 
