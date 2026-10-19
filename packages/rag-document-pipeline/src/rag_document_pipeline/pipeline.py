@@ -231,8 +231,9 @@ class DocumentPipeline:
             title=Path(filename).stem if filename else None,
         )
 
-        
-        # Step 4: Adaptive Chunking
+       
+        # Bước 4: Phân loại 3 tầng & Băm nhỏ thích ứng (Adaptive Chunking)
+      
         # Tầng 1: Loại tài liệu tường minh do người dùng/caller cung cấp
         explicit_type = normalize_document_type(document_type)
         # Tầng 2 & 3: Tự động suy luận qua tên file và thanh tra cấu trúc nội dung
