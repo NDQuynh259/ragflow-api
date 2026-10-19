@@ -2,6 +2,9 @@
 
 Tài liệu này quy chuẩn toàn bộ kiến trúc logging, định dạng log, phân cấp log level và các quy tắc thực hành chuẩn (Best Practices) cho toàn bộ hệ thống Monorepo RAG (bao gồm `chat-api`, `worker`, `scheduler` và `core`).
 
+> [!NOTE]
+> Để xem toàn diện kiến trúc **Hạ tầng Giám sát, Metrics (Prometheus), Distributed Tracing (Tempo) và LLM Tracing (Langfuse)** thay thế CloudWatch, vui lòng tham khảo: [observability_architecture.md](file:///c:/Users/ndquynh/Documents/RAG/docs/observability_architecture.md).
+
 ---
 
 ## 1. Triết lý Thiết kế (Core Philosophy)
